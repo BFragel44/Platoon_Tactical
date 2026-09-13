@@ -1,4 +1,12 @@
-const REQUIRED_COLLECTIONS = ["factions", "locations", "soldiers", "teams", "contacts"];
+const REQUIRED_COLLECTIONS = [
+  "factions",
+  "locations",
+  "soldiers",
+  "teams",
+  "contacts",
+  "contact_generation_profiles",
+  "enemy_force_packages",
+];
 
 function assert(condition, message) {
   if (!condition) {
@@ -26,6 +34,11 @@ export function validateScenario(scenario) {
   const soldierIds = assertUniqueIds(scenario.soldiers, "soldier");
   const teamIds = assertUniqueIds(scenario.teams, "team");
   assertUniqueIds(scenario.contacts, "contact");
+  const generationProfileIds = assertUniqueIds(
+    scenario.contact_generation_profiles,
+    "contact generation profile",
+  );
+  const packageIds = assertUniqueIds(scenario.enemy_force_packages, "enemy force package");
 
   assert(factionIds.has(scenario.player_faction_id), "player_faction_id must reference a faction");
 
@@ -60,6 +73,30 @@ export function validateScenario(scenario) {
 
   for (const contact of scenario.contacts) {
     assert(locationIds.has(contact.location_id), `${contact.id} references an unknown location`);
+    assert(
+      generationProfileIds.has(contact.generation_profile_id),
+      `${contact.id} references an unknown generation profile`,
+    );
+  }
+
+  for (const profile of scenario.contact_generation_profiles) {
+    assert(Array.isArray(profile.results) && profile.results.length > 0, `${profile.id} needs results`);
+    for (const result of profile.results) {
+      assert(Number.isFinite(result.weight) && result.weight > 0, `${profile.id} weights must be positive`);
+      if (result.result === "NO_CONTACT") {
+        assert(result.package_id === null, `${profile.id} NO_CONTACT must not reference a package`);
+      } else {
+        assert(packageIds.has(result.package_id), `${profile.id} references an unknown package`);
+      }
+    }
+  }
+
+  for (const enemyPackage of scenario.enemy_force_packages) {
+    assert(factionIds.has(enemyPackage.faction_id), `${enemyPackage.id} references an unknown faction`);
+    assert(
+      Array.isArray(enemyPackage.soldiers) && enemyPackage.soldiers.length > 0,
+      `${enemyPackage.id} needs soldiers`,
+    );
   }
 
   return scenario;

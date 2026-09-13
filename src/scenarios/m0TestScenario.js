@@ -104,4 +104,67 @@ export const m0TestScenario = {
       generation_profile_id: "enemy_fireteam_unknown",
     },
   ],
+  contact_generation_profiles: [
+    {
+      id: "enemy_fireteam_unknown",
+      results: [
+        { result: "NO_CONTACT", weight: 1, package_id: null },
+        { result: "RIFLE_TEAM", weight: 1, package_id: "RIFLE_TEAM" },
+        {
+          result: "AUTOMATIC_WEAPONS_TEAM",
+          weight: 1,
+          package_id: "AUTOMATIC_WEAPONS_TEAM",
+        },
+        {
+          result: "REINFORCED_RIFLE_TEAM",
+          weight: 1,
+          package_id: "REINFORCED_RIFLE_TEAM",
+        },
+      ],
+    },
+  ],
+  enemy_force_packages: [
+    {
+      id: "RIFLE_TEAM",
+      name: "Enemy Rifle Team",
+      faction_id: "enemy",
+      soldiers: [
+        { name: "Enemy Team Leader", role_tags: ["TEAM_LEADER"], weapon_category: "RIFLE" },
+        { name: "Enemy Rifleman", role_tags: ["RIFLEMAN"], weapon_category: "RIFLE" },
+      ],
+    },
+    {
+      id: "AUTOMATIC_WEAPONS_TEAM",
+      name: "Enemy Automatic Weapons Team",
+      faction_id: "enemy",
+      soldiers: [
+        {
+          name: "Enemy Automatic Rifleman",
+          role_tags: ["AUTOMATIC_RIFLEMAN"],
+          capability_tags: ["AUTOMATIC_FIRE"],
+          weapon_category: "LIGHT_AUTOMATIC_WEAPON",
+        },
+        {
+          name: "Enemy Assistant",
+          role_tags: ["ASSISTANT"],
+          weapon_category: "RIFLE",
+        },
+      ],
+    },
+    {
+      id: "REINFORCED_RIFLE_TEAM",
+      name: "Enemy Reinforced Rifle Team",
+      faction_id: "enemy",
+      soldiers: [
+        { name: "Enemy Team Leader", role_tags: ["TEAM_LEADER"], weapon_category: "RIFLE" },
+        {
+          name: "Enemy Automatic Rifleman",
+          role_tags: ["AUTOMATIC_RIFLEMAN"],
+          capability_tags: ["AUTOMATIC_FIRE"],
+          weapon_category: "LIGHT_AUTOMATIC_WEAPON",
+        },
+        { name: "Enemy Rifleman", role_tags: ["RIFLEMAN"], weapon_category: "RIFLE" },
+      ],
+    },
+  ],
 };

@@ -63,12 +63,31 @@ export function createMission(scenario, seed) {
     generation_profile_id: contact.generation_profile_id,
     generated_team_ids: [],
     resolved_turn: null,
+    resolution_result: null,
   }));
+
+  const generationProfilesById = indexById(
+    scenario.contact_generation_profiles,
+    (profile) => structuredClone(profile),
+  );
+  const enemyForcePackagesById = indexById(
+    scenario.enemy_force_packages,
+    (enemyPackage) => structuredClone(enemyPackage),
+  );
 
   const knowledgeByFaction = Object.fromEntries(
     scenario.factions.map((faction) => [
       faction.id,
       createFactionKnowledge(faction.known_location_ids),
+    ]),
+  );
+  knowledgeByFaction[scenario.player_faction_id].contact_knowledge_by_id = Object.fromEntries(
+    scenario.contacts.map((contact) => [
+      contact.id,
+      {
+        location_id: contact.location_id,
+        status: ContactResolutionStatus.UNRESOLVED,
+      },
     ]),
   );
 
@@ -99,6 +118,8 @@ export function createMission(scenario, seed) {
     soldiers_by_id: soldiersById,
     teams_by_id: teamsById,
     contacts_by_id: contactsById,
+    contact_generation_profiles_by_id: generationProfilesById,
+    enemy_force_packages_by_id: enemyForcePackagesById,
     commands_by_id: {},
     command_queue_ids: [],
     fire_relationships_by_id: {},

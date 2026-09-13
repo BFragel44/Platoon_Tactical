@@ -21,6 +21,7 @@ export const TeamTacticalState = Object.freeze({
 
 export const ContactResolutionStatus = Object.freeze({
   UNRESOLVED: "UNRESOLVED",
+  RESOLVED: "RESOLVED",
 });
 
 export const CommandStatus = Object.freeze({
@@ -64,4 +65,7 @@ export const EventType = Object.freeze({
   MISSION_STARTED: "MISSION_STARTED",
   COMMAND_ISSUED: "COMMAND_ISSUED",
   UNIT_MOVED: "UNIT_MOVED",
+  CONTACT_TRIGGERED: "CONTACT_TRIGGERED",
+  CONTACT_RESOLVED: "CONTACT_RESOLVED",
+  ENEMY_GENERATED: "ENEMY_GENERATED",
 });

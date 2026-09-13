@@ -9,6 +9,7 @@ import {
 } from "./constants.js";
 import { createEvent } from "./events.js";
 import { createCommandRecord } from "./records.js";
+import { resolveContactsOnEntry } from "./contacts.js";
 
 function rejected(state, reason) {
   return { state, events: [], accepted: false, reason };
@@ -154,6 +155,9 @@ export function resolveCommands(state) {
     nextState.events.push(event);
     emittedEvents.push(event);
     nextState.next_event_sequence += 1;
+    emittedEvents.push(
+      ...resolveContactsOnEntry(nextState, team.id, destinationId, event.id),
+    );
   }
 
   nextState.command_queue_ids = [];

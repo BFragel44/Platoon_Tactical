@@ -13,7 +13,12 @@ describe("createMission", () => {
     expect(restored.contacts_by_id.contact_stone_house.resolution_status).toBe("UNRESOLVED");
     expect(restored.commands_by_id).toEqual({});
     expect(restored.fire_relationships_by_id).toEqual({});
-    expect(restored.knowledge_by_faction.friendly.contact_knowledge_by_id).toEqual({});
+    expect(restored.knowledge_by_faction.friendly.contact_knowledge_by_id).toEqual({
+      contact_stone_house: {
+        location_id: "loc_stone_house",
+        status: "UNRESOLVED",
+      },
+    });
   });
 
   it("produces identical initial state for an identical scenario and seed", () => {

@@ -161,13 +161,14 @@ describe("ordered MOVE resolution", () => {
     const commandIds = [...state.command_queue_ids];
     state = advancePhase(state).state;
     const result = advancePhase(state);
+    const movementEvents = result.events.filter((event) => event.type === "UNIT_MOVED");
 
-    expect(result.events.map((event) => event.result)).toEqual([
+    expect(movementEvents.map((event) => event.result)).toEqual([
       { from_location_id: "loc_orchard_edge", to_location_id: "loc_lane" },
       { from_location_id: "loc_lane", to_location_id: "loc_farmyard" },
       { from_location_id: "loc_farmyard", to_location_id: "loc_stone_house" },
     ]);
-    expect(result.events.map((event) => event.sequence)).toEqual([5, 6, 7]);
+    expect(movementEvents.map((event) => event.sequence)).toEqual([5, 6, 7]);
     expect(result.state.teams_by_id.team_alpha.location_id).toBe("loc_stone_house");
     expect(result.state.locations_by_id.loc_orchard_edge.occupant_team_ids).toEqual([]);
     expect(result.state.locations_by_id.loc_stone_house.occupant_team_ids).toEqual(["team_alpha"]);
