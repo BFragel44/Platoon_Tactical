@@ -1,2 +1,4 @@
-# Ignote the /reference folder
+# Ignore local reference material and generated project output.
 reference/
+node_modules/
+dist/

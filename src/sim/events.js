@@ -1,0 +1,30 @@
+export function createEvent({
+  sequence,
+  type,
+  turn,
+  phase,
+  locationId = null,
+  actor = null,
+  target = null,
+  cause = null,
+  result = null,
+  metadata = {},
+  causedByEventId = null,
+  visibility,
+}) {
+  return {
+    id: `evt_${String(sequence).padStart(6, "0")}`,
+    type,
+    sequence,
+    turn,
+    phase,
+    location_id: locationId,
+    actor,
+    target,
+    cause,
+    result,
+    metadata,
+    caused_by_event_id: causedByEventId,
+    visibility,
+  };
+}
