@@ -65,6 +65,8 @@ function instantiateEnemyPackage(state, enemyPackage, locationId) {
     id: teamId,
     name: enemyPackage.name,
     faction_id: enemyPackage.faction_id,
+    coarse_type: enemyPackage.id,
+    observation_experience: enemyPackage.observation_experience,
     member_ids: soldierIds,
     location_id: locationId,
     current_command_id: null,

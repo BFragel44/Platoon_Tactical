@@ -10,6 +10,7 @@ import {
 import { createEvent } from "./events.js";
 import { createCommandRecord } from "./records.js";
 import { resolveContactsOnEntry } from "./contacts.js";
+import { resolveSpottingOnEntry } from "./spotting.js";
 
 function rejected(state, reason) {
   return { state, events: [], accepted: false, reason };
@@ -155,9 +156,12 @@ export function resolveCommands(state) {
     nextState.events.push(event);
     emittedEvents.push(event);
     nextState.next_event_sequence += 1;
-    emittedEvents.push(
-      ...resolveContactsOnEntry(nextState, team.id, destinationId, event.id),
-    );
+    const contactEvents = resolveContactsOnEntry(nextState, team.id, destinationId, event.id);
+    emittedEvents.push(...contactEvents);
+    const spottingCauseId =
+      contactEvents.findLast((candidate) => candidate.type === EventType.ENEMY_GENERATED)?.id ??
+      event.id;
+    emittedEvents.push(...resolveSpottingOnEntry(nextState, team.id, spottingCauseId));
   }
 
   nextState.command_queue_ids = [];

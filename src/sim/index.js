@@ -8,3 +8,9 @@ export {
   createFireRelationshipRecord,
 } from "./records.js";
 export { createRng, drawRandom } from "./rng.js";
+export {
+  attemptSpotting,
+  calculateSpottingTargetNumber,
+  clampSpottingTargetNumber,
+  resolveSpottingOnEntry,
+} from "./spotting.js";

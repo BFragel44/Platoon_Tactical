@@ -131,6 +131,8 @@ describe("command submission", () => {
       id: "team_enemy",
       name: "Enemy Team",
       faction_id: "enemy",
+      coarse_type: "FIRETEAM",
+      observation_experience: "NORMAL",
       member_ids: [],
       location_id: "loc_ridge",
     });

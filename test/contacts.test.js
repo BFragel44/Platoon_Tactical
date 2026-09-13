@@ -88,7 +88,7 @@ describe("Potential Contact resolution", () => {
       "team_alpha",
       generatedTeamId,
     ]);
-    expect(result.events.at(-1)).toMatchObject({
+    expect(result.events.find((event) => event.type === "ENEMY_GENERATED")).toMatchObject({
       type: "ENEMY_GENERATED",
       result: { package_id: packageId, team_id: generatedTeamId },
       visibility: { faction_ids: [], simulation_only: true },
@@ -110,7 +110,7 @@ describe("Potential Contact resolution", () => {
   });
 
   it("keeps generated enemy details out of the friendly view and visible Events", () => {
-    const state = resolveToContact("automatic").state;
+    const state = resolveToContact("spot-11").state;
     const view = getPlayerView(state, "friendly");
     const visibleEvents = getVisibleEvents(state, "friendly");
     const serializedView = JSON.stringify(view);
@@ -120,7 +120,7 @@ describe("Potential Contact resolution", () => {
     ]);
     expect(view.teams.map((team) => team.id)).toEqual(["team_alpha"]);
     expect(view.soldiers).toHaveLength(4);
-    expect(serializedView).not.toContain("AUTOMATIC_WEAPONS_TEAM");
+    expect(serializedView).not.toContain("REINFORCED_RIFLE_TEAM");
     expect(serializedView).not.toContain("team_000004");
     expect(serializedView).not.toContain("Enemy Automatic Rifleman");
     expect(visibleEvents.some((event) => event.type === "CONTACT_TRIGGERED")).toBe(true);
@@ -146,6 +146,7 @@ describe("Potential Contact resolution", () => {
 
   it("does not trigger or consume RNG again when a resolved Contact is revisited", () => {
     let state = resolveToContact("automatic").state;
+    const drawCountAfterResolution = state.rng.draw_count;
     for (let count = 0; count < 4; count += 1) {
       state = advancePhase(state).state;
     }
@@ -154,7 +155,7 @@ describe("Potential Contact resolution", () => {
     state = advancePhase(state).state;
     const result = advancePhase(state);
 
-    expect(result.state.rng.draw_count).toBe(1);
+    expect(result.state.rng.draw_count).toBe(drawCountAfterResolution);
     expect(result.events.map((event) => event.type)).toEqual(["UNIT_MOVED", "UNIT_MOVED"]);
     expect(
       result.state.events.filter((event) => event.type === "CONTACT_TRIGGERED"),

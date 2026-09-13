@@ -92,6 +92,8 @@ export const m0TestScenario = {
       id: "team_alpha",
       name: "Alpha Team",
       faction_id: "friendly",
+      coarse_type: "FIRETEAM",
+      observation_experience: "NORMAL",
       member_ids: ["soldier_hayes", "soldier_morgan", "soldier_ortiz", "soldier_brooks"],
       location_id: "loc_orchard_edge",
     },
@@ -128,6 +130,7 @@ export const m0TestScenario = {
       id: "RIFLE_TEAM",
       name: "Enemy Rifle Team",
       faction_id: "enemy",
+      observation_experience: "NORMAL",
       soldiers: [
         { name: "Enemy Team Leader", role_tags: ["TEAM_LEADER"], weapon_category: "RIFLE" },
         { name: "Enemy Rifleman", role_tags: ["RIFLEMAN"], weapon_category: "RIFLE" },
@@ -137,6 +140,7 @@ export const m0TestScenario = {
       id: "AUTOMATIC_WEAPONS_TEAM",
       name: "Enemy Automatic Weapons Team",
       faction_id: "enemy",
+      observation_experience: "NORMAL",
       soldiers: [
         {
           name: "Enemy Automatic Rifleman",
@@ -155,6 +159,7 @@ export const m0TestScenario = {
       id: "REINFORCED_RIFLE_TEAM",
       name: "Enemy Reinforced Rifle Team",
       faction_id: "enemy",
+      observation_experience: "NORMAL",
       soldiers: [
         { name: "Enemy Team Leader", role_tags: ["TEAM_LEADER"], weapon_category: "RIFLE" },
         {

@@ -46,6 +46,8 @@ export function createMission(scenario, seed) {
     id: team.id,
     name: team.name,
     faction_id: team.faction_id,
+    coarse_type: team.coarse_type,
+    observation_experience: team.observation_experience,
     member_ids: [...team.member_ids],
     location_id: team.location_id,
     current_command_id: null,

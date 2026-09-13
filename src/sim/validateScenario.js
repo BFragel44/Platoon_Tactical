@@ -7,6 +7,7 @@ const REQUIRED_COLLECTIONS = [
   "contact_generation_profiles",
   "enemy_force_packages",
 ];
+const OBSERVATION_EXPERIENCE = new Set(["GREEN", "NORMAL", "EXPERIENCED", "VETERAN"]);
 
 function assert(condition, message) {
   if (!condition) {
@@ -63,6 +64,10 @@ export function validateScenario(scenario) {
     assert(factionIds.has(team.faction_id), `${team.id} references an unknown faction`);
     assert(locationIds.has(team.location_id), `${team.id} references an unknown location`);
     assert(Array.isArray(team.member_ids), `${team.id} member_ids must be an array`);
+    assert(
+      OBSERVATION_EXPERIENCE.has(team.observation_experience),
+      `${team.id} needs a valid observation experience`,
+    );
     for (const soldierId of team.member_ids) {
       assert(soldierIds.has(soldierId), `${team.id} references unknown soldier ${soldierId}`);
       const soldier = scenario.soldiers.find((candidate) => candidate.id === soldierId);
@@ -96,6 +101,10 @@ export function validateScenario(scenario) {
     assert(
       Array.isArray(enemyPackage.soldiers) && enemyPackage.soldiers.length > 0,
       `${enemyPackage.id} needs soldiers`,
+    );
+    assert(
+      OBSERVATION_EXPERIENCE.has(enemyPackage.observation_experience),
+      `${enemyPackage.id} needs a valid observation experience`,
     );
   }
 

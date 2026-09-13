@@ -43,5 +43,11 @@ export function getPlayerView(state, factionId) {
         status: contact.status,
       }),
     ),
+    spotted_enemies: Object.values(knowledge.known_enemy_teams_by_id).map((enemy) => ({
+      id: enemy.team_id,
+      coarse_type: enemy.coarse_type,
+      location_id: enemy.location_id,
+      status: enemy.status,
+    })),
   };
 }

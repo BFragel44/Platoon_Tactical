@@ -19,6 +19,18 @@ export const TeamTacticalState = Object.freeze({
   EFFECTIVE: "EFFECTIVE",
 });
 
+export const ObservationExperience = Object.freeze({
+  GREEN: "GREEN",
+  NORMAL: "NORMAL",
+  EXPERIENCED: "EXPERIENCED",
+  VETERAN: "VETERAN",
+});
+
+export const SpottingStatus = Object.freeze({
+  UNSPOTTED: "UNSPOTTED",
+  SPOTTED: "SPOTTED",
+});
+
 export const ContactResolutionStatus = Object.freeze({
   UNRESOLVED: "UNRESOLVED",
   RESOLVED: "RESOLVED",
@@ -68,4 +80,6 @@ export const EventType = Object.freeze({
   CONTACT_TRIGGERED: "CONTACT_TRIGGERED",
   CONTACT_RESOLVED: "CONTACT_RESOLVED",
   ENEMY_GENERATED: "ENEMY_GENERATED",
+  SPOTTING_ATTEMPTED: "SPOTTING_ATTEMPTED",
+  UNIT_SPOTTED: "UNIT_SPOTTED",
 });
