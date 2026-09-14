@@ -17,6 +17,8 @@ export function getPlayerView(state, factionId) {
     (team) => team.faction_id === factionId,
   );
   const friendlyTeamIds = new Set(friendlyTeams.map((team) => team.id));
+  const factionKnowsTeam = (teamId) =>
+    friendlyTeamIds.has(teamId) || Boolean(knowledge.known_enemy_teams_by_id[teamId]);
 
   return {
     mission_id: state.id,
@@ -49,5 +51,13 @@ export function getPlayerView(state, factionId) {
       location_id: enemy.location_id,
       status: enemy.status,
     })),
+    fire_relationships: Object.values(state.fire_relationships_by_id)
+      .filter(
+        (relationship) =>
+          relationship.status === "ACTIVE" &&
+          factionKnowsTeam(relationship.source_team_id) &&
+          factionKnowsTeam(relationship.target_team_id),
+      )
+      .map((relationship) => structuredClone(relationship)),
   };
 }

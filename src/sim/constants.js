@@ -71,6 +71,20 @@ export const CommandRejection = Object.freeze({
 
 export const FireRelationshipStatus = Object.freeze({
   ACTIVE: "ACTIVE",
+  CEASED: "CEASED",
+});
+
+export const FireCategory = Object.freeze({
+  BASIC_FIRE: "BASIC_FIRE",
+});
+
+export const FireCeaseReason = Object.freeze({
+  MISSION_INACTIVE: "MISSION_INACTIVE",
+  SOURCE_MISSING: "SOURCE_MISSING",
+  SOURCE_INCAPABLE: "SOURCE_INCAPABLE",
+  TARGET_MISSING: "TARGET_MISSING",
+  TARGET_UNSPOTTED: "TARGET_UNSPOTTED",
+  OUT_OF_RANGE: "OUT_OF_RANGE",
 });
 
 export const EventType = Object.freeze({
@@ -82,4 +96,6 @@ export const EventType = Object.freeze({
   ENEMY_GENERATED: "ENEMY_GENERATED",
   SPOTTING_ATTEMPTED: "SPOTTING_ATTEMPTED",
   UNIT_SPOTTED: "UNIT_SPOTTED",
+  FIRE_OPENED: "FIRE_OPENED",
+  FIRE_CEASED: "FIRE_CEASED",
 });

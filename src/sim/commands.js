@@ -11,6 +11,7 @@ import { createEvent } from "./events.js";
 import { createCommandRecord } from "./records.js";
 import { resolveContactsOnEntry } from "./contacts.js";
 import { resolveSpottingOnEntry } from "./spotting.js";
+import { evaluateAutomaticFire } from "./fire.js";
 
 function rejected(state, reason) {
   return { state, events: [], accepted: false, reason };
@@ -162,6 +163,7 @@ export function resolveCommands(state) {
       contactEvents.findLast((candidate) => candidate.type === EventType.ENEMY_GENERATED)?.id ??
       event.id;
     emittedEvents.push(...resolveSpottingOnEntry(nextState, team.id, spottingCauseId));
+    emittedEvents.push(...evaluateAutomaticFire(nextState));
   }
 
   nextState.command_queue_ids = [];

@@ -1,5 +1,6 @@
 import { MissionPhase } from "./constants.js";
 import { resolveCommands } from "./commands.js";
+import { evaluateAutomaticFire } from "./fire.js";
 
 export function advancePhase(state) {
   if (state.phase === MissionPhase.COMMAND) {
@@ -14,10 +15,16 @@ export function advancePhase(state) {
     return result;
   }
 
+  if (state.phase === MissionPhase.AUTOMATIC_FIRE) {
+    const nextState = structuredClone(state);
+    const events = evaluateAutomaticFire(nextState);
+    nextState.phase = MissionPhase.EFFECTS;
+    return { state: nextState, events };
+  }
+
   const nextState = structuredClone(state);
   const nextPhase = {
     [MissionPhase.CONTACT_OBSERVATION]: MissionPhase.AUTOMATIC_FIRE,
-    [MissionPhase.AUTOMATIC_FIRE]: MissionPhase.EFFECTS,
     [MissionPhase.EFFECTS]: MissionPhase.RECOVERY_CLEANUP,
     [MissionPhase.RECOVERY_CLEANUP]: MissionPhase.COMMAND,
   }[state.phase];
