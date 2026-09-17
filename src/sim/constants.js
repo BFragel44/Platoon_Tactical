@@ -1,8 +1,10 @@
 export const MissionStatus = Object.freeze({
   ACTIVE: "ACTIVE",
+  SUCCESS: "SUCCESS", DEFEAT: "DEFEAT", ABORTED: "ABORTED",
 });
 
 export const MissionPhase = Object.freeze({
+  ENEMY_ACTIVITY: "ENEMY_ACTIVITY", RECOVERY: "RECOVERY", CLEANUP: "CLEANUP",
   COMMAND: "COMMAND",
   ACTION: "ACTION",
   CONTACT_OBSERVATION: "CONTACT_OBSERVATION",
@@ -13,10 +15,13 @@ export const MissionPhase = Object.freeze({
 
 export const SoldierCondition = Object.freeze({
   EFFECTIVE: "EFFECTIVE",
+  WOUNDED: "WOUNDED", KILLED: "KILLED",
 });
 
 export const TeamTacticalState = Object.freeze({
   EFFECTIVE: "EFFECTIVE",
+  SUPPRESSED: "SUPPRESSED",
+  PINNED: "PINNED",
 });
 
 export const ObservationExperience = Object.freeze({
@@ -40,19 +45,23 @@ export const CommandStatus = Object.freeze({
   QUEUED: "QUEUED",
   RESOLVED: "RESOLVED",
   UNRESOLVED: "UNRESOLVED",
+  FAILED: "FAILED",
 });
 
 export const CommandFailure = Object.freeze({
   COMMAND_NOT_IMPLEMENTED: "COMMAND_NOT_IMPLEMENTED",
+  TEAM_PINNED: "TEAM_PINNED",
 });
 
 export const CommandType = Object.freeze({
+  OBSERVE: "OBSERVE", DIRECT_FIRE: "DIRECT_FIRE", ASSAULT: "ASSAULT", TRANSFER_LEADER: "TRANSFER_LEADER",
   MOVE: "MOVE",
   SEEK_COVER: "SEEK_COVER",
   RALLY: "RALLY",
 });
 
 export const CommandCost = Object.freeze({
+  OBSERVE: 1, DIRECT_FIRE: 1, ASSAULT: 2, TRANSFER_LEADER: 1,
   MOVE: 1,
   SEEK_COVER: 1,
   RALLY: 1,
@@ -67,6 +76,7 @@ export const CommandRejection = Object.freeze({
   UNKNOWN_LOCATION: "UNKNOWN_LOCATION",
   LOCATION_NOT_CONNECTED: "LOCATION_NOT_CONNECTED",
   INSUFFICIENT_COMMAND_CAPACITY: "INSUFFICIENT_COMMAND_CAPACITY",
+  MOVE_LIMIT_REACHED: "MOVE_LIMIT_REACHED",
 });
 
 export const FireRelationshipStatus = Object.freeze({
@@ -98,4 +108,8 @@ export const EventType = Object.freeze({
   UNIT_SPOTTED: "UNIT_SPOTTED",
   FIRE_OPENED: "FIRE_OPENED",
   FIRE_CEASED: "FIRE_CEASED",
+  SUPPRESSION_CHANGED: "SUPPRESSION_CHANGED",
+  UNIT_SUPPRESSED: "UNIT_SUPPRESSED",
+  UNIT_PINNED: "UNIT_PINNED",
+  UNIT_RECOVERED: "UNIT_RECOVERED",
 });

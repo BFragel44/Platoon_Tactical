@@ -1,133 +1,52 @@
-import {
-  ContactResolutionStatus,
-  EventType,
-  MissionPhase,
-  MissionStatus,
-  SoldierCondition,
-  TeamTacticalState,
-} from "./constants.js";
-import { createEvent } from "./events.js";
-import { createFactionKnowledge } from "./records.js";
-import { createRng } from "./rng.js";
-import { validateScenario } from "./validateScenario.js";
-
-function indexById(items, createItem) {
-  return Object.fromEntries(items.map((item) => [item.id, createItem(item)]));
-}
+import { createFactionKnowledge } from './records.js';
+import { createRng } from './rng.js';
+import { validateScenario } from './validateScenario.js';
+import { emit, refreshCommands } from './rules.js';
+import { generateEnemy } from './contacts.js';
+import { revealTeam } from './spotting.js';
 
 export function createMission(scenario, seed) {
   validateScenario(scenario);
-  const rng = createRng(seed);
-  const factionIds = scenario.factions.map((faction) => faction.id);
-
-  const locationsById = indexById(scenario.locations, (location) => ({
-    id: location.id,
-    name: location.name,
-    connected_location_ids: [...location.connected_location_ids],
-    tactical_tags: [...(location.tactical_tags ?? [])],
-    occupant_team_ids: scenario.teams
-      .filter((team) => team.location_id === location.id)
-      .map((team) => team.id),
-    cover_features: [],
-  }));
-
-  const soldiersById = indexById(scenario.soldiers, (soldier) => ({
-    id: soldier.id,
-    name: soldier.name,
-    faction_id: soldier.faction_id,
-    team_id: soldier.team_id,
-    role_tags: [...(soldier.role_tags ?? [])],
-    capability_tags: [...(soldier.capability_tags ?? [])],
-    weapon_category: soldier.weapon_category,
-    condition: SoldierCondition.EFFECTIVE,
-  }));
-
-  const teamsById = indexById(scenario.teams, (team) => ({
-    id: team.id,
-    name: team.name,
-    faction_id: team.faction_id,
-    coarse_type: team.coarse_type,
-    observation_experience: team.observation_experience,
-    member_ids: [...team.member_ids],
-    location_id: team.location_id,
-    current_command_id: null,
-    suppression: 0,
-    tactical_state: TeamTacticalState.EFFECTIVE,
-    occupied_cover_id: null,
-    action_state: null,
-  }));
-
-  const contactsById = indexById(scenario.contacts, (contact) => ({
-    id: contact.id,
-    location_id: contact.location_id,
-    trigger: structuredClone(contact.trigger),
-    resolution_status: ContactResolutionStatus.UNRESOLVED,
-    generation_profile_id: contact.generation_profile_id,
-    generated_team_ids: [],
-    resolved_turn: null,
-    resolution_result: null,
-  }));
-
-  const generationProfilesById = indexById(
-    scenario.contact_generation_profiles,
-    (profile) => structuredClone(profile),
-  );
-  const enemyForcePackagesById = indexById(
-    scenario.enemy_force_packages,
-    (enemyPackage) => structuredClone(enemyPackage),
-  );
-
-  const knowledgeByFaction = Object.fromEntries(
-    scenario.factions.map((faction) => [
-      faction.id,
-      createFactionKnowledge(faction.known_location_ids),
-    ]),
-  );
-  knowledgeByFaction[scenario.player_faction_id].contact_knowledge_by_id = Object.fromEntries(
-    scenario.contacts.map((contact) => [
-      contact.id,
-      {
-        location_id: contact.location_id,
-        status: ContactResolutionStatus.UNRESOLVED,
-      },
-    ]),
-  );
-
-  const missionStarted = createEvent({
-    sequence: 1,
-    type: EventType.MISSION_STARTED,
-    turn: 1,
-    phase: MissionPhase.COMMAND,
-    actor: { type: "MISSION", id: `mission_${scenario.id}` },
-    result: { status: MissionStatus.ACTIVE },
-    metadata: { scenario_id: scenario.id },
-    visibility: { faction_ids: factionIds },
-  });
-
-  return {
-    id: `mission_${scenario.id}`,
-    scenario_id: scenario.id,
-    player_faction_id: scenario.player_faction_id,
-    status: MissionStatus.ACTIVE,
-    turn: 1,
-    phase: MissionPhase.COMMAND,
-    active_faction_id: scenario.player_faction_id,
-    command_capacity_by_faction: Object.fromEntries(
-      factionIds.map((id) => [id, id === scenario.player_faction_id ? 4 : 0]),
-    ),
-    rng,
-    locations_by_id: locationsById,
-    soldiers_by_id: soldiersById,
-    teams_by_id: teamsById,
-    contacts_by_id: contactsById,
-    contact_generation_profiles_by_id: generationProfilesById,
-    enemy_force_packages_by_id: enemyForcePackagesById,
-    commands_by_id: {},
-    command_queue_ids: [],
-    fire_relationships_by_id: {},
-    knowledge_by_faction: knowledgeByFaction,
-    events: [missionStarted],
-    next_event_sequence: 2,
-    next_runtime_id: 1,
+  const index = items => Object.fromEntries(items.map(item => [item.id, structuredClone(item)]));
+  const state = {
+    id: 'mission_' + scenario.id, scenario_id: scenario.id, scenario_version: 2,
+    player_faction_id: scenario.player_faction_id, active_faction_id: scenario.player_faction_id,
+    status: 'ACTIVE', turn: 1, phase: 'COMMAND', rng: createRng(seed),
+    briefing: scenario.briefing, leader: structuredClone(scenario.leader),
+    objective: { ...structuredClone(scenario.objective), held_since_turn: null, secured: false },
+    command_capacity_by_faction: Object.fromEntries(scenario.factions.map(f => [f.id, 0])),
+    command_allowance: 0, command_reserve: 0,
+    locations_by_id: index(scenario.locations), soldiers_by_id: index(scenario.soldiers),
+    teams_by_id: index(scenario.teams), contacts_by_id: index(scenario.contacts),
+    contact_generation_profiles_by_id: index(scenario.contact_generation_profiles),
+    enemy_force_packages_by_id: index(scenario.enemy_force_packages),
+    knowledge_by_faction: Object.fromEntries(scenario.factions.map(f => [f.id, createFactionKnowledge(f.known_location_ids)])),
+    commands_by_id: {}, pending_observations: [], fire_relationships_by_id: {},
+    events: [], next_event_sequence: 1, next_runtime_id: 1, observation_attempts: [],
   };
+  for (const location of Object.values(state.locations_by_id)) {
+    location.occupant_team_ids = scenario.teams.filter(t => t.location_id === location.id).map(t => t.id);
+    location.cover_features = [];
+  }
+  for (const soldier of Object.values(state.soldiers_by_id)) soldier.condition = 'EFFECTIVE';
+  for (const team of Object.values(state.teams_by_id)) Object.assign(team, {
+    suppression: 0, tactical_state: 'EFFECTIVE', occupied_cover_id: null,
+    actions_used: [], exposed: false, fire_target_location_id: null, directed_turn: null, withdrawn: false,
+  });
+  const knowledge = state.knowledge_by_faction[state.player_faction_id];
+  for (const contact of Object.values(state.contacts_by_id)) {
+    Object.assign(contact, { resolution_status: 'UNRESOLVED', generated_team_ids: [], resolved_turn: null });
+    knowledge.contact_knowledge_by_id[contact.id] = { location_id: contact.location_id,
+      trigger_location_ids: [...contact.trigger_location_ids], status: 'UNRESOLVED' };
+  }
+  emit(state, 'MISSION_STARTED', { result: { status: 'ACTIVE' }, text: state.briefing });
+  if (scenario.known_defender) {
+    const contact = Object.values(state.contacts_by_id)[0];
+    const enemy = generateEnemy(state, contact, 'AUTOMATIC_WEAPONS_TEAM');
+    contact.resolution_status = 'RESOLVED'; contact.resolved_turn = 0;
+    knowledge.contact_knowledge_by_id[contact.id].status = 'RESOLVED';
+    revealTeam(state, enemy);
+  }
+  refreshCommands(state);
+  return state;
 }

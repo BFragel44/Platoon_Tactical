@@ -1,3 +1,7 @@
+# Active validation scope (supersedes earlier prototype restrictions)
+
+The user-authorized current demo is Company Assault: two platoons of multistep squads, separate company/platoon HQs and support assets, using the selected Fields of Fire third-edition assault-course rules closely. Explicit phase stepping is the normal manual-test flow. The former three-fireteam/original-probabilities restriction does not govern this validation branch. Consult docs/M0_RULES_AND_PLAYTEST.md for implemented rules, deviations and acceptance gaps. Preserve existing historical prototype work. Campaigns and vehicles remain deferred.
+
 # Design Pillars
 
 ## Game Concept

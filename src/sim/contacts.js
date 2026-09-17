@@ -1,159 +1,41 @@
-import {
-  ContactResolutionStatus,
-  EventType,
-  MissionPhase,
-  SoldierCondition,
-  TeamTacticalState,
-} from "./constants.js";
-import { createEvent } from "./events.js";
-import { drawRandom } from "./rng.js";
+import { canSee, emit, ordered, random } from './rules.js';
 
-function nextRuntimeId(state, prefix) {
-  const id = `${prefix}_${String(state.next_runtime_id).padStart(6, "0")}`;
-  state.next_runtime_id += 1;
-  return id;
+export function generateEnemy(state, contact, packageId, causeId = null, triggeringLocation = null) {
+  const template = state.enemy_force_packages_by_id[packageId];
+  const placements = contact.placement_location_ids.filter(id => !triggeringLocation || canSee(state, id, triggeringLocation));
+  if (!placements.length) throw new Error('Contact has no firing position overlooking its trigger');
+  const locationId = placements.length === 1 ? placements[0] : placements[Math.floor(random(state) * placements.length)];
+  const id = 'enemy_' + state.next_runtime_id++;
+  const soldiers = template.soldiers.map((soldier, i) => ({ ...structuredClone(soldier),
+    id: id + '_soldier_' + i, faction_id: template.faction_id, team_id: id, condition: 'EFFECTIVE' }));
+  const team = { id, name: template.name, faction_id: template.faction_id,
+    coarse_type: template.name, observation_experience: template.observation_experience,
+    member_ids: soldiers.map(s => s.id), location_id: locationId, suppression: 0,
+    tactical_state: 'EFFECTIVE', occupied_cover_id: null, actions_used: [], exposed: false,
+    fire_target_location_id: triggeringLocation, directed_turn: null, withdrawn: false };
+  state.teams_by_id[id] = team;
+  soldiers.forEach(s => { state.soldiers_by_id[s.id] = s; });
+  state.locations_by_id[locationId].occupant_team_ids.push(id);
+  contact.generated_team_ids.push(id);
+  emit(state, 'ENEMY_GENERATED', { team, hidden: true, causeId, result: { package_id: packageId } });
+  return team;
 }
-
-function emit(state, eventInput) {
-  const event = createEvent({
-    ...eventInput,
-    sequence: state.next_event_sequence,
-    turn: state.turn,
-    phase: MissionPhase.ACTION,
-  });
-  state.events.push(event);
-  state.next_event_sequence += 1;
-  return event;
-}
-
-function selectResult(state, profile) {
-  const draw = drawRandom(state.rng);
-  state.rng = draw.rng;
-  const totalWeight = profile.results.reduce((total, result) => total + result.weight, 0);
-  const selection = draw.value * totalWeight;
-  let cumulativeWeight = 0;
-
-  for (const result of profile.results) {
-    cumulativeWeight += result.weight;
-    if (selection < cumulativeWeight) {
-      return result;
-    }
+export function resolvePendingContacts(state) {
+  for (const contact of ordered(state.contacts_by_id)) {
+    if (contact.resolution_status !== 'UNRESOLVED') continue;
+    const entry = state.pending_observations.find(o => contact.trigger_location_ids.includes(o.location_id));
+    if (!entry) continue;
+    const event = emit(state, 'CONTACT_TRIGGERED', { locationId: entry.location_id, causeId: entry.caused_by_event_id,
+      text: 'Checking reported enemy activity near ' + state.locations_by_id[entry.location_id].name + '.' });
+    const profile = state.contact_generation_profiles_by_id[contact.generation_profile_id];
+    let value = random(state) * profile.results.reduce((sum, r) => sum + r.weight, 0);
+    const result = profile.results.find(r => (value -= r.weight) < 0) ?? profile.results.at(-1);
+    if (result.package_id) generateEnemy(state, contact, result.package_id, event.id, entry.location_id);
+    contact.resolution_status = 'RESOLVED'; contact.resolved_turn = state.turn;
+    contact.resolution_result = result.result;
+    state.knowledge_by_faction[state.player_faction_id].contact_knowledge_by_id[contact.id].status = 'RESOLVED';
+    emit(state, 'CONTACT_RESOLVED', { locationId: entry.location_id, causeId: event.id,
+      text: 'The contact check is complete. Continue observing; an enemy may remain unspotted.' });
   }
-
-  return profile.results.at(-1);
-}
-
-function instantiateEnemyPackage(state, enemyPackage, locationId) {
-  const teamId = nextRuntimeId(state, "team");
-  const soldierIds = enemyPackage.soldiers.map(() => nextRuntimeId(state, "soldier"));
-
-  enemyPackage.soldiers.forEach((template, index) => {
-    const soldierId = soldierIds[index];
-    state.soldiers_by_id[soldierId] = {
-      id: soldierId,
-      name: template.name,
-      faction_id: enemyPackage.faction_id,
-      team_id: teamId,
-      role_tags: [...(template.role_tags ?? [])],
-      capability_tags: [...(template.capability_tags ?? [])],
-      weapon_category: template.weapon_category,
-      condition: SoldierCondition.EFFECTIVE,
-    };
-  });
-
-  state.teams_by_id[teamId] = {
-    id: teamId,
-    name: enemyPackage.name,
-    faction_id: enemyPackage.faction_id,
-    coarse_type: enemyPackage.id,
-    observation_experience: enemyPackage.observation_experience,
-    member_ids: soldierIds,
-    location_id: locationId,
-    current_command_id: null,
-    suppression: 0,
-    tactical_state: TeamTacticalState.EFFECTIVE,
-    occupied_cover_id: null,
-    action_state: null,
-  };
-  state.locations_by_id[locationId].occupant_team_ids.push(teamId);
-
-  return { teamId, soldierIds };
-}
-
-function resolveContact(state, contact, enteringTeam, causedByEventId) {
-  const triggeredEvent = emit(state, {
-    type: EventType.CONTACT_TRIGGERED,
-    locationId: contact.location_id,
-    actor: { type: "TEAM", id: enteringTeam.id },
-    target: { type: "CONTACT", id: contact.id },
-    cause: { type: "LOCATION_ENTERED", caused_by_event_id: causedByEventId },
-    result: { resolution_status: ContactResolutionStatus.RESOLVED },
-    causedByEventId,
-    visibility: { faction_ids: [enteringTeam.faction_id] },
-  });
-
-  const profile = state.contact_generation_profiles_by_id[contact.generation_profile_id];
-  const selected = selectResult(state, profile);
-  contact.resolution_status = ContactResolutionStatus.RESOLVED;
-  contact.resolved_turn = state.turn;
-  contact.resolution_result = selected.result;
-  state.knowledge_by_faction[enteringTeam.faction_id].contact_knowledge_by_id[
-    contact.id
-  ].status = ContactResolutionStatus.RESOLVED;
-
-  const resolvedEvent = emit(state, {
-    type: EventType.CONTACT_RESOLVED,
-    locationId: contact.location_id,
-    actor: { type: "MISSION", id: state.id },
-    target: { type: "CONTACT", id: contact.id },
-    result: { generation_result: selected.result },
-    causedByEventId: triggeredEvent.id,
-    visibility: { faction_ids: [], simulation_only: true },
-  });
-
-  const events = [triggeredEvent, resolvedEvent];
-  if (selected.result === "NO_CONTACT") {
-    return events;
-  }
-
-  const enemyPackage = state.enemy_force_packages_by_id[selected.package_id];
-  const generated = instantiateEnemyPackage(state, enemyPackage, contact.location_id);
-  contact.generated_team_ids.push(generated.teamId);
-
-  events.push(
-    emit(state, {
-      type: EventType.ENEMY_GENERATED,
-      locationId: contact.location_id,
-      actor: { type: "MISSION", id: state.id },
-      target: { type: "TEAM", id: generated.teamId },
-      result: {
-        package_id: enemyPackage.id,
-        team_id: generated.teamId,
-        soldier_ids: generated.soldierIds,
-      },
-      causedByEventId: resolvedEvent.id,
-      visibility: { faction_ids: [], simulation_only: true },
-    }),
-  );
-
-  return events;
-}
-
-export function resolveContactsOnEntry(state, teamId, locationId, causedByEventId) {
-  const team = state.teams_by_id[teamId];
-  if (team.faction_id !== state.player_faction_id) {
-    return [];
-  }
-
-  const contacts = Object.values(state.contacts_by_id)
-    .filter(
-      (contact) =>
-        contact.location_id === locationId &&
-        contact.resolution_status === ContactResolutionStatus.UNRESOLVED,
-    )
-    .sort((left, right) => left.id.localeCompare(right.id));
-
-  return contacts.flatMap((contact) =>
-    resolveContact(state, contact, team, causedByEventId),
-  );
+  state.pending_observations = [];
 }

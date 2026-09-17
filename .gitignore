@@ -2,3 +2,5 @@
 reference/
 node_modules/
 dist/
+
+output/company-playtests/

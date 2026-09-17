@@ -1,241 +1,65 @@
-import { describe, expect, it } from "vitest";
-
-import { m0TestScenario } from "../src/scenarios/m0TestScenario.js";
-import {
-  advancePhase,
-  createMission,
-  getPlayerView,
-  getVisibleEvents,
-  submitCommand,
-} from "../src/sim/index.js";
-
-function queueMove(state, locationId) {
-  return submitCommand(state, {
-    type: "MOVE",
-    faction_id: "friendly",
-    team_id: "team_alpha",
-    target: { location_id: locationId },
-  }).state;
-}
-
-function resolveEncounter(seed, continueToRidge = false) {
-  let state = createMission(m0TestScenario, seed);
-  state = queueMove(state, "loc_lane");
-  state = queueMove(state, "loc_farmyard");
-  state = queueMove(state, "loc_stone_house");
-  if (continueToRidge) state = queueMove(state, "loc_ridge");
-  state = advancePhase(state).state;
-  return advancePhase(state).state;
-}
-
-function enterNextCommandPhase(state) {
-  let nextState = state;
-  for (let count = 0; count < 4; count += 1) {
-    nextState = advancePhase(nextState).state;
+import { describe,it,expect } from 'vitest';
+import { fireStrength,casualty } from '../src/sim/rules.js';
+import { evaluateAutomaticFire,pressureOn } from '../src/sim/fire.js';
+import { resolveFireEffects } from '../src/sim/suppression.js';
+import { training,relocate,order } from './missionFlow.js';
+describe('location pressure and capability',()=>{
+  function fight(){
+    const state=training();relocate(state,'team_alpha','loc_crossroads');evaluateAutomaticFire(state);return state;
   }
-  return nextState;
-}
-
-function activeFire(state) {
-  return Object.values(state.fire_relationships_by_id).filter(
-    (relationship) => relationship.status === "ACTIVE",
-  );
-}
-
-function addEnemyTarget(state, id, locationId) {
-  state.teams_by_id[id] = {
-    id,
-    name: "Hidden Test Enemy",
-    faction_id: "enemy",
-    coarse_type: "RIFLE_TEAM",
-    observation_experience: "NORMAL",
-    member_ids: [],
-    location_id: locationId,
-    current_command_id: null,
-    suppression: 0,
-    tactical_state: "EFFECTIVE",
-    occupied_cover_id: null,
-    action_state: null,
-  };
-  state.locations_by_id[locationId].occupant_team_ids.push(id);
-  state.knowledge_by_faction.friendly.known_enemy_teams_by_id[id] = {
-    status: "SPOTTED",
-    team_id: id,
-    coarse_type: "RIFLE_TEAM",
-    location_id: locationId,
-  };
-}
-
-function evaluateFirePhase(state) {
-  state.phase = "AUTOMATIC_FIRE";
-  return advancePhase(state);
-}
-
-describe("M0 Automatic Fire", () => {
-  it("opens one eligible relationship without CP or RNG cost", () => {
-    const state = resolveEncounter("spot-0");
-    const relationship = activeFire(state)[0];
-
-    expect(activeFire(state)).toHaveLength(1);
-    expect(relationship).toMatchObject({
-      source_team_id: "team_alpha",
-      target_team_id: "team_000004",
-      source_location_id: "loc_stone_house",
-      target_location_id: "loc_stone_house",
-      status: "ACTIVE",
-      effect_category: "BASIC_FIRE",
-      started_turn: 1,
-    });
-    expect(state.command_capacity_by_faction.friendly).toBe(1);
-    expect(state.rng.draw_count).toBe(3);
-    expect(state.events.filter((event) => event.type === "FIRE_OPENED")).toHaveLength(1);
+  it('uses firing connections independently of movement links',()=>{
+    const state=training();
+    expect(state.locations_by_id.loc_lane.connected_location_ids).toContain('loc_farmyard');
+    expect(state.locations_by_id.loc_lane.fire_location_ids).not.toContain('loc_farmyard');
   });
-
-  it.each([
-    ["spot-3", ["enemy", "friendly"]],
-    ["spot-0", ["friendly"]],
-    ["spot-5", ["enemy"]],
-    ["spot-11", []],
-  ])("keeps fire direction independent for %s", (seed, expectedSourceFactions) => {
-    const state = resolveEncounter(seed);
-
-    expect(activeFire(state).map((relationship) => state.teams_by_id[relationship.source_team_id].faction_id).sort()).toEqual(
-      [...expectedSourceFactions].sort(),
-    );
+  it('incoming Location fire affects both occupants rather than one selected team',()=>{
+    const state=fight();relocate(state,'team_bravo','loc_crossroads');
+    expect(pressureOn(state,state.teams_by_id.team_alpha)).toBeGreaterThan(0);
+    expect(pressureOn(state,state.teams_by_id.team_bravo)).toBe(pressureOn(state,state.teams_by_id.team_alpha));
   });
-
-  it("does not fire at an unspotted enemy", () => {
-    const state = resolveEncounter("spot-11");
-
-    expect(activeFire(state)).toEqual([]);
-    expect(state.events.some((event) => event.type === "FIRE_OPENED")).toBe(false);
+  it('terrain and cover reduce pressure while movement exposure increases it',()=>{
+    const state=fight();const team=state.teams_by_id.team_alpha;
+    const baseline=pressureOn(state,team);team.exposed=true;
+    expect(pressureOn(state,team)).toBeGreaterThan(baseline);
+    team.occupied_cover_id='cover';expect(pressureOn(state,team)).toBeLessThan(baseline);
   });
-
-  it("continues valid fire across phases and turns without duplicates or RNG", () => {
-    let state = resolveEncounter("spot-0");
-    const relationshipId = activeFire(state)[0].id;
-    const rngBefore = structuredClone(state.rng);
-    const openedBefore = state.events.filter((event) => event.type === "FIRE_OPENED").length;
-
-    state = enterNextCommandPhase(state);
-
-    expect(state.turn).toBe(2);
-    expect(activeFire(state).map((relationship) => relationship.id)).toEqual([relationshipId]);
-    expect(state.events.filter((event) => event.type === "FIRE_OPENED")).toHaveLength(openedBefore);
-    expect(state.rng).toEqual(rngBefore);
+  it('suppression weakens outgoing fire and makes movement into its lane safer',()=>{
+    const state=fight();const enemy=Object.values(state.teams_by_id).find(t=>t.faction_id==='enemy');
+    const danger=pressureOn(state,state.teams_by_id.team_alpha);
+    const power=fireStrength(state,enemy);enemy.suppression=65;
+    expect(fireStrength(state,enemy)).toBeLessThan(power/2);
+    expect(pressureOn(state,state.teams_by_id.team_alpha)).toBeLessThan(danger/2);
   });
-
-  it("allows fire in the same or directly connected Location, but not beyond", () => {
-    const same = createMission(m0TestScenario, "same-range");
-    addEnemyTarget(same, "team_enemy", "loc_orchard_edge");
-    expect(activeFire(evaluateFirePhase(same).state)).toHaveLength(1);
-
-    const adjacent = createMission(m0TestScenario, "adjacent-range");
-    addEnemyTarget(adjacent, "team_enemy", "loc_lane");
-    expect(activeFire(evaluateFirePhase(adjacent).state)).toHaveLength(1);
-
-    const distant = createMission(m0TestScenario, "distant-range");
-    addEnemyTarget(distant, "team_enemy", "loc_stone_house");
-    expect(activeFire(evaluateFirePhase(distant).state)).toEqual([]);
+  it('two firing directions increase pressure beyond one source',()=>{
+    const state=fight();const enemy=Object.values(state.teams_by_id).find(t=>t.faction_id==='enemy');
+    const pressure=pressureOn(state,enemy);relocate(state,'team_bravo','loc_farmyard');evaluateAutomaticFire(state);
+    expect(pressureOn(state,enemy)).toBeGreaterThan(pressure*2);
   });
-
-  it("ceases once when movement takes the source beyond adjacency", () => {
-    let state = enterNextCommandPhase(resolveEncounter("spot-3", true));
-    const alphaRelationship = activeFire(state).find(
-      (relationship) => relationship.source_team_id === "team_alpha",
-    );
-    state = queueMove(state, "loc_stone_house");
-    state = queueMove(state, "loc_farmyard");
-    state = queueMove(state, "loc_lane");
-    state = advancePhase(state).state;
-    state = advancePhase(state).state;
-
-    expect(state.fire_relationships_by_id[alphaRelationship.id].status).toBe("CEASED");
-    const ceased = state.events.filter(
-      (event) =>
-        event.type === "FIRE_CEASED" &&
-        event.result.fire_relationship_id === alphaRelationship.id,
-    );
-    expect(ceased).toHaveLength(1);
-    expect(ceased[0].result.reason).toBe("OUT_OF_RANGE");
-
-    state = advancePhase(state).state;
-    state = advancePhase(state).state;
-    expect(
-      state.events.filter(
-        (event) =>
-          event.type === "FIRE_CEASED" &&
-          event.result.fire_relationship_id === alphaRelationship.id,
-      ),
-    ).toHaveLength(1);
+  it('fire persists without orders and stops when the source becomes incapable',()=>{
+    const state=fight();const initial=Object.values(state.fire_relationships_by_id).filter(r=>r.status==='ACTIVE').length;
+    evaluateAutomaticFire(state);
+    expect(Object.values(state.fire_relationships_by_id).filter(r=>r.status==='ACTIVE')).toHaveLength(initial);
+    state.teams_by_id.team_alpha.member_ids.forEach(id=>state.soldiers_by_id[id].condition='WOUNDED');
+    evaluateAutomaticFire(state);
+    expect(Object.values(state.fire_relationships_by_id).some(r=>r.status==='ACTIVE'&&r.source_team_id==='team_alpha')).toBe(false);
   });
-
-  it("ceases when the source faction loses Spotting knowledge", () => {
-    const state = resolveEncounter("spot-0");
-    const relationship = activeFire(state)[0];
-    delete state.knowledge_by_faction.friendly.known_enemy_teams_by_id[relationship.target_team_id];
-    const result = evaluateFirePhase(state);
-
-    expect(result.state.fire_relationships_by_id[relationship.id].status).toBe("CEASED");
-    expect(result.events).toHaveLength(1);
-    expect(result.events[0].result.reason).toBe("TARGET_UNSPOTTED");
+  it('automatic-weapon casualties remove more fire capability than rifle casualties',()=>{
+    const state=fight();const team=state.teams_by_id.team_alpha;
+    const base=fireStrength(state,team);
+    const automatic=team.member_ids.find(id=>state.soldiers_by_id[id].weapon_category==='LIGHT_AUTOMATIC_WEAPON');
+    state.soldiers_by_id[automatic].condition='WOUNDED';
+    expect(base-fireStrength(state,team)).toBe(2.5);
   });
-
-  it("gives same-Location targets priority and permits one outgoing relationship", () => {
-    const state = createMission(m0TestScenario, "same-priority");
-    addEnemyTarget(state, "team_a_adjacent", "loc_lane");
-    addEnemyTarget(state, "team_z_same", "loc_orchard_edge");
-    const result = evaluateFirePhase(state).state;
-    const outgoing = activeFire(result).filter(
-      (relationship) => relationship.source_team_id === "team_alpha",
-    );
-
-    expect(outgoing).toHaveLength(1);
-    expect(outgoing[0].target_team_id).toBe("team_z_same");
+  it('effects are deterministic and independent of map insertion order',()=>{
+    const first=fight();const second=structuredClone(first);
+    second.teams_by_id=Object.fromEntries(Object.entries(second.teams_by_id).reverse());
+    second.fire_relationships_by_id=Object.fromEntries(Object.entries(second.fire_relationships_by_id).reverse());
+    resolveFireEffects(first);resolveFireEffects(second);
+    expect(first.events).toEqual(second.events);
+    expect(first.teams_by_id).toEqual(second.teams_by_id);
   });
-
-  it("uses lowest stable Team ID when eligible targets have equal priority", () => {
-    const state = createMission(m0TestScenario, "id-priority");
-    addEnemyTarget(state, "team_z", "loc_lane");
-    addEnemyTarget(state, "team_a", "loc_lane");
-    const result = evaluateFirePhase(state).state;
-
-    expect(
-      activeFire(result).find((relationship) => relationship.source_team_id === "team_alpha")
-        .target_team_id,
-    ).toBe("team_a");
-  });
-
-  it("uses no RNG for target selection", () => {
-    const state = createMission(m0TestScenario, "selection-rng");
-    addEnemyTarget(state, "team_z", "loc_lane");
-    addEnemyTarget(state, "team_a", "loc_lane");
-    const rngBefore = structuredClone(state.rng);
-    const result = evaluateFirePhase(state);
-
-    expect(result.state.rng).toEqual(rngBefore);
-  });
-
-  it("shows fire only to factions that know both Teams", () => {
-    const friendlyOnly = resolveEncounter("spot-0");
-    const friendlyEvents = getVisibleEvents(friendlyOnly, "friendly");
-    const enemyEvents = getVisibleEvents(friendlyOnly, "enemy");
-
-    expect(friendlyEvents.some((event) => event.type === "FIRE_OPENED")).toBe(true);
-    expect(enemyEvents.some((event) => event.type === "FIRE_OPENED")).toBe(false);
-    expect(JSON.stringify(enemyEvents)).not.toContain("team_alpha");
-    expect(getPlayerView(friendlyOnly, "friendly").fire_relationships).toHaveLength(1);
-
-    const enemyOnly = resolveEncounter("spot-5");
-    expect(getVisibleEvents(enemyOnly, "friendly").some((event) => event.type === "FIRE_OPENED")).toBe(false);
-    expect(getPlayerView(enemyOnly, "friendly").fire_relationships).toEqual([]);
-  });
-
-  it("remains deterministic and DOM-independent", () => {
-    expect(globalThis.document).toBeUndefined();
-    expect(globalThis.window).toBeUndefined();
-    expect(JSON.stringify(resolveEncounter("spot-3"))).toBe(
-      JSON.stringify(resolveEncounter("spot-3")),
-    );
+  it('friendly occupation masks supporting fire into the occupied location',()=>{
+    const state=fight();relocate(state,'team_bravo','loc_stone_house');evaluateAutomaticFire(state);
+    expect(Object.values(state.fire_relationships_by_id).some(r=>r.status==='ACTIVE'&&r.source_team_id==='team_alpha')).toBe(false);
   });
 });

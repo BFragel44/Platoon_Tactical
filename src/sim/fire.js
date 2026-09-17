@@ -1,202 +1,66 @@
-import {
-  EventType,
-  FireCategory,
-  FireCeaseReason,
-  FireRelationshipStatus,
-  MissionStatus,
-  SoldierCondition,
-  SpottingStatus,
-} from "./constants.js";
-import { createEvent } from "./events.js";
-import { createFireRelationshipRecord } from "./records.js";
+import { capable, canSee, emit, fireStrength, isSpotted, ordered } from './rules.js';
 
-function nextRuntimeId(state) {
-  const id = `fire_${String(state.next_runtime_id).padStart(6, "0")}`;
-  state.next_runtime_id += 1;
-  return id;
-}
-
-function emit(state, eventInput) {
-  const event = createEvent({
-    ...eventInput,
-    sequence: state.next_event_sequence,
-    turn: state.turn,
-    phase: state.phase,
-  });
-  state.events.push(event);
-  state.next_event_sequence += 1;
-  return event;
-}
-
-function factionHasSpotted(state, factionId, teamId) {
-  return (
-    state.knowledge_by_faction[factionId]?.known_enemy_teams_by_id[teamId]?.status ===
-    SpottingStatus.SPOTTED
-  );
-}
-
-function teamCanAct(state, team) {
-  return team.member_ids.some(
-    (soldierId) => state.soldiers_by_id[soldierId]?.condition === SoldierCondition.EFFECTIVE,
-  );
-}
-
-function locationsAllowDirectFire(state, sourceLocationId, targetLocationId) {
-  return (
-    sourceLocationId === targetLocationId ||
-    state.locations_by_id[sourceLocationId].connected_location_ids.includes(targetLocationId)
-  );
-}
-
-function visibleFactions(state, sourceTeam, targetTeam) {
-  return Object.keys(state.knowledge_by_faction).filter(
-    (factionId) =>
-      (sourceTeam.faction_id === factionId || factionHasSpotted(state, factionId, sourceTeam.id)) &&
-      (targetTeam.faction_id === factionId || factionHasSpotted(state, factionId, targetTeam.id)),
-  );
-}
-
-function invalidReason(state, relationship) {
-  if (state.status !== MissionStatus.ACTIVE) return FireCeaseReason.MISSION_INACTIVE;
-
-  const source = state.teams_by_id[relationship.source_team_id];
-  if (!source) return FireCeaseReason.SOURCE_MISSING;
-  if (!teamCanAct(state, source)) return FireCeaseReason.SOURCE_INCAPABLE;
-
-  const target = state.teams_by_id[relationship.target_team_id];
-  if (!target) return FireCeaseReason.TARGET_MISSING;
-  if (!factionHasSpotted(state, source.faction_id, target.id)) {
-    return FireCeaseReason.TARGET_UNSPOTTED;
+export function eligibleFireLocations(state, source) {
+  const knowledge = state.knowledge_by_faction[state.player_faction_id];
+  if (source.faction_id === state.player_faction_id) {
+    return [...new Set([
+      ...Object.values(knowledge.known_enemy_teams_by_id).filter(k => k.status === 'SPOTTED').map(k => k.location_id),
+      ...knowledge.known_fire_origins,
+    ])].filter(id => canSee(state, source.location_id, id) && id !== source.location_id).sort();
   }
-  if (!locationsAllowDirectFire(state, source.location_id, target.location_id)) {
-    return FireCeaseReason.OUT_OF_RANGE;
-  }
-
-  return null;
+  return [...new Set(ordered(state.teams_by_id).filter(t => t.faction_id !== source.faction_id &&
+    capable(state, t) && canSee(state, source.location_id, t.location_id)).map(t => t.location_id))].sort();
 }
-
-function ceaseInvalidRelationships(state) {
-  const events = [];
-  const relationships = Object.values(state.fire_relationships_by_id)
-    .filter((relationship) => relationship.status === FireRelationshipStatus.ACTIVE)
-    .sort((left, right) => left.id.localeCompare(right.id));
-
-  for (const relationship of relationships) {
-    const reason = invalidReason(state, relationship);
-    if (!reason) {
-      const source = state.teams_by_id[relationship.source_team_id];
-      const target = state.teams_by_id[relationship.target_team_id];
-      relationship.source_location_id = source.location_id;
-      relationship.target_location_id = target.location_id;
-      continue;
+export function evaluateAutomaticFire(state, causeId = null) {
+  for (const source of ordered(state.teams_by_id)) {
+    const old = Object.values(state.fire_relationships_by_id).find(r => r.source_team_id === source.id && r.status === 'ACTIVE');
+    const eligible = eligibleFireLocations(state, source);
+    let target = source.fire_target_location_id;
+    if (!eligible.includes(target)) target = eligible[0] ?? null;
+    // Friendly troops entering a position mask supporting fire into that position.
+    if (target && ordered(state.teams_by_id).some(t => t.faction_id === source.faction_id &&
+      t.location_id === target && capable(state, t))) target = null;
+    if (!capable(state, source) || state.status !== 'ACTIVE') target = null;
+    source.fire_target_location_id = target;
+    if (old && (old.target_location_id !== target || old.source_location_id !== source.location_id)) {
+      old.status = 'CEASED';
+      emit(state, 'FIRE_CEASED', { team: isSpotted(state, source.id) || source.faction_id === state.player_faction_id ? source : null,
+        locationId: old.source_location_id, causeId, text: 'Fire from ' + state.locations_by_id[old.source_location_id].name + ' ceased or shifted.' });
     }
-
-    const source = state.teams_by_id[relationship.source_team_id];
-    const target = state.teams_by_id[relationship.target_team_id];
-    relationship.status = FireRelationshipStatus.CEASED;
-    events.push(
-      emit(state, {
-        type: EventType.FIRE_CEASED,
-        locationId: source?.location_id ?? relationship.source_location_id,
-        actor: { type: "TEAM", id: relationship.source_team_id },
-        target: { type: "TEAM", id: relationship.target_team_id },
-        result: { fire_relationship_id: relationship.id, reason },
-        metadata: {
-          source_location_id: source?.location_id ?? relationship.source_location_id,
-          target_location_id: target?.location_id ?? relationship.target_location_id,
-        },
-        visibility:
-          source && target
-            ? { faction_ids: visibleFactions(state, source, target) }
-            : { faction_ids: [], simulation_only: true },
-      }),
-    );
-  }
-
-  return events;
-}
-
-function eligibleTargets(state, source) {
-  return Object.values(state.teams_by_id)
-    .filter(
-      (target) =>
-        target.faction_id !== source.faction_id &&
-        factionHasSpotted(state, source.faction_id, target.id) &&
-        locationsAllowDirectFire(state, source.location_id, target.location_id),
-    )
-    .sort((left, right) => {
-      const leftSameLocation = left.location_id === source.location_id ? 0 : 1;
-      const rightSameLocation = right.location_id === source.location_id ? 0 : 1;
-      return leftSameLocation - rightSameLocation || left.id.localeCompare(right.id);
-    });
-}
-
-function latestSpottingEventId(state, sourceTeamId, targetTeamId) {
-  return state.events.findLast(
-    (event) =>
-      event.type === EventType.UNIT_SPOTTED &&
-      event.actor?.id === sourceTeamId &&
-      event.target?.id === targetTeamId,
-  )?.id;
-}
-
-function openEligibleRelationships(state) {
-  const events = [];
-  const sources = Object.values(state.teams_by_id).sort((left, right) =>
-    left.id.localeCompare(right.id),
-  );
-
-  for (const source of sources) {
-    if (!teamCanAct(state, source)) continue;
-
-    const hasActiveRelationship = Object.values(state.fire_relationships_by_id).some(
-      (relationship) =>
-        relationship.source_team_id === source.id &&
-        relationship.status === FireRelationshipStatus.ACTIVE,
-    );
-    if (hasActiveRelationship) continue;
-
-    const target = eligibleTargets(state, source)[0];
     if (!target) continue;
-
-    const causedByEventId = latestSpottingEventId(state, source.id, target.id) ?? null;
-    const relationship = createFireRelationshipRecord({
-      id: nextRuntimeId(state),
-      sourceTeamId: source.id,
-      sourceLocationId: source.location_id,
-      targetTeamId: target.id,
-      targetLocationId: target.location_id,
-      effectCategory: FireCategory.BASIC_FIRE,
-      startedTurn: state.turn,
-      causedByEventId,
-    });
-    state.fire_relationships_by_id[relationship.id] = relationship;
-
-    events.push(
-      emit(state, {
-        type: EventType.FIRE_OPENED,
-        locationId: source.location_id,
-        actor: { type: "TEAM", id: source.id },
-        target: { type: "TEAM", id: target.id },
-        result: { fire_relationship_id: relationship.id, status: relationship.status },
-        metadata: {
-          source_location_id: source.location_id,
-          target_location_id: target.location_id,
-          fire_category: relationship.effect_category,
-        },
-        causedByEventId,
-        visibility: { faction_ids: visibleFactions(state, source, target) },
-      }),
-    );
+    if (!old || old.status !== 'ACTIVE') {
+      const id = 'fire_' + state.next_runtime_id++;
+      const event = emit(state, 'FIRE_OPENED', {
+        team: source.faction_id === state.player_faction_id || isSpotted(state, source.id) ? source : null,
+        locationId: source.location_id, causeId,
+        result: { source_location_id: source.location_id, target_location_id: target },
+        text: (source.faction_id === state.player_faction_id || isSpotted(state, source.id) ? source.name : 'Unidentified enemy') +
+          ' is firing from ' + state.locations_by_id[source.location_id].name + ' into ' + state.locations_by_id[target].name + '.',
+      });
+      state.fire_relationships_by_id[id] = { id, source_team_id: source.id, source_location_id: source.location_id,
+        target_location_id: target, status: 'ACTIVE', started_turn: state.turn, caused_by_event_id: event.id };
+    }
+    if (source.faction_id !== state.player_faction_id) {
+      const knowledge = state.knowledge_by_faction[state.player_faction_id];
+      if (!knowledge.known_fire_origins.includes(source.location_id)) {
+        knowledge.known_fire_origins.push(source.location_id);
+        if (!isSpotted(state, source.id)) emit(state, 'FIRE_ORIGIN_DETECTED', { locationId: source.location_id,
+          text: 'Incoming fire reveals a suspected enemy position at ' + state.locations_by_id[source.location_id].name + '.' });
+      }
+    }
   }
-
-  return events;
 }
-
-export function evaluateAutomaticFire(state) {
-  if (state.status !== MissionStatus.ACTIVE) {
-    return ceaseInvalidRelationships(state);
-  }
-
-  return [...ceaseInvalidRelationships(state), ...openEligibleRelationships(state)];
+export function incomingFire(state, team) {
+  return ordered(state.fire_relationships_by_id).filter(r => r.status === 'ACTIVE' &&
+    r.target_location_id === team.location_id && state.teams_by_id[r.source_team_id].faction_id !== team.faction_id);
+}
+export function pressureOn(state, team) {
+  const relationships = incomingFire(state, team);
+  const strength = relationships.reduce((sum, r) => sum + fireStrength(state, state.teams_by_id[r.source_team_id]), 0);
+  if (!strength) return 0;
+  const location = state.locations_by_id[team.location_id];
+  const cover = team.occupied_cover_id ? location.cover_bonus : 0;
+  const directions = new Set(relationships.map(r => r.source_location_id)).size;
+  return Math.max(0, strength * 5 + (team.exposed ? 8 : 0) + (directions > 1 ? 8 : 0) -
+    (location.protection + cover) * 6);
 }

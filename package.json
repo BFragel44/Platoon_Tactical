@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "test": "vitest run"
+    "test": "vitest run",
+    "playtest": "node scripts/companyPlaytest.js",
+    "playtest:legacy": "node scripts/playtest.js"
   },
   "devDependencies": {
     "vite": "6.4.3",

@@ -1,0 +1,243 @@
+import { values, live, good, friendly, visible, expMod, emit, draw, attempt, randomNumber, pick, result } from './core.js';
+import { adjacent, occupants, distance, los, communication, chain, coverOf, basicValue, canFire, refresh, spot, hasFire, incoming, movementReason } from './battlefield.js';
+
+export const ACTIONS = {
+  ACTIVATE:'Activate HQ / staff', MOVE:'Move', PLATOON_MOVE:'Move platoon', INFILTRATE:'Infiltrate', PLATOON_INFILTRATE:'Infiltrate platoon',
+  SEEK_COVER:'Seek cover', ENTER_COVER:'Move within card', SPOT:'Spot position', SHIFT_FIRE:'Shift fire', CEASE_FIRE:'Cease fire',
+  CONCENTRATE:'Concentrate fire', GRENADE:'Grenade / close assault', RALLY:'Remove pin', RECOVER:'Recover cohesion',
+  RECONSTITUTE:'Reconstitute squad', RECONSTITUTE_HQ:'Reconstitute HQ', DETACH:'Detach assault team',
+  CALL_MORTAR:'Call 81mm fire', CALL_ARTILLERY:'Call 105mm fire', INDIRECT:'Direct mortar section',
+  SMOKE:'Deploy screening smoke', SIGNAL_ADVANCE:'Signal: cross phase line 2', SIGNAL_CEASE:'Signal: cease fire',
+  PICKUP_RADIO:'Recover radio', PICKUP_CASUALTY:'Pick up casualty', DROP_CASUALTY:'Drop casualties',
+};
+export const costOf = type => type.startsWith('PLATOON_') ? 2 : 1;
+const hq = u => ['HQ','STAFF'].includes(u.kind);
+const genericInit = s => s.impulse?.hq === 'general';
+const actionKey = (u,type,target) => type === 'ACTIVATE' ? `${type}_${target}` : type === 'RECOVER' ? `${type}_${u.cohesion}` : type;
+const areaTargets = (s,u) => values(s.units).filter(t=>live(t)&&t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]));
+function targetsAt(s,u,id) { return areaTargets(s,u).filter(t=>t.location===id); }
+export function eligibleTargets(s,u,type) {
+  if(['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type)) return adjacent(s,u.location).map(l=>l.id);
+  if(type==='ACTIVATE') return values(s.units).filter(t=>friendly(t)&&t.id!=='co'&&hq(t)&&live(t)).map(t=>t.id);
+  if(type==='ENTER_COVER') return ['open',...s.locations[u.location].covers.filter(c=>(!friendly(u)||c.known)&&!occupants(s,u.location).some(t=>t.faction!==u.faction&&t.cover===c.id)).map(c=>c.id)];
+  if(type==='SPOT') return Object.keys(s.knowledge.suspected).filter(id=>los(s,u.location,id));
+  if(['SHIFT_FIRE','CALL_MORTAR','CALL_ARTILLERY','INDIRECT'].includes(type)) return values(s.locations).filter(l=>!l.staging&&los(s,u.location,l.id)).map(l=>l.id);
+  if(['GRENADE','CONCENTRATE'].includes(type)) return areaTargets(s,u).filter(t=>los(s,u.location,t.location,type==='GRENADE'?(u.vof==='G'?u.range:0):u.range)).map(t=>t.id);
+  if(type==='RECONSTITUTE_HQ') return values(s.units).filter(t=>friendly(t)&&hq(t)&&!live(t)).map(t=>t.id);
+  if(type==='PICKUP_RADIO') return s.assets.filter(a=>a.location===u.location&&a.type==='RADIO'&&!a.destroyed).map(a=>a.id);
+  if(type==='PICKUP_CASUALTY') return s.casualties.filter(c=>c.location===u.location&&c.faction===u.faction&&!c.carrier&&!c.evacuated).map(c=>c.id);
+  return [];
+}
+export function orderReason(s,c) {
+  const u=s.units[c.unit_id], issuer=s.units[c.issuer_id],type=c.type,target=c.target_id;
+  if(!ACTIONS[type]) return 'Unknown order.';
+  if(s.status!=='ACTIVE') return 'The mission has ended.';
+  if(!s.impulse) return 'Advance to a command impulse to issue orders.';
+  if(!live(u)||!friendly(u)) return 'Select an available friendly formation.';
+  if(!genericInit(s) && c.issuer_id!==s.impulse.hq) return 'Only the active HQ can issue orders in this impulse.';
+  if(s.impulse.commands<costOf(type)||s.impulse.spent+costOf(type)>6) return 'Insufficient commands, or the six-command impulse limit has been reached.';
+  if(!genericInit(s)) {
+    if(!live(issuer)) return 'The issuing HQ is unavailable.';
+    if(issuer.cohesion!=='GOOD'&&issuer.id!==u.id) return 'A degraded HQ can only order itself.';
+    if(!chain(issuer,u,type)) return 'The unit is outside this HQ’s chain of command.';
+    if(!communication(s,issuer,u,type==='RALLY')) return 'No communication: share a card area or a working radio net.';
+  }
+  if(u.used.includes(`${s.impulse.id}:${actionKey(u,type,target)}`)&&type!=='ENTER_COVER') return 'This unit already attempted this action in this impulse.';
+  const restricted=u.pinned||['P','L'].includes(u.cohesion);
+  if(restricted&&!['RALLY','RECOVER','MOVE','SEEK_COVER','ENTER_COVER','DROP_CASUALTY'].includes(type)) return 'Pinned, paralyzed or litter teams cannot perform this action.';
+  if(u.cohesion==='P'&&['SEEK_COVER','ENTER_COVER'].includes(type)) return 'A paralyzed team must recover before moving within its card.';
+  if(['ACTIVATE','RECONSTITUTE','RECONSTITUTE_HQ','SIGNAL_ADVANCE','SIGNAL_CEASE'].includes(type) && genericInit(s) && (!issuer||!hq(issuer)||!good(issuer)||!chain(issuer,u,type)||!communication(s,issuer,u))) return 'This action requires an eligible HQ in communication even during general initiative.';
+  if(type==='ACTIVATE') {
+    const t=s.units[target];
+    if(c.issuer_id!=='co'||u.id!=='co'||s.phase!=='CO_ACTIVATION') return 'Only Company HQ can activate subordinates in its activation impulse.';
+    if(!t||!hq(t)||t.id==='co'||!good(t)||s.activated.includes(t.id)||!communication(s,u,t)) return 'Choose a good-order, unactivated subordinate HQ in communication.';
+  }
+  if(type.startsWith('PLATOON_') && (u.kind!=='HQ'||!u.platoon||u.id!==c.issuer_id||!good(u))) return 'A good-order platoon HQ must order its own group move.';
+  if(['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type)) {
+    const reason=movementReason(s,u,target); if(reason) return reason;
+    if(type.includes('INFILTRATE') && (u.vof==='H'||u.kind==='MORTAR'||(!hasFire(s,u.location)&&!hasFire(s,target)))) return 'Infiltration needs fire on the origin or destination and an eligible weapon.';
+  }
+  if(type==='SEEK_COVER'&&(u.cover||s.locations[u.location].covers.filter(c=>c.type==='Cover').length>=s.locations[u.location].cover_limit)) return 'Already in cover, or the card has reached its cover potential.';
+  if(type==='ENTER_COVER'&&(!eligibleTargets(s,u,type).includes(target)||(target==='open'?u.cover===null:u.cover===target))) return 'Choose a different, accessible area on this card.';
+  if(type==='RALLY'&&!u.pinned) return 'This unit is not pinned.';
+  if(type==='RECOVER'&&(u.pinned||!['P','L','F'].includes(u.cohesion))) return 'Remove the pin first; only paralyzed, litter or fire teams need recovery.';
+  if(type==='SPOT'&&(!good(u)||!s.knowledge.suspected[target]||!los(s,u.location,target))) return 'A good-order unit needs LOS to a suspected position.';
+  if(type==='SHIFT_FIRE'&&(!u.fire||!s.locations[target]||!los(s,(issuer??u).location,target)||!canFire(s,u,target)||
+    (s.knowledge.suspected[target]&&!targetsAt(s,u,target).length))) return 'Need an existing fire direction and an eligible destination visible to the issuer. Spot suspected enemies first.';
+  if(type==='SHIFT_FIRE'&&coverOf(s,u)?.type==='Bunker') return 'Bunker occupants cannot shift their firing arc.';
+  if(type==='CEASE_FIRE'&&!u.fire&&!u.indirect) return 'This unit is not maintaining fire.';
+  if(['CONCENTRATE','GRENADE'].includes(type)) {
+    const t=s.units[target];
+    if(!eligibleTargets(s,u,type).includes(target)||!t) return 'Choose a spotted enemy within weapon range and LOS.';
+    if(type==='CONCENTRATE'&&(!u.fire||u.fire!==t.location||!['S','A','A/S','H'].includes(u.vof))) return 'Concentrated fire must follow an existing direction of basic fire.';
+    if(type==='GRENADE'&&t.location!==u.location&&u.fire&&u.fire!==t.location) return 'Ranged grenades must follow the existing direction of fire.';
+    if(type==='GRENADE'&&t.location!==u.location&&occupants(s,u.location).some(v=>v.faction!==u.faction)) return 'Resolve point-blank combat before firing grenades elsewhere.';
+  }
+  if(type.startsWith('CALL_')) {
+    const agency=type==='CALL_MORTAR'?'MTR':'ARTY';
+    if(!good(u)||!['co',agency==='MTR'?'mtrfo':'artyfo'].includes(u.id)||!u.radios.includes(agency)) return 'This observer needs its working fire-direction radio and good order.';
+    if(!s.locations[target]||!los(s,u.location,target)||!targetsAt(s,u,target).length) return 'Call for fire requires a spotted enemy position in the observer’s LOS.';
+  }
+  if(type==='INDIRECT'&&(!good(u)||u.kind!=='MORTAR'||u.steps.length<2||u.exposed||s.locations[u.location].terrain==='woods'||
+    !s.locations[target]||!issuer||!los(s,issuer.location,target)||distance(s.locations[u.location],s.locations[target])>u.range||!targetsAt(s,u,target).length)) return 'Need an unexposed two-step mortar outside woods, in communication with an HQ that sees the spotted target.';
+  if(type==='SMOKE'&&(!good(u)||!u.assets.smoke)) return 'No screening smoke available on this good-order unit.';
+  if(type.startsWith('SIGNAL_')&&(!good(u)||!u.assets[type==='SIGNAL_ADVANCE'?'advance':'cease'])) return 'This unit has no remaining asset for that signal.';
+  if(type==='DETACH'&&(!good(u)||!((u.kind==='SQUAD'&&u.steps.length>=3)||(u.kind==='MG'&&u.steps.length===2)))) return 'Detach from a good-order squad of at least three steps or a two-step weapon team.';
+  if(type==='RECONSTITUTE') {
+    const candidates=occupants(s,u.location).filter(t=>t.faction===u.faction&&t.cover===u.cover&&!t.pinned&&t.kind==='LAT'&&['A','F'].includes(t.cohesion));
+    if(candidates.length<2||!values(s.units).some(t=>t.kind==='SQUAD'&&!live(t)&&t.faction===u.faction)) return 'Need 2–4 co-located unpinned generic assault/fire teams and an eliminated squad counter.';
+  }
+  if(type==='RECONSTITUTE_HQ') {
+    const t=s.units[target];
+    if(!issuer||!['co','staff'].includes(issuer.id)||!good(u)||!t||live(t)||!hq(t)||
+      (t.platoon ? u.platoon!==t.platoon&&u.kind!=='STAFF' : !['HQ','STAFF','FO'].includes(u.kind))) return 'Company HQ or staff must use an eligible good-order donor to restore an eliminated HQ.';
+  }
+  if(['PICKUP_RADIO','PICKUP_CASUALTY'].includes(type)&&(!eligibleTargets(s,u,type).includes(target)||u.pinned||u.cohesion==='P')) return 'Choose an available item here; pinned/paralyzed units cannot transport it.';
+  if(type==='PICKUP_CASUALTY'&&s.casualties.filter(c=>c.carrier===u.id).length>=u.steps.length) return 'Each step can carry one casualty.';
+  if(type==='DROP_CASUALTY'&&!s.casualties.some(c=>c.carrier===u.id)) return 'No casualties are being carried.';
+  return null;
+}
+export function move(s,u,target,infiltrate=false) {
+  const from=u.location,old=coverOf(s,u);
+  if(u.pinned||u.cohesion==='P')for(const c of s.casualties.filter(c=>c.carrier===u.id))c.carrier=null;
+  const success=infiltrate&&attempt(s,u,2,'infiltrate',`${u.name}: infiltration`)>0;
+  invalidateTargets(s,u);
+  u.location=target;u.cover=null;u.fire=null;u.indirect=null;
+  const cover=s.locations[target].covers.find(c=>(!friendly(u)||c.known)&&!occupants(s,target).some(v=>v.faction!==u.faction&&v.cover===c.id));
+  if(cover)u.cover=cover.id;
+  u.exposed=!(success||(s.locations[from].staging&&s.locations[target].staging)||(old&&cover&&['Trench','Bunker'].includes(old.type)&&['Trench','Bunker'].includes(cover.type)));
+  for(const c of s.casualties.filter(c=>c.carrier===u.id)) c.location=target;
+  emit(s,'UNIT_MOVED',`${u.name} ${success?'infiltrated':'moved'} to ${s.locations[target].name}${u.exposed?'; exposed until cleanup':''}.`,{actor:u.id,from,target,exposed:u.exposed},!visible(s,u));
+}
+export function invalidateTargets(s,u) {
+  for(const m of s.markers.filter(m=>m.target===u.id||u.cover&&m.cover===u.cover)) {
+    if(m.type==='GRENADE') s.markers.push({type:'GRENADE_MISS',location:u.location});
+  }
+  s.markers=s.markers.filter(m=>m.target!==u.id&&!(u.cover&&m.cover===u.cover));
+}
+export function seekCover(s,u) {
+  const l=s.locations[u.location];
+  if(u.cover||l.covers.filter(c=>c.type==='Cover').length>=l.cover_limit)return false;
+  const success=attempt(s,u,l.cover_draw,'cover',`${u.name}: seek cover`)>0;
+  if(success){const c={id:`cover_${l.id}_${l.covers.length+1}`,type:'Cover',value:1,known:friendly(u)};l.covers.push(c);u.cover=c.id;u.exposed=true;}
+  emit(s,'COVER_ATTEMPT',`${u.name} ${success?'found and occupied additional cover; exposed while moving':'found no additional cover'}.`,{actor:u.id,success},!visible(s,u));
+  return success;
+}
+export function rally(s,u,issuer=u,recover=false) {
+  const success=!hasFire(s,u.location)||attempt(s,issuer,2,'rally',`${u.name}: ${recover?'cohesion recovery':'unpin'}`,!visible(s,u))>0;
+  if(success) {
+    if(!recover)u.pinned=false;
+    else {
+      const previous=u.cohesion;
+      u.cohesion=u.cohesion==='F'&&u.named ? 'GOOD' : ({P:'L',L:'F',F:'A'})[u.cohesion];
+      if(u.cohesion==='GOOD')u.experience=u.original_experience;
+      else {u.experience=u.cohesion==='A'?'Line':'Green';u.range=u.cohesion==='A'?0:1;}
+      emit(s,'COHESION_CHANGED',`${u.name}: ${previous} → ${u.cohesion}.`,{actor:u.id,from:previous,to:u.cohesion},!visible(s,u));
+    }
+  }
+  emit(s,'RALLY_ATTEMPT',`${u.name}: ${success ? (recover?'cohesion recovered':'pin removed') : 'rally failed'}.`,{actor:u.id,success},!visible(s,u));
+}
+export function grenade(s,u,t,response=false) {
+  const targets=t.cover?occupants(s,t.location).filter(v=>v.cover===t.cover&&v.faction===t.faction):[t];
+  const successes=attempt(s,u,2,'grenade',`${visible(s,u)?u.name:'Unidentified unit'}: grenade attack`,!visible(s,u)&&!friendly(t));
+  if(successes) s.markers.push({type:'GRENADE',location:t.location,target:t.cover?null:t.id,cover:t.cover,critical:successes>1,
+    value:(friendly(u)?-4:-3)*(successes>1&&!t.cover?2:1)});
+  else if(!s.markers.some(m=>m.type==='GRENADE_MISS'&&m.location===t.location))s.markers.push({type:'GRENADE_MISS',location:t.location});
+  emit(s,'GRENADE_ATTEMPT',`${visible(s,u)?u.name:'Unidentified attacker'}: ${successes?'grenade attack placed':'grenade miss'} at ${s.locations[t.location].name}${successes>1?' (critical)':''}; effects resolve in mutual combat.`,{actor:visible(s,u)?u.id:null,target:visible(s,t)?t.id:null,success:!!successes},!visible(s,u)&&!visible(s,t));
+  if(!response&&u.location===t.location)for(const v of targets)if(!v.pinned&&basicValue(v)!==null&&(v.cohesion==='GOOD'||successes)&&(!friendly(v)||s.knowledge.spotted[u.id]))grenade(s,v,u,true);
+}
+export function concentrate(s,u,t) {
+  const n=attempt(s,u,2,'spot',`${u.name}: concentrated fire`);
+  if(n)s.markers.push({type:'CONCENTRATE',location:t.location,target:t.cover?null:t.id,cover:t.cover,source:u.id,critical:n>1,value:n>1&&!t.cover?2:1});
+  emit(s,'CONCENTRATE_ATTEMPT',`${visible(s,u)?u.name:'Unidentified attacker'}: ${n?'concentrated fire established':'concentrated fire failed'}.`,{actor:visible(s,u)?u.id:null,target:visible(s,t)?t.id:null,success:!!n},!visible(s,u)&&!visible(s,t));
+}
+export function spotAttempt(s,u,id) {
+  const targets=occupants(s,id).filter(t=>t.faction!==u.faction&&!s.knowledge.spotted[t.id]);
+  let found=false;
+  for(const t of targets) {
+    const l=s.locations[id];
+    const count=2+(s.locations[u.location].elevation>l.elevation?1:0)+(u.location===id?1:0)+(l.protection>=3?-1:l.protection===0?1:0)
+      -(t.cover?1:0)+(t.exposed?2:0)+(t.vof==='A'?1:['H','G'].includes(t.vof)?2:0)-expMod(t);
+    if(attempt(s,u,count,'spot',`${u.name}: observe ${l.name}`)>0){spot(s,t);found=true;}
+  }
+  if(!targets.length)draw(s,Math.max(1,2+expMod(u)),`${u.name}: observe ${s.locations[id].name}`);
+  emit(s,'OBSERVATION',`${u.name}: ${found?'enemy position identified':'no additional enemy identified'}.`,{actor:u.id,location:id,success:found});
+}
+export function splitTeam(s,u,cohesion,step) {
+  const id=`lat_${s.next_id++}`;
+  const unit={...structuredClone(u),id,name:`${cohesion==='A'?'Assault':cohesion==='F'?'Fire':cohesion==='L'?'Litter':'Paralyzed'} team ${id.slice(4)}`,
+    kind:'LAT',steps:[step],cohesion,named:false,vof:'S',range:cohesion==='A'?0:1,radios:[],assets:{},fire:null,indirect:null,experience:cohesion==='A'?'Line':'Green',used:[],removed:null};
+  s.units[id]=unit;return unit;
+}
+export function execute(s,c) {
+  const u=s.units[c.unit_id],issuer=s.units[c.issuer_id]??u,type=c.type,t=s.units[c.target_id];
+  if(type==='ACTIVATE')s.activated.push(t.id);
+  else if(['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type)) {
+    const group=type.startsWith('PLATOON_')?occupants(s,u.location).filter(v=>v.platoon===u.platoon&&good(v)&&communication(s,u,v)&&!movementReason(s,v,c.target_id)&&(!type.includes('INFILTRATE')||v.vof!=='H')):[u];
+    for(const v of group) {if(movementReason(s,v,c.target_id))continue;move(s,v,c.target_id,type.includes('INFILTRATE'));v.used.push(`${s.impulse.id}:${type.includes('INFILTRATE')?'INFILTRATE':'MOVE'}`);}
+  }
+  else if(type==='SEEK_COVER')seekCover(s,u);
+  else if(type==='ENTER_COVER'){invalidateTargets(s,u);u.cover=c.target_id==='open'?null:c.target_id;u.exposed=true;}
+  else if(type==='RALLY'||type==='RECOVER')rally(s,u,genericInit(s)?u:issuer,type==='RECOVER');
+  else if(type==='SPOT')spotAttempt(s,u,c.target_id);
+  else if(type==='SHIFT_FIRE'||type==='CEASE_FIRE') {
+    for(const v of occupants(s,u.location).filter(v=>v.faction===u.faction)){v.fire=type==='SHIFT_FIRE'?c.target_id:null;v.indirect=null;}
+    s.markers=s.markers.filter(m=>m.type!=='CONCENTRATE'||s.units[m.source]?.location!==u.location);
+  }
+  else if(type==='GRENADE')grenade(s,u,t);
+  else if(type==='CONCENTRATE')concentrate(s,u,t);
+  else if(type.startsWith('CALL_')) {
+    const success=attempt(s,u,u.id==='co'?1:2,'burst',`${u.name}: call for fire`)>0;
+    if(success)s.support.push({id:`support_${s.next_id++}`,location:c.target_id,status:'PENDING',value:type==='CALL_MORTAR'?-3:-5,source:u.id});
+    emit(s,'SUPPORT_REQUEST',`${u.name}: ${success?'fire mission pending; activates in Fire Mission Update':'fire request failed'}.`,{actor:u.id,location:c.target_id,success});
+  }
+  else if(type==='INDIRECT'){u.fire=null;u.indirect=c.target_id;}
+  else if(type==='SMOKE'){u.assets.smoke--;s.locations[u.location].smoke=true;emit(s,'SMOKE_DEPLOYED',`Screening smoke at ${s.locations[u.location].name}: blocks outgoing and through LOS.`,{actor:u.id});}
+  else if(type.startsWith('SIGNAL_')) {
+    u.assets[type==='SIGNAL_ADVANCE'?'advance':'cease']--;
+    for(const v of values(s.units).filter(v=>friendly(v)&&live(v))) {
+      if(type==='SIGNAL_CEASE'){v.fire=null;v.indirect=null;}
+      else if(s.locations[v.location].row===s.signal_phase_line-1){const dest=`r${s.signal_phase_line}c${s.locations[v.location].col}`;if(!movementReason(s,v,dest))move(s,v,dest);}
+    }
+    emit(s,'SIGNAL_DEPLOYED',`${u.name} deployed the ${type==='SIGNAL_ADVANCE'?'cross phase line 2':'cease fire'} signal.`,{actor:u.id});
+  }
+  else if(type==='DETACH'){const step=u.steps.pop();splitTeam(s,u,'A',step);}
+  else if(type==='RECONSTITUTE') {
+    const group=occupants(s,u.location).filter(v=>v.faction===u.faction&&v.cover===u.cover&&!v.pinned&&v.kind==='LAT'&&['A','F'].includes(v.cohesion)).slice(0,4);
+    if(attempt(s,issuer,2,'rally','Reconstitute squad')) {
+      const squad=values(s.units).find(v=>v.kind==='SQUAD'&&!live(v)&&v.faction===u.faction);
+      squad.steps=group.flatMap(v=>v.steps);squad.location=u.location;squad.cover=u.cover;squad.cohesion='GOOD';squad.removed=null;squad.pinned=false;squad.exposed=group.some(v=>v.exposed);squad.fire=null;
+      squad.experience=group.filter(v=>v.experience==='Line').length>=Math.ceil(group.length/2)?'Line':'Green';
+      for(const v of group){v.steps=[];v.removed='RECONSTITUTED';}
+      emit(s,'FORMATION_RECONSTITUTED',`${squad.name} reconstituted from ${group.length} teams.`,{actor:squad.id,contributors:group.map(v=>v.id)});
+    }
+  }
+  else if(type==='RECONSTITUTE_HQ') {
+    t.steps=[u.steps.pop()];t.location=u.location;t.cover=u.cover;t.removed=null;t.cohesion='GOOD';t.experience='Green';t.original_experience='Green';t.saved=0;t.radios=[];t.pinned=false;
+    if(!u.steps.length)u.removed='RECONSTITUTED';
+    emit(s,'HQ_RECONSTITUTED',`${t.name} restored at Green experience; recover a radio to restore its net.`,{actor:t.id,donor:u.id});
+  }
+  else if(type==='PICKUP_RADIO'){const a=s.assets.find(a=>a.id===c.target_id);u.radios.push(a.net);s.assets=s.assets.filter(v=>v.id!==a.id);u.exposed=true;}
+  else if(type==='PICKUP_CASUALTY'){s.casualties.find(v=>v.id===c.target_id).carrier=u.id;u.exposed=true;}
+  else if(type==='DROP_CASUALTY'){for(const v of s.casualties.filter(v=>v.carrier===u.id))v.carrier=null;}
+}
+export function submitCommand(state,command) {
+  const reason=orderReason(state,command);
+  if(reason)return {state,events:[],accepted:false,reason};
+  const s=structuredClone(state),u=s.units[command.unit_id],key=actionKey(u,command.type,command.target_id);
+  const event=emit(s,'COMMAND_ISSUED',`${s.impulse.hq==='general'?'General initiative':s.units[s.impulse.hq].name}: ${ACTIONS[command.type]} — ${u.name}${command.target_id?' → '+(s.locations[command.target_id]?.name??s.units[command.target_id]?.name??command.target_id):''}.`,{command:structuredClone(command)});
+  s.impulse.commands-=costOf(command.type);s.impulse.spent+=costOf(command.type);
+  u.used.push(`${s.impulse.id}:${key}`);
+  execute(s,command);refresh(s);
+  emit(s,'COMMAND_RESOLVED','Order resolved; fire relationships updated.',{caused_by_event_id:event.id});
+  s.replay.push({op:'submitCommand',command:structuredClone(command)});
+  return result(state,s,{accepted:true});
+}
+export function commandOptions(s,u,issuerId) {
+  return Object.entries(ACTIONS).map(([type,label])=>{
+    const targets=eligibleTargets(s,u,type);
+    const targeted=['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','INDIRECT','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
+    const checks=(targeted?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id})}));
+    return {type,label,cost:costOf(type),targeted,targets:checks,available:checks.some(c=>!c.reason),reason:checks.find(c=>c.reason)?.reason??'No eligible target.'};
+  });
+}

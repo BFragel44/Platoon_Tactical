@@ -1,20 +1,13 @@
-1. Persistent People
-Named soldiers, persistent histories, wounds, equipment, experience. Individuals determine team capabilities, but the player primarily commands teams.
+# Design pillars: Company Assault validation build
 
-2. Uncertain Battlefield
-Location-card/node map. Potential Contacts. Discoverable cover. Incomplete information. Battlefield knowledge develops during the mission.
+The active demo is one company assault: Company HQ and staff, two platoon HQs, six multistep rifle squads, attached weapons and observers. The previous three-fireteam brief is superseded and archived under `archive/platoon-prototype/`.
 
-3. Limited Command
-The player can't micromanage everyone. Orders represent intent. Leadership, communications, suppression and circumstances affect the ability to execute that intent.
+The player commands formations through constrained HQ impulses and communications. Basic fire continues autonomously. Supporting fire, observation, maneuver, recovery and maintaining the command net are the decisions being tested.
 
-4. Autonomous Combat
-Soldiers spot, fire, react and use their weapons without waiting for the player to authorize every action. Suppression/fire superiority/maneuver drive combat rather than HP depletion.
+The battlefield is a graph of terrain cards, arranged like the Company Assault Course. Coordinates identify abstract Locations, not soldier squares. Known firing positions are distinct from spotted units. Player reports never expose an unspotted attacker's identity or hidden causal events.
 
-5. Recorded History
-Every meaningful event is logged. AARs and campaign stories are reconstructed from what actually occurred in the simulation.
+Named personnel provide history beneath squad steps. A casualty step removes its associated personnel and capability; cohesion breakdown creates recoverable teams. No additional soldier-level hit rolls are made.
 
-Two Other Big Principles:
-1. Abstraction removes bookkeeping, not consequence.
+This validation branch deliberately follows the selected Fields of Fire third-edition infantry course rules closely, with explicit implementation limitations recorded in the rules guide. It is not a claim to reproduce the entire game. Campaigns, persistent rosters, vehicles, air assault and replacements remain deferred.
 
-2. The player commands teams. The player cares about individuals.
-
+The authoritative implemented behavior and acceptance status are in [M0 rules and playtest guide](M0_RULES_AND_PLAYTEST.md).

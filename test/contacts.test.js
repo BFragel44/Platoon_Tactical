@@ -1,181 +1,60 @@
-import { describe, expect, it } from "vitest";
-
-import { m0TestScenario } from "../src/scenarios/m0TestScenario.js";
-import {
-  advancePhase,
-  createMission,
-  getPlayerView,
-  getVisibleEvents,
-  submitCommand,
-} from "../src/sim/index.js";
-
-function queueMove(state, locationId) {
-  return submitCommand(state, {
-    type: "MOVE",
-    faction_id: "friendly",
-    team_id: "team_alpha",
-    target: { location_id: locationId },
-  }).state;
-}
-
-function resolveToContact(seed, includeRidge = false) {
-  let state = createMission(m0TestScenario, seed);
-  state = queueMove(state, "loc_lane");
-  state = queueMove(state, "loc_farmyard");
-  state = queueMove(state, "loc_stone_house");
-  if (includeRidge) {
-    state = queueMove(state, "loc_ridge");
+import { describe,it,expect } from 'vitest';
+import { createMission,endTurn,getVisibleEvents,getPlayerView } from '../src/sim/index.js';
+import { m0TestScenario } from '../src/scenarios/m0TestScenario.js';
+import { order,uncertain,relocate } from './missionFlow.js';
+import { resolvePendingContacts } from '../src/sim/contacts.js';
+import { evaluateAutomaticFire } from '../src/sim/fire.js';
+import { revealTeam } from '../src/sim/spotting.js';
+describe('uncertain contact and visibility',()=>{
+  function forced(){
+    const scenario=structuredClone(m0TestScenario);
+    scenario.contact_generation_profiles[0].results=[{result:'AUTOMATIC_WEAPONS_TEAM',package_id:'AUTOMATIC_WEAPONS_TEAM',weight:1}];
+    const state=createMission(scenario,'hidden');
+    relocate(state,'team_alpha','loc_crossroads');
+    state.pending_observations=[{team_id:'team_alpha',location_id:'loc_crossroads',caused_by_event_id:null}];
+    resolvePendingContacts(state);return state;
   }
-  state = advancePhase(state).state;
-  return advancePhase(state);
-}
-
-describe("Potential Contact resolution", () => {
-  it("does not instantiate or roll an unresolved Contact at mission creation", () => {
-    const state = createMission(m0TestScenario, "4");
-
-    expect(state.contacts_by_id.contact_stone_house).toMatchObject({
-      resolution_status: "UNRESOLVED",
-      resolution_result: null,
-      generated_team_ids: [],
-    });
-    expect(state.rng.draw_count).toBe(0);
-    expect(Object.keys(state.teams_by_id)).toEqual(["team_alpha"]);
-    expect(Object.keys(state.soldiers_by_id)).toHaveLength(4);
+  it('places an enemy overlooking the triggering approach, not on the entering team',()=>{
+    const state=forced();const enemy=Object.values(state.teams_by_id).find(t=>t.faction_id==='enemy');
+    expect(enemy.location_id).toBe('loc_stone_house');
+    expect(state.teams_by_id.team_alpha.location_id).toBe('loc_crossroads');
+    expect(state.pending_observations).toEqual([]);
   });
-
-  it("resolves to NO_CONTACT without generating an enemy", () => {
-    const result = resolveToContact("4");
-    const contact = result.state.contacts_by_id.contact_stone_house;
-
-    expect(contact).toMatchObject({
-      resolution_status: "RESOLVED",
-      resolution_result: "NO_CONTACT",
-      generated_team_ids: [],
-      resolved_turn: 1,
-    });
-    expect(result.state.rng.draw_count).toBe(1);
-    expect(Object.keys(result.state.teams_by_id)).toEqual(["team_alpha"]);
-    expect(result.events.map((event) => event.type)).toEqual([
-      "UNIT_MOVED",
-      "UNIT_MOVED",
-      "UNIT_MOVED",
-      "CONTACT_TRIGGERED",
-      "CONTACT_RESOLVED",
-    ]);
-    expect(result.events.some((event) => event.type === "ENEMY_GENERATED")).toBe(false);
+  it('reports hidden incoming fire without identity, soldiers or hidden causal references',()=>{
+    const state=forced();evaluateAutomaticFire(state);
+    const enemy=Object.values(state.teams_by_id).find(t=>t.faction_id==='enemy');
+    const view=getPlayerView(state,'friendly');const events=getVisibleEvents(state,'friendly');
+    expect(view.suspected_locations).toContain('loc_stone_house');
+    expect(view.fire_relationships.some(r=>r.source_team_id===null)).toBe(true);
+    expect(JSON.stringify({view,events})).not.toContain(enemy.id);
+    const ids=new Set(events.map(e=>e.id));
+    expect(events.every(e=>!e.caused_by_event_id||ids.has(e.caused_by_event_id))).toBe(true);
+    revealTeam(state,enemy);
+    expect(getVisibleEvents(state,'friendly').some(e=>e.type==='ENEMY_GENERATED')).toBe(false);
   });
-
-  it.each([
-    ["no-contact", "RIFLE_TEAM", 2],
-    ["automatic", "AUTOMATIC_WEAPONS_TEAM", 2],
-    ["rifle", "REINFORCED_RIFLE_TEAM", 3],
-  ])("instantiates %s as hidden authoritative entities", (seed, packageId, soldierCount) => {
-    const result = resolveToContact(seed);
-    const state = result.state;
-    const contact = state.contacts_by_id.contact_stone_house;
-    const generatedTeamId = contact.generated_team_ids[0];
-    const generatedTeam = state.teams_by_id[generatedTeamId];
-
-    expect(contact.resolution_result).toBe(packageId);
-    expect(generatedTeamId).toBe("team_000004");
-    expect(generatedTeam).toMatchObject({
-      faction_id: "enemy",
-      location_id: "loc_stone_house",
-    });
-    expect(generatedTeam.member_ids).toHaveLength(soldierCount);
-    expect(state.locations_by_id.loc_stone_house.occupant_team_ids).toEqual([
-      "team_alpha",
-      generatedTeamId,
-    ]);
-    expect(result.events.find((event) => event.type === "ENEMY_GENERATED")).toMatchObject({
-      type: "ENEMY_GENERATED",
-      result: { package_id: packageId, team_id: generatedTeamId },
-      visibility: { faction_ids: [], simulation_only: true },
-    });
+  it('allows directing fire toward a suspected source without identifying its composition',()=>{
+    const state=forced();evaluateAutomaticFire(state);
+    const result=order(state,'DIRECT_FIRE','team_alpha','loc_stone_house');
+    expect(result.accepted).toBe(true);
+    expect(result.state.teams_by_id.team_alpha.fire_target_location_id).toBe('loc_stone_house');
   });
-
-  it("records deterministic causal Contact Events", () => {
-    const result = resolveToContact("automatic");
-    const triggered = result.events.find((event) => event.type === "CONTACT_TRIGGERED");
-    const resolved = result.events.find((event) => event.type === "CONTACT_RESOLVED");
-    const generated = result.events.find((event) => event.type === "ENEMY_GENERATED");
-    const enteringMove = result.events.filter((event) => event.type === "UNIT_MOVED").at(-1);
-
-    expect(triggered.caused_by_event_id).toBe(enteringMove.id);
-    expect(resolved.caused_by_event_id).toBe(triggered.id);
-    expect(generated.caused_by_event_id).toBe(resolved.id);
-    expect(triggered.result).toEqual({ resolution_status: "RESOLVED" });
-    expect(triggered.result).not.toHaveProperty("generation_result");
+  it('halts normal movement when an unspotted enemy is discovered at the destination',()=>{
+    const state=forced();relocate(state,'team_alpha','loc_farmyard');
+    const result=order(state,'MOVE','team_alpha','loc_stone_house');
+    expect(result.accepted).toBe(true);
+    expect(result.state.teams_by_id.team_alpha.location_id).toBe('loc_farmyard');
+    expect(result.events.some(e=>e.type==='MOVEMENT_HALTED')).toBe(true);
+    expect(getPlayerView(result.state,'friendly').spotted_enemies).toHaveLength(1);
   });
-
-  it("keeps generated enemy details out of the friendly view and visible Events", () => {
-    const state = resolveToContact("spot-11").state;
-    const view = getPlayerView(state, "friendly");
-    const visibleEvents = getVisibleEvents(state, "friendly");
-    const serializedView = JSON.stringify(view);
-
-    expect(view.potential_contacts).toEqual([
-      { id: "contact_stone_house", location_id: "loc_stone_house", status: "RESOLVED" },
-    ]);
-    expect(view.teams.map((team) => team.id)).toEqual(["team_alpha"]);
-    expect(view.soldiers).toHaveLength(4);
-    expect(serializedView).not.toContain("REINFORCED_RIFLE_TEAM");
-    expect(serializedView).not.toContain("team_000004");
-    expect(serializedView).not.toContain("Enemy Automatic Rifleman");
-    expect(visibleEvents.some((event) => event.type === "CONTACT_TRIGGERED")).toBe(true);
-    expect(visibleEvents.some((event) => event.type === "CONTACT_RESOLVED")).toBe(false);
-    expect(visibleEvents.some((event) => event.type === "ENEMY_GENERATED")).toBe(false);
-    expect(getVisibleEvents(state, "friendly", 7).every((event) => event.sequence > 7)).toBe(true);
-  });
-
-  it("resolves during chained movement before a later MOVE continues", () => {
-    const result = resolveToContact("4", true);
-    const eventTypes = result.events.map((event) => event.type);
-
-    expect(eventTypes).toEqual([
-      "UNIT_MOVED",
-      "UNIT_MOVED",
-      "UNIT_MOVED",
-      "CONTACT_TRIGGERED",
-      "CONTACT_RESOLVED",
-      "UNIT_MOVED",
-    ]);
-    expect(result.state.teams_by_id.team_alpha.location_id).toBe("loc_ridge");
-  });
-
-  it("does not trigger or consume RNG again when a resolved Contact is revisited", () => {
-    let state = resolveToContact("automatic").state;
-    const drawCountAfterResolution = state.rng.draw_count;
-    for (let count = 0; count < 4; count += 1) {
-      state = advancePhase(state).state;
+  it('resolves a no-contact route and permits objective completion',()=>{
+    const scenario=structuredClone(m0TestScenario);
+    scenario.contact_generation_profiles[0].results=[{result:'NO_CONTACT',package_id:null,weight:1}];
+    let state=createMission(scenario,'clear');
+    for(const loc of ['loc_lane','loc_farmyard','loc_stone_house']){
+      state=order(state,'MOVE','team_alpha',loc).state;state=endTurn(state).state;
     }
-    state = queueMove(state, "loc_ridge");
-    state = queueMove(state, "loc_stone_house");
-    state = advancePhase(state).state;
-    const result = advancePhase(state);
-
-    expect(result.state.rng.draw_count).toBe(drawCountAfterResolution);
-    expect(result.events.map((event) => event.type)).toEqual(["UNIT_MOVED", "UNIT_MOVED"]);
-    expect(
-      result.state.events.filter((event) => event.type === "CONTACT_TRIGGERED"),
-    ).toHaveLength(1);
-  });
-
-  it("is deterministic for the same seed and varies across fixed seeds", () => {
-    const first = resolveToContact("automatic").state;
-    const second = resolveToContact("automatic").state;
-    const noContact = resolveToContact("4").state;
-
-    expect(JSON.stringify(second)).toBe(JSON.stringify(first));
-    expect(noContact.contacts_by_id.contact_stone_house.resolution_result).not.toBe(
-      first.contacts_by_id.contact_stone_house.resolution_result,
-    );
-  });
-
-  it("runs Contact resolution without DOM globals", () => {
-    expect(globalThis.document).toBeUndefined();
-    expect(globalThis.window).toBeUndefined();
-    expect(() => resolveToContact("4")).not.toThrow();
+    expect(Object.values(state.teams_by_id)).toHaveLength(3);
+    expect(state.objective.held_since_turn).toBe(3);
+    state=endTurn(state).state;expect(state.status).toBe('SUCCESS');
   });
 });
