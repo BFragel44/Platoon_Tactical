@@ -12,3 +12,11 @@
 .support-art{min-height:180px;aspect-ratio:1672/941;display:flex;flex-direction:column;justify-content:center;align-items:center;background:radial-gradient(ellipse,#62664e,#202c24);text-align:center;padding:1rem;font-size:1.2rem}
 .contact-review{border:2px solid #bbc478;margin:.8rem 0;padding:1rem}.contact-review p{margin:.4rem 0}
 @media(max-width:650px){.command-preview{overflow-wrap:anywhere}.support-art{min-height:140px}.contact-review{padding:.65rem}}
+
+/* Independent inset LOS layer: tactical highlights never replace terrain borders. */
+.terrain-los-border{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
+.los-edge{fill:none;stroke-width:6;stroke-linejoin:round}.los-edge.white{stroke:#f4f1df}.los-edge.dark{stroke:#087451}
+.terrain-card:not(.staging){padding:16px;border:1px solid #9cab91;border-radius:0}
+.terrain-card.incoming{box-shadow:0 0 0 2px #b88955}.terrain-card.combat-focus{outline-offset:3px}
+.los-explanation{font-size:10px;line-height:1.4;color:#cbd4be;margin:6px 0}
+@media(max-width:850px){.terrain-card:not(.staging){padding:12px}}

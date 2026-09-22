@@ -1,4 +1,4 @@
-import manifest from '../../public/markers/manifest.json';
+import manifest from '../markers/manifest.json';
 // Pure presentation of the already filtered player projection. Never reads simulation secrets.
 export function fireMarkers(view,location) {
   const fire=view.fire.filter(f=>f.target===location.id),markers=[];

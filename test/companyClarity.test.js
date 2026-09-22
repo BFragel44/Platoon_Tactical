@@ -1,3 +1,4 @@
+import {borders,DIRECTIONS} from '../src/sim/company/terrain.js';
 import {describe,it,expect} from 'vitest';
 import {companyAssault} from '../src/scenarios/companyAssault.js';
 import {createMission,submitCommand,advancePhase,getPlayerView,getVisibleEvents,exportReplay,replayMission,compareReplay} from '../src/sim/company/engine.js';
@@ -11,7 +12,7 @@ const fresh=seed=>createMission(companyAssault,seed??'clarity');
 function impulse(s,hq='general'){s.phase='GENERAL_INITIATIVE';s.impulse={id:'fixture',hq,commands:6,spent:0};return s;}
 function enemy(s,id,location,known=false){const e={...structuredClone(s.units.mg1),id,name:`Enemy ${id}`,faction:'enemy',location,fire:null};s.units[id]=e;if(known)spot(s,e);return e;}
 function deck(s,ids){s.deck.order=[...ids,...s.deck.order.filter(id=>!ids.includes(id))];}
-function openMap(s){for(const l of Object.values(s.locations)){l.elevation=1;l.borders='all';}}
+function openMap(s){for(const l of Object.values(s.locations)){l.elevation=1;l.borders=borders(DIRECTIONS);}}
 
 describe('Company rules and tactical clarity regressions',()=>{
  it('command/observer sides cannot fire; named reverse sides lose and recover capability',()=>{

@@ -19,3 +19,7 @@ Validation completed: 140 automated tests, production build, desktop/narrow-layo
 Revision 5 adds stable order intent and command previews, HQ action labels, corrected casualty-area and HQ donor legality, actual PDF source attribution, focused contacts, single-click complete HIT results, manifest-driven artwork and visible casualty/history markers. Browser interaction and responsive DOM checks pass; screenshot capture timed out, so visual screenshot sign-off and human comprehension acceptance remain open.
 
 Revision 6 implements initial-engagement obstruction checks, persistent direction versus affected location, point-blank departure following, source-smoke fire retention, collective enemy cease-fire checks, manifest-safe support badges, movement warnings and final-state labels. Targeted production-component browser validation passed. Human tactical acceptance remains open; the September 22 submitted revision-5 AAR is a preserved SUCCESS baseline, not proof of revision-6 acceptance.
+
+## Visible terrain borders and LOS verification
+
+Implemented in rules revision 7 / scenario 4: shared eight-direction borders, printed terrain provenance, independent SVG map borders, safe LOS explanations, stepped-elevation correction and directional spotting concealment. Existing formation panels and probability resolution are preserved. Automated and scripted validation is recorded in COMPANY_PLAYTEST_RESULTS.md; human manual acceptance remains open.

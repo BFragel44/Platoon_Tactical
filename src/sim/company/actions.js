@@ -1,3 +1,4 @@
+import { terrainProtection } from './terrain.js';
 import { values, live, good, friendly, visible, expMod, emit, draw, attempt, randomNumber, pick, result } from './core.js';
 import { adjacent, occupants, distance, los, communication, chain, coverOf, basicValue, canFire, refresh, spot, hasFire, incoming, movementReason, communicationReason, spottingLocations, vofOf, rangeOf } from './battlefield.js';
 export const ACTIONS = {
@@ -186,11 +187,14 @@ export function concentrate(s,u,t) {
   if(n)s.markers.push({type:'CONCENTRATE',location:t.location,target:t.cover?null:t.id,cover:t.cover,source:u.id,critical:n>1,value:n>1&&!t.cover?2:1});
   emit(s,'CONCENTRATE_ATTEMPT',`${visible(s,u)?u.name:'Unidentified attacker'}: ${n?'concentrated fire established':'concentrated fire failed'}.`,{actor:visible(s,u)?u.id:null,target:visible(s,t)?t.id:null,success:!!n},!visible(s,u)&&!visible(s,t));
 }
+export function spottingBaseDraws(s,u,t) {
+  const l=s.locations[t.location],protection=terrainProtection(l,s.locations[u.location]);
+  return 2+(s.locations[u.location].elevation>l.elevation?1:0)+(u.location===t.location?1:0)+(protection>=3?-1:protection===0?1:0)
+    -(t.cover?1:0)+(t.exposed?2:0)+(t.vof==='A'?1:['H','G'].includes(t.vof)?2:0)-expMod(t)-(['FO','SNIPER'].includes(t.kind)?1:0);
+}
 export function spotAttempt(s,u,id) {
   const targets=occupants(s,id).filter(t=>t.faction!==u.faction&&!s.knowledge.spotted[t.id]);
-  const l=s.locations[id];
-  const countFor=t=>2+(s.locations[u.location].elevation>l.elevation?1:0)+(u.location===id?1:0)+(l.protection>=3?-1:l.protection===0?1:0)
-    -(t.cover?1:0)+(t.exposed?2:0)+(t.vof==='A'?1:['H','G'].includes(t.vof)?2:0)-expMod(t)-(['FO','SNIPER'].includes(t.kind)?1:0);
+  const l=s.locations[id],countFor=t=>spottingBaseDraws(s,u,t);
   // Attempt against the easiest unit to spot; success reveals the whole card.
   const t=targets.sort((a,b)=>countFor(b)-countFor(a)||a.id.localeCompare(b.id))[0];
   const found=!!t&&attempt(s,u,countFor(t),'spot',`${u.name}: observe ${l.name}`)>0;

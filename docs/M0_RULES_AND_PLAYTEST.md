@@ -1,6 +1,18 @@
 # Company Assault: implemented rules and manual playtest
 
-This is the gameplay authority for `company-v1`, rules revision 6, scenario version 3. It describes a validation candidate, not a certified complete digital reproduction of Fields of Fire.
+This is the gameplay authority for `company-v1`, rules revision 7, scenario version 4. It describes a validation candidate, not a certified complete digital reproduction of Fields of Fire.
+
+## Revision 7: visible LOS borders (scenario 4)
+
+Terrain panels and simulation now share explicit N/NE/E/SE/S/SW/W/NW borders. N points toward increasing map row. White permits passage through an intervening card only when both entry and exit are white; corners govern diagonals. Dark borders do not prevent adjacent LOS. Hill overlays supersede white terrain borders. Staging has no terrain borders and retains separate communication LOS.
+
+Sources: rules 5.2.1-5.2.3 and 5.4, plus Charts & Tables 1, Spotting Attempt Draw Modifiers. Higher elevation overlooks lower terrain except the stated stepped-slope obstruction (3 -> dark 2 -> 1); same-level intervening dark terrain also blocks. Smoke/active Incoming permits LOS into, but not out of or through, a card. Same-card LOS remains available. The pure explanation trace feeds safe player-facing reasons; it does not disclose hidden support identities.
+
+The receiving border also selects dual-value terrain protection and spotting concealment. Spotting previously always used the higher protection value; it now uses the lower value across white borders. On current gullies (+2/+1), this does not change the spotting chart modifier, but matters for other dual-value terrain. Combat probabilities are unchanged.
+
+The supplied Normandy terrain sheets were visually checked. Source references use one-based sheet row/column: Open Fields 1/1/1; Hill 1/1/2; Woods 1/1/3; east-west Gully 1/1/5; Orchard 1/2/2; Marsh 1/3/6; north-south Gully 1/3/7. Sheets 2 and 3 confirm the repeated border conventions. Only existing mission terrain is implemented. Full terrain artwork, multi-story buildings and urban LOS remain deferred.
+
+Revision-6 / scenario-3 saves remain exportable but cannot strictly resume under revision 7 / scenario 4. No historical replay is migrated or edited.
 
 ## Revision 6: fire paths and continuing fire
 
@@ -8,7 +20,7 @@ Rules §§6.1.1–6.1.2, page 40 examples, §§6.3.3–6.3.4 and 8.6.4 govern th
 
 Friendly fire does not automatically cease when opposing units leave or are eliminated. Cease/Shift Fire, movement and changes in eligibility control it. Cease Fire can immediately reopen on an eligible target. Order feedback explains this; movement previews warn when the selected destination already has friendly VOF. Final mission fire markers represent historical positions only.
 
-Marker art is resolved through the public manifest; unavailable artwork (including Pending -5 and Incoming -5) uses labelled vector badges. Rules revision 6 rejects older strict saves/replays; scenario stays at version 3. Weighted combat probabilities and scenario composition are unchanged. Full grazing/overhead-fire tables remain outside the certified subset.
+Marker art is resolved through the source manifest; unavailable artwork (including Pending -5 and Incoming -5) uses labelled vector badges. Rules revision 6 rejects older strict saves/replays; scenario stays at version 3. Weighted combat probabilities and scenario composition are unchanged. Full grazing/overhead-fire tables remain outside the certified subset.
 
 ## Revision 5: trustworthy orders and visible consequences
 

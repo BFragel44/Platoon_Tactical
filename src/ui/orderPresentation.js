@@ -1,4 +1,4 @@
-import art from '../../public/assets/images/combat-art-manifest.json';
+import art from '../assets/images/combat-art-manifest.json';
 
 // Selection is player intent, never a suggestion to substitute a legal action.
 export function selectedOrder(options,action,target) {

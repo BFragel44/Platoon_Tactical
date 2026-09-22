@@ -5,7 +5,7 @@ import {createMission,getPlayerView} from '../src/sim/company/engine.js';
 import {refresh,spot,enemyCeaseFire} from '../src/sim/company/battlefield.js';
 import {move,submitCommand} from '../src/sim/company/actions.js';
 import {fireMarkers} from '../src/ui/fireMarkers.js';
-import manifest from '../public/markers/manifest.json';
+import manifest from '../src/markers/manifest.json';
 import {movementFireWarning,markerSummary,finalFireMessage} from '../src/ui/firePresentation.js';
 const fixture=()=>{const s=createMission(companyAssault,'fire-path');s.units.s11.location='r1c1';const e={...structuredClone(s.units.s21),id:'enemy',name:'Enemy',faction:'enemy',location:'r3c1',fire:null};s.units.enemy=e;spot(s,e);return s;};
 it('does not open new fire through a friendly intervening unit',()=>{

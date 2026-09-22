@@ -1,6 +1,6 @@
 import { createRng } from '../rng.js';
 import { values, live, good, friendly, expMod, visible, emit, newDeck, draw, result } from './core.js';
-import { refresh, hasFire, combatModifier, observeRecord, occupants, incoming, los, communication, communicationReason, spottingLocations } from './battlefield.js';
+import { refresh, hasFire, combatModifier, observeRecord, occupants, incoming, los, explainLos, communication, communicationReason, spottingLocations } from './battlefield.js';
 import { submitCommand as order, commandOptions } from './actions.js';
 import { resolveContacts, eligibleContacts, prepareCombat, resolvePreparedCombat, enemyActivity, capture, retreat } from './combat.js';
 export const PHASES = [
@@ -25,7 +25,7 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 6;
+export const RULES_VERSION = 7;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 const index = a => Object.fromEntries(a.map(v=>[v.id,structuredClone(v)]));
 export function createMission(scenario,seed) {
@@ -200,6 +200,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
   if(faction!=='friendly')throw new TypeError('Only the player perspective is available');
   const units=values(s.units).filter(friendly).map(u=>({...structuredClone(u),steps:u.steps.length,
     activated:s.activated.includes(u.id),impulse_completed:s.completed.includes(u.id),
+    los_explanations:Object.fromEntries(values(s.locations).map(l=>{const trace=explainLos(s,u.location,l.id);const publicTrace=explainLos({...s,support:s.support.filter(f=>f.source!=='enemy'||occupants(s,f.location).some(v=>friendly(v)||s.knowledge.spotted[v.id]))},u.location,l.id);return [l.id,{visible:trace.visible,reason:trace.visible===publicTrace.visible?publicTrace.reason:'No LOS: battlefield conditions block this view.'}];})),
     los:values(s.locations).filter(l=>los(s,u.location,l.id)).map(l=>l.id),
     communication:issuerId==='general'?'General initiative':communication(s,s.units[issuerId],u),
     communication_reason:communicationReason(s,s.units[issuerId],u),

@@ -1,26 +1,36 @@
+import { whiteBorder as white, direction } from './terrain.js';
 import { values, live, good, friendly, visible, emit } from './core.js';
 export const distance = (a,b) => Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col));
 export const occupants = (s,id) => values(s.units).filter(u => live(u) && u.location === id);
 export const adjacent = (s,id) => values(s.locations).filter(l => l.id !== id && distance(l,s.locations[id]) === 1);
 export const coverOf = (s,u) => s.locations[u.location].covers.find(c => c.id === u.cover);
 const screen = (s,id) => s.locations[id].smoke || s.support.some(f => f.status === 'ACTIVE' && f.location === id);
-function white(l,dr,dc) {
-  return l.borders === 'all' || (l.borders === 'EW' && dr === 0) || (l.borders === 'NS' && dc === 0);
-}
-export function los(s, from, to, max = 3) {
-  const a = s.locations[from], b = s.locations[to];
-  if (!a || !b) return false;
-  if (a.staging || b.staging) return false;
-  if (from === to) return true;
-  const dr = b.row-a.row, dc = b.col-a.col, d = distance(a,b);
-  if (d > max || (dr && dc && Math.abs(dr) !== Math.abs(dc)) || screen(s,from)) return false;
-  for (let i=1; i<d; i++) {
-    const mid = s.locations[`r${a.row+Math.sign(dr)*i}c${a.col+Math.sign(dc)*i}`];
-    if (!mid || screen(s,mid.id)) return false;
-    if (mid.elevation >= Math.max(a.elevation,b.elevation) && !white(mid,dr,dc)) return false;
+// Pure geometric trace. Hidden effects are sanitized separately in player projections.
+export function explainLos(s, from, to, max = 3) {
+  const a=s.locations[from], b=s.locations[to], path=[];
+  const result=(visible,reason,blocking=null)=>({visible,reason,path,blocking});
+  if(!a||!b)return result(false,'Unknown terrain.');
+  if(a.staging||b.staging)return result(false,'Staging permits communication, not combat or spotting LOS.');
+  if(from===to)return result(true,'Same card: point-blank LOS.');
+  const dr=b.row-a.row,dc=b.col-a.col,d=distance(a,b);
+  if(dr&&dc&&Math.abs(dr)!==Math.abs(dc))return result(false,'LOS follows one of eight straight directions.');
+  if(d>Math.min(max,3))return result(false,'Beyond the permitted LOS range.');
+  if(screen(s,from))return result(false,'Smoke or active incoming fire blocks outward LOS.',from);
+  for(let i=1;i<d;i++) {
+    const mid=values(s.locations).find(l=>l.row===a.row+Math.sign(dr)*i&&l.col===a.col+Math.sign(dc)*i);
+    if(!mid)return result(false,'The LOS path leaves the map.');
+    const entry=direction(-dr,-dc),exit=direction(dr,dc);
+    const clear=white(mid,-dr,-dc)&&white(mid,dr,dc);
+    // A lower card can be overlooked, except a dark intermediate step between elevations.
+    const high=Math.max(a.elevation,b.elevation),low=Math.min(a.elevation,b.elevation);
+    const overlooked=mid.elevation<high && !(mid.elevation>low);
+    path.push({location:mid.id,entry,exit,entry_border:mid.borders[entry],exit_border:mid.borders[exit],elevation:mid.elevation,overlooked:!clear&&overlooked});
+    if(screen(s,mid.id))return result(false,`LOS is blocked at ${mid.name}.`,mid.id);
+    if(mid.elevation>high || (!clear&&!overlooked))return result(false,`Blocked by ${mid.name}: intervening elevation or dark LOS border.`,mid.id);
   }
-  return true;
+  return result(true,d===1?'Adjacent terrain is visible regardless of border color.':path.some(p=>p.overlooked)?'Clear LOS: higher elevation overlooks lower dark borders.':'Clear LOS through white entry and exit borders.');
 }
+export const los=(s,from,to,max=3)=>explainLos(s,from,to,max).visible;
 export function communicationLos(s,from,to) {
   const a=s.locations[from],b=s.locations[to];
   if(!a||!b)return false;

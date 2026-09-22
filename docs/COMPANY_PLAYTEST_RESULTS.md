@@ -73,3 +73,11 @@ The new baseline `reference/playtest_replays/company-company-1-aar_9_22_26.json`
 Browser validation used a targeted fixture importing the actual production marker/warning/final-state components. Both Pending -5 and Incoming -5 rendered as readable badges, with zero image requests and no console errors; screenshot inspection passed. The warning names 2/LMG and the destination, and the mission-ended panel explicitly identifies historical fire positions. This is a component browser check, not another human mission or a claim of full manual acceptance.
 
 Revision-6 scripted comparison: all six policies ended at turn 10 and passed exact replay reconstruction. Company-1 outcomes changed with the corrected paths (direct: 40 orders / 8 casualty steps / 6 contacts left; support: 28 / 6 / 5; recovery: 31 / 4 / 6). Company-2 summaries are unchanged from revision 5. All six remain defeats; no balance changes were applied.
+
+## Revision 7: LOS borders
+
+151 automated tests and production build pass. Added directional entry/exit and diagonal corner tests, reciprocal hill/slope cases, range and smoke restrictions, dual-value combat/spotting checks, projection purity and historical-version rejection. Existing simultaneous-combat and visibility checks remain passing.
+
+All six scripted policies reconstruct exactly through strict replay. Summaries match revision 6 (orders / casualty steps / contacts remaining): company-1 direct 40/8/6, support 28/6/5, recovery 31/4/6; company-2 direct 40/8/5, support 80/6/1, recovery 57/8/5. All end in defeat at turn 10. These are automated strategies, not human acceptance runs. The current map has no level-3 stepped slope; targeted fixtures exercise that correction.
+
+Production-browser desktop screenshot inspection confirmed white Open Fields, dark hills, both gully orientations and their dark corners, and borderless staging. Selection and clearing work. Narrow viewport DOM verification found 12 terrain border SVGs, zero staging SVGs and no page overflow; narrow screenshot capture timed out, so narrow visual sign-off remains open. No browser console errors were recorded. Browser testing used an isolated local origin, preserving the user's existing mission save. No full human mission was played.
