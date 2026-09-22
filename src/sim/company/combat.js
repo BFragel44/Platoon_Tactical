@@ -1,17 +1,19 @@
 import { values, live, good, friendly, visible, emit, draw, randomNumber, pick, shuffle } from './core.js';
-import { adjacent, occupants, los, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatModifier, coverOf } from './battlefield.js';
+import { adjacent, occupants, los, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire } from './battlefield.js';
 import { seekCover, rally, grenade, concentrate, move, splitTeam } from './actions.js';
+import { combatResolutionTable, hitEffectTable, resolveCombatOutcome, resolveHitEffect } from './combatProbability.js';
 
 export function casualty(s,u,step) {
   const id=`casualty_${s.next_id++}`;
-  s.casualties.push({id,step,location:u.location,cover:u.cover,faction:u.faction,carrier:null,evacuated:false});
+  s.casualties.push({id,step,origin_name:u.name,location:u.location,cover:u.cover,faction:u.faction,carrier:null,evacuated:false});
   const names=step.personnel.map(id=>s.personnel[id]?.name).filter(Boolean);
   for(const id of step.personnel)if(s.personnel[id])s.personnel[id].status='CASUALTY';
-  emit(s,'CASUALTY',`${visible(s,u)?u.name:'Enemy formation'} lost a step${friendly(u)?`: ${names.join(', ')}`:''}.`,{actor:visible(s,u)?u.id:null,personnel:friendly(u)?step.personnel:[],step_id:visible(s,u)?step.id:null},!visible(s,u));
+  emit(s,'CASUALTY',`${visible(s,u)?u.name:'Enemy formation'} lost a step${friendly(u)?`: ${names.join(', ')}`:''}.`,{actor:visible(s,u)?u.id:null,personnel:friendly(u)?step.personnel:[],step_id:visible(s,u)?step.id:null,location:u.location},!visible(s,u));
+  if(!u.steps.length)emit(s,'FORMATION_LOST',`${u.name}: final step became a casualty.`,{actor:u.id,name:u.name,location:u.location,faction:u.faction,cause:'FINAL_CASUALTY'},!visible(s,u));
 }
-function loseAssets(s,u) {
+function loseAssets(s,u,casualtyLoss=true) {
   for(const net of u.radios) {
-    const destroyed=randomNumber(s,2,`${u.name}: radio damage`,!visible(s,u))===1;
+    const destroyed=casualtyLoss&&randomNumber(s,2,`${u.name}: radio damage`,!visible(s,u))===1;
     s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:u.location,destroyed});
     emit(s,'RADIO_LOST',`${u.name}: ${net} radio ${destroyed?'destroyed':'dropped for recovery'}.`,{actor:u.id,net,destroyed},!visible(s,u));
   }
@@ -31,24 +33,64 @@ export function applyHit(s,u,letters) {
     }
   }
   if(u.steps.length===1&&u.kind==='SQUAD'){const child=splitTeam(s,u,'F',u.steps.pop());child.pinned=true;affected.push(child);if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[child.id]={id:child.id};}
-  if(u.steps.length){u.pinned=true;affected.push(u);}else{u.removed='BROKEN';loseAssets(s,u);}
+  if(u.steps.length){u.pinned=true;if(!affected.includes(u))affected.push(u);}else{u.removed='BROKEN';loseAssets(s,u,letters.includes('C'));}
   if(['P','L'].includes(u.cohesion))u.saved=0;
   emit(s,'FORMATION_CHANGED',`${u.name}: ${letters} hit; ${u.steps.length} step(s) remain in the original formation.`,
     {actor:u.id,effect:letters,formations:affected.map(v=>v.id)},!visible(s,u));
 }
-export function resolveCombat(s) {
-  // Fix all target modifiers before any losses. Stable IDs also make object insertion order irrelevant.
-  const targets=values(s.units).filter(live).map(u=>({id:u.id,modifier:combatModifier(s,u)})).filter(t=>t.modifier);
-  for(const {id,modifier} of targets) {
-    const u=s.units[id],hidden=!visible(s,u);
-    const card=draw(s,1,`${u.name}: combat effect`,hidden)[0];
-    const outcome=card.combat[modifier.ncm+4];
-    emit(s,'COMBAT_RESULT',`${u.name}: ${outcome.toLowerCase()} (net modifier ${modifier.ncm>=0?'+':''}${modifier.ncm}).`,{actor:u.id,outcome,...modifier},hidden);
-    if(outcome==='MISS')u.pinned=false;
-    if(outcome==='PIN')u.pinned=true;
-    if(outcome==='HIT')applyHit(s,u,draw(s,1,`${u.name}: hit effect`,hidden)[0].hit[u.experience]);
+const distributionRecord=d=>({total:d.total,counts:{...d.counts},probabilities:{...d.probabilities}});
+const sourceRecord=(s,source)=>{
+  const unit=s.units[source?.source_id],known=unit&&visible(s,unit);
+  return source?{kind:source.kind,source_id:source.source_id??null,origin:source.origin,value:source.value,vof:source.vof,
+    faction:unit?.faction??(source.kind==='OFF_MAP_SUPPORT'?'enemy':null),known:!!known,
+    label:source.kind==='OFF_MAP_SUPPORT'?source.label:source.kind==='ON_MAP_INDIRECT'?'On-map mortar fire':source.kind==='GRENADE'?'Grenade effect':known?unit.name:'Unidentified fire'}:null;
+};
+export function prepareCombat(s) {
+  const resolutions=[];
+  for(const u of values(s.units).filter(live)) {
+    const exposure=combatExposure(s,u);if(!exposure)continue;
+    const id=`combat_t${s.turn}_${u.id}`;
+    const resolution={id,target_id:u.id,target_name:u.name,target_location:u.location,target_faction:u.faction,target_visible:!!visible(s,u),
+      target_experience:u.experience,target_kind:u.kind,target_steps:u.steps.length,target_cohesion:u.cohesion,target_pinned:u.pinned,
+      ncm:exposure.ncm,total:exposure.total,parts:structuredClone(exposure.parts),modifiers:structuredClone(exposure.modifiers),
+      sources:exposure.sources.map(source=>sourceRecord(s,source)),strongest:sourceRecord(s,exposure.strongest),
+      probabilities:distributionRecord(combatResolutionTable[exposure.ncm]),hit_probabilities:distributionRecord(hitEffectTable[u.experience]),
+      status:'PENDING',result:null,roll:null,hit_effect:null,hit_roll:null,after:null,casualty_steps:0};
+    resolutions.push(resolution);
+    emit(s,'COMBAT_RESOLUTION_PREPARED',`${visible(s,u)?u.name:'Enemy formation'} faces incoming fire at NCM ${exposure.ncm>=0?'+':''}${exposure.ncm}.`,
+      {resolution_id:id,actor:visible(s,u)?u.id:null,location:u.location,ncm:exposure.ncm,modifiers:structuredClone(exposure.modifiers),probabilities:resolution.probabilities},!visible(s,u));
   }
-  // Deliberately do not refresh until cleanup (3.7.4).
+  s.pending_combat=resolutions;
+  return resolutions;
+}
+export function resolvePreparedCombat(s,resolutionId) {
+  const resolution=s.pending_combat?.find(r=>r.id===resolutionId);
+  if(!resolution||resolution.status!=='PENDING')throw new Error('Combat resolution is unavailable or already resolved.');
+  const u=s.units[resolution.target_id],hidden=!resolution.target_visible;
+  const combat=resolveCombatOutcome(resolution.ncm,s.rng);s.rng=combat.rng;
+  resolution.roll=combat.roll;resolution.result=combat.result;
+  emit(s,'COMBAT_RESOLVED',`${visible(s,u)?u.name:'Enemy formation'}: ${combat.result.toLowerCase()} (NCM ${resolution.ncm>=0?'+':''}${resolution.ncm}).`,
+    {resolution_id:resolution.id,actor:visible(s,u)?u.id:null,location:resolution.target_location,ncm:resolution.ncm,
+      modifiers:structuredClone(resolution.modifiers),probabilities:resolution.probabilities,roll:combat.roll,result:combat.result},hidden);
+  if(combat.result==='MISS')u.pinned=false;
+  if(combat.result==='PIN')u.pinned=true;
+  const beforeCasualties=s.casualties.length,beforeEvents=s.events.length;
+  if(combat.result==='HIT') {
+    const hit=resolveHitEffect(resolution.target_experience,s.rng);s.rng=hit.rng;resolution.hit_roll=hit.roll;resolution.hit_effect=hit.effect;
+    emit(s,'HIT_EFFECT_RESOLVED',`${visible(s,u)?u.name:'Enemy formation'}: ${hit.effect} hit effect (${resolution.target_experience}).`,
+      {resolution_id:resolution.id,actor:visible(s,u)?u.id:null,experience:resolution.target_experience,
+        probabilities:resolution.hit_probabilities,roll:hit.roll,effect:hit.effect},hidden);
+    applyHit(s,u,hit.effect);
+  }
+  const changed=s.events.slice(beforeEvents).find(e=>e.type==='FORMATION_CHANGED');
+  resolution.after=(changed?.formations??[u.id]).map(id=>s.units[id]).filter(Boolean).map(v=>({id:v.id,name:v.name,cohesion:v.cohesion,steps:v.steps.length,pinned:v.pinned,removed:v.removed}));
+  resolution.casualty_steps=s.casualties.length-beforeCasualties;resolution.status='RESOLVED';
+  return resolution;
+}
+// Fixture/diagnostic batch helper. Normal play prepares and resolves one visible item at a time through engine.js.
+export function resolveCombat(s) {
+  if(!s.pending_combat?.length)prepareCombat(s);
+  for(const resolution of s.pending_combat)if(resolution.status==='PENDING')resolvePreparedCombat(s,resolution.id);
 }
 function newEnemy(s,kind,location,cover,trigger,spotted) {
   const id=`enemy_${s.next_id++}`;
@@ -74,9 +116,10 @@ function available(s,p,trigger) {
     (!p.trench||s.enemy_pool.trench>=p.trench)&&(!p.bunker||s.enemy_pool.bunker>=p.bunker)&&
     (!p.incoming||!s.support.some(f=>f.source==='enemy'))&&placementCandidates(s,p,trigger).length>0;
 }
-export function resolveContacts(s) {
+export const eligibleContacts = s => values(s.contacts).filter(pc=>!pc.resolved&&occupants(s,pc.location).some(friendly));
+export function resolveContacts(s,contactId=null) {
   const counts={NO_CONTACT:{A:0,B:0},CONTACT:{A:7,B:5},ENGAGED:{A:5,B:3},HEAVILY_ENGAGED:{A:3,B:2}};
-  for(const pc of values(s.contacts).filter(pc=>!pc.resolved&&occupants(s,pc.location).some(friendly))) {
+  for(const pc of eligibleContacts(s).filter(pc=>contactId===null||pc.id===contactId)) {
     const count=counts[s.activity][pc.type];
     const contact=count===0||draw(s,count,`Evaluate contact ${pc.type} at ${s.locations[pc.location].name}`).some(c=>c.word==='Contact');
     pc.resolved=true;
@@ -122,12 +165,14 @@ function attack(s,u) {
 }
 // First matching row of Deliberate Defence / No Leader LAT hierarchy.
 export function enemyActivity(s) {
+  enemyCeaseFire(s);
   const locations=[...new Set(values(s.units).filter(u=>live(u)&&!friendly(u)).map(u=>u.location))];
+  const processed=new Set();
   for(const loc of shuffle(s,locations)) {
     const units=occupants(s,loc).filter(u=>!friendly(u)).sort((a,b)=>Number(good(a))-Number(good(b))||a.id.localeCompare(b.id));
     for(const u of units) {
-      if(!live(u))continue;
-      if(u.fire&&!occupants(s,u.fire).some(v=>v.faction!==u.faction))u.fire=null;
+      if(!live(u)||processed.has(u.id))continue;
+      processed.add(u.id);
       refresh(s);
       const same=occupants(s,u.location).some(friendly),under=hasFire(s,u.location),covered=!!u.cover;
       const roll=n=>randomNumber(s,n,`${u.name}: activity`,!visible(s,u));

@@ -11,3 +11,5 @@ Named personnel provide history beneath squad steps. A casualty step removes its
 This validation branch deliberately follows the selected Fields of Fire third-edition infantry course rules closely, with explicit implementation limitations recorded in the rules guide. It is not a claim to reproduce the entire game. Campaigns, persistent rosters, vehicles, air assault and replacements remain deferred.
 
 The authoritative implemented behavior and acceptance status are in [M0 rules and playtest guide](M0_RULES_AND_PLAYTEST.md).
+
+The rules-and-clarity milestone separates rules correctness from tactical balance. Command restrictions and combat consequences must be understandable without diagnostics. Presentation replays history; it never changes combat resolution or grants hidden information. Cinematic scenes, sound and mission-file loading remain later work.

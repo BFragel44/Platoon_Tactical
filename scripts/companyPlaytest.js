@@ -1,5 +1,5 @@
 import { mkdirSync,writeFileSync } from 'node:fs';
-import { createMission,advancePhase,selectHQ,submitCommand,getPlayerView,exportReplay,replayMission } from '../src/sim/company/engine.js';
+import { createMission,advancePhase,resolveCombat,selectHQ,submitCommand,getPlayerView,exportReplay,replayMission } from '../src/sim/company/engine.js';
 import { companyAssault } from '../src/scenarios/companyAssault.js';
 import { isDeepStrictEqual } from 'node:util';
 
@@ -34,6 +34,7 @@ export function run(seed,policy){
   let s=createMission(companyAssault,seed),guard=0;
   while(s.status==='ACTIVE'&&guard++<800){
     const v=getPlayerView(s,'friendly',s.impulse?.hq==='general'?'co':s.impulse?.hq);
+    if(v.combat_resolution?.status==='PENDING'){s=resolveCombat(s,v.combat_resolution.id).state;continue;}
     if(!v.impulse&&v.eligible_hqs.length){s=selectHQ(s,v.eligible_hqs[0]).state;continue;}
     const c=v.impulse?choose(v,policy):null;
     if(c){const r=submitCommand(s,c);if(!r.accepted)throw new Error(r.reason);s=r.state;}else s=advancePhase(s).state;

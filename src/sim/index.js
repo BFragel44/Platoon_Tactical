@@ -10,9 +10,10 @@ export const submitCommand = (state, command) => isCompany(state) ? company.subm
 export const advancePhase = state => (isCompany(state)?company:legacyPhases).advancePhase(state);
 export const endTurn = state => (isCompany(state)?company:legacyPhases).endTurn(state);
 export const abortMission = state => (isCompany(state)?company:legacyPhases).abortMission(state);
+export const resolveCombat = (state,resolutionId) => isCompany(state)?company.resolveCombat(state,resolutionId):{state,events:[],accepted:false,reason:'Legacy missions do not expose combat resolutions.'};
 export const getPlayerView = (state,...args) => (isCompany(state)?company:legacyView).getPlayerView(state,...args);
 export const getVisibleEvents = (state,...args) => (isCompany(state)?company:legacyView).getVisibleEvents(state,...args);
 export const getAfterActionReport = (state,...args) => (isCompany(state)?company:legacyView).getAfterActionReport(state,...args);
-export { selectHQ, exportReplay, replayMission } from './company/engine.js';
+export { selectHQ, exportReplay, replayMission, compareReplay } from './company/engine.js';
 export { createCommandRecord, createFactionKnowledge, createFireRelationshipRecord } from './records.js';
 export { createRng, drawRandom } from './rng.js';

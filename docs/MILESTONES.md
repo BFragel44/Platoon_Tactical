@@ -1,17 +1,21 @@
 # Milestones
 
-## Current: Company Assault validation candidate
+## Current: Correct fire paths and explain continuing fire (revision 6)
 
 One ten-turn company mission, not a tutorial. Two platoons and support assets must clear eight Potential Contacts and the resulting defenders. Company/platoon command, movement, known-position combat and uncertain contacts are parts of one encounter.
 
 Implemented: local seeded action deck; HQ activation/initiative/reserves; communications; explicit sequence; squads and cohesion; persistent fire; spotting, cover, recovery, grenades, indirect fire, enemy activity, capture/retreat; outcomes, player reports and replay/AAR export.
 
-Validation completed: automated company rules tests, production build, browser opening/activation/movement checks, and six full scripted policy runs with exact replay verification. See [playtest record](COMPANY_PLAYTEST_RESULTS.md).
+Validation completed: 140 automated tests, production build, desktop/narrow-layout, contact, HIT and reload browser checks, and six full scripted policy runs with exact replay verification. Combat probabilities are derived from the vendored 50-card deck; 3.7.4 now freezes and presents one receiving formation at a time with an explicit seeded Resolve operation and staged HIT effect. See [playtest record](COMPANY_PLAYTEST_RESULTS.md).
 
-**Acceptance remains open.** Scripted strategies all lost. Full human tactical runs and remaining rule-fidelity checks listed in the rules guide must precede an accepted first playable milestone. Passing component tests is not acceptance.
+**Implementation complete; human acceptance remains open.** Exact table derivation, roll boundaries, RNG consumption, frozen ordering, nonrepeatable resolution, fire persistence, replay, fog-of-war projections and recovery presentation state have regression coverage. The submitted human run succeeded under historical rules revision 1 and remains unchanged. Revision-5 scripted strategies all lost with the same summaries as revision 4; this does not justify balance changes. Another human playtest must confirm the pre-result screen makes the stakes understandable.
 
 ## Subsequent work
 
 1. Validate the reference edge cases and improve player comprehension through human playtests.
 2. Tune scenario/force choices only after separating rule defects from weak tactics; record any departure from the course.
 3. Revisit campaign and persistence only after a satisfying, understandable complete encounter.
+
+Revision 5 adds stable order intent and command previews, HQ action labels, corrected casualty-area and HQ donor legality, actual PDF source attribution, focused contacts, single-click complete HIT results, manifest-driven artwork and visible casualty/history markers. Browser interaction and responsive DOM checks pass; screenshot capture timed out, so visual screenshot sign-off and human comprehension acceptance remain open.
+
+Revision 6 implements initial-engagement obstruction checks, persistent direction versus affected location, point-blank departure following, source-smoke fire retention, collective enemy cease-fire checks, manifest-safe support badges, movement warnings and final-state labels. Targeted production-component browser validation passed. Human tactical acceptance remains open; the September 22 submitted revision-5 AAR is a preserved SUCCESS baseline, not proof of revision-6 acceptance.

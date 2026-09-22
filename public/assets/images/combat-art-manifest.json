@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "purpose": "Placeholder combat-resolution presentation artwork supplied by the project owner.",
+  "orientation": {
+    "US": "faces right in source",
+    "GER": "faces left in source"
+  },
+  "files": {
+    "US": {
+      "PRE": "US_COMBAT_PRE.png",
+      "MISS": "US_COMBAT_MISS.png",
+      "PIN": "US_COMBAT_PIN.png",
+      "HIT": "US_COMBAT_HIT.png"
+    },
+    "GER": {
+      "PRE": "GER_COMBAT_PRE.png",
+      "MISS": "GER_COMBAT_MISS.png",
+      "PIN": "GER_COMBAT_PIN.png",
+      "HIT": "GER_COMBAT_HIT.png",
+      "UNSPOTTED": "GER_COMBAT_UNSPOTTED.png"
+    }
+  },
+  "assets": {
+    "US_COMBAT_PRE.png": {
+      "attacker_flip": false,
+      "defender_flip": true
+    },
+    "US_COMBAT_MISS.png": {
+      "attacker_flip": false,
+      "defender_flip": true
+    },
+    "US_COMBAT_PIN.png": {
+      "attacker_flip": false,
+      "defender_flip": true
+    },
+    "US_COMBAT_HIT.png": {
+      "attacker_flip": false,
+      "defender_flip": true
+    },
+    "GER_COMBAT_PRE.png": {
+      "attacker_flip": true,
+      "defender_flip": false
+    },
+    "GER_COMBAT_MISS.png": {
+      "attacker_flip": true,
+      "defender_flip": false
+    },
+    "GER_COMBAT_PIN.png": {
+      "attacker_flip": true,
+      "defender_flip": false
+    },
+    "GER_COMBAT_HIT.png": {
+      "attacker_flip": true,
+      "defender_flip": false
+    },
+    "GER_COMBAT_UNSPOTTED.png": {
+      "attacker_flip": false,
+      "defender_flip": false
+    }
+  }
+}
