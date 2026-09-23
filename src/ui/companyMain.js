@@ -1,3 +1,4 @@
+import {commandHeader,bindCommandHeader} from './commandHeader.js';
 import {terrainBorders} from './terrainBorders.js';
 import {movementFireWarning,markerSummary,finalFireMessage} from './firePresentation.js';
 import '../style.css';
@@ -15,7 +16,7 @@ let seed='company-1',mission=createMission(companyAssault,seed),selected=null,ac
 let combatId=null,combatStage='pre',combatOpen=true,contactAcknowledged=null;
 let recovery={raw:null,bundle:null,error:null},storageError='',recoveryPending=false,turnStart=checkpoint(mission);
 try{recovery=readRecovery(localStorage);recoveryPending=recovery.raw!==null;}catch(e){storageError=`Local storage unavailable: ${e.message}. Export replays manually.`;}
-const presentation=()=>({selected,action,target,generalIssuer,combatId,combatStage,combatOpen,contactAcknowledged,feedback});
+const presentation=()=>({selected,action,target,generalIssuer,combatId,combatStage,combatOpen,contactAcknowledged,feedback,feedbackKind});
 function persist(previous=null,replace=false){
   if(recoveryPending&&!replace)return;
   if(replace||previous&&mission.turn!==previous.turn)turnStart=checkpoint(mission,presentation());
@@ -25,10 +26,11 @@ function persist(previous=null,replace=false){
 function resume(which){
   try{const restored=resumeCheckpoint(companyAssault,recovery.bundle?.[which]);mission=restored.state;seed=mission.seed;
     const p=restored.presentation;selected=p.selected??null;action=p.action??'MOVE';target=p.target??'';generalIssuer=p.generalIssuer??'co';combatId=p.combatId??null;combatStage=completeCombatStage(p.combatStage??'pre');combatOpen=p.combatOpen??true;contactAcknowledged=p.contactAcknowledged??null;
-    turnStart=recovery.bundle.turnStart;recoveryPending=false;feedback=`Restored turn ${mission.turn}, ${PHASES.find(p=>p[0]===mission.phase)[1]}.`;persist();
+    turnStart=recovery.bundle.turnStart;recoveryPending=false;feedbackKind='Recovery';feedback=`Restored turn ${mission.turn}, ${PHASES.find(p=>p[0]===mission.phase)[1]}.`;persist();
   }catch(e){storageError=`Cannot resume: ${e.message} The saved record is unchanged and can be exported.`;}
   render();
 }
+let cleanupHeader=null,feedbackKind='Status';
 let feedback='Advance through the opening segments to Company HQ’s activation impulse.';
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 const stateText=u=>`${u.steps} step${u.steps===1?'':'s'} · ${u.pinned?'PINNED · ':''}${({GOOD:u.pinned?'Original side':['HQ','STAFF'].includes(u.kind)?'Command side · no basic fire':u.kind==='FO'?'Observer side · no basic fire':'Good order',P:'Paralyzed',L:'Litter team',F:['HQ','STAFF'].includes(u.kind)?'Named Fire Team · command side unavailable':u.kind==='FO'?'Named Fire Team · observer capability unavailable':'Fire team',A:'Assault team'})[u.cohesion]??u.cohesion}${u.exposed?' · Exposed':''}`;
@@ -79,20 +81,11 @@ function render(){
   const combatBlocked=progress?.phase==='COMBAT_EFFECTS'&&['awaiting_resolution','reviewing_result'].includes(progress.status)&&!!combat;
   const advanceLabel=v.impulse?'Complete impulse →':progress?.phase==='COMBAT_EFFECTS'?(progress.status==='reviewing'?'Continue to cleanup →':combat?'Combat resolution open':'Resolve hidden effects →'):contact?(contact.resolved?(contact.next_location?'Continue to next contact →':'Continue to pinned recovery →'):'Resolve contact →'):'Resolve segment →';
   const reviewEvents=progress?events.filter(e=>e.sequence>progress.events_after&&!['PHASE_ENTERED','DECK_SHUFFLED'].includes(e.type)):[];
-  app.innerHTML=`<div class="command-ribbon"><header class="topbar"><div><div class="eyebrow">COMPANY ASSAULT / VALIDATION MISSION</div><h1>Platoon Tactical</h1><small>${v.contacts.filter(c=>!c.resolved).length} contacts left · clear all defenders by turn 10</small></div>
-    <div class="turn-stat">TURN <strong>${v.turn}</strong><small>/ ${v.turn_limit}</small></div><div class="command-stat"><strong>${v.impulse?.commands??'—'}</strong> commands<small>${v.impulse?esc(name(v.impulse.hq))+' · '+v.impulse.spent+'/6 spent':'No active command impulse'}</small></div>
-    <button id="advance" class="primary" ${locked||combatBlocked||(!v.impulse&&v.eligible_hqs.length)?'disabled':''}>${advanceLabel}</button></header><div class="ribbon-segment"><b>${esc(v.phase_label)}</b><span>${esc(progress?"Review resolved results before continuing.":v.phase_description)}</span><small>Next: ${esc(progress?.remaining?'Next contact card':PHASES[(phaseIndex+1)%PHASES.length][1])}</small></div></div>
+  cleanupHeader?.();
+  app.innerHTML=`${commandHeader({v,name,seed,recovery,recoveryPending,locked,combatBlocked,advanceLabel,phaseIndex,progress,feedback,feedbackKind})}
     ${aar?`<section class="mission-result" role="status"><h2>Mission ${esc(aar.outcome)}</h2><p>${esc(finalFireMessage)}</p><p>${esc(aar.objectives.at(-1)?.text)}</p><button id="result-replay">Export replay</button><button id="result-aar">Export AAR (report)</button><a href="#aar">Review after-action report ↓</a></section>`:''}
     ${storageError||recovery.error?`<p class="storage-warning" role="alert">${esc(storageError||recovery.error)}</p>`:''}
     ${recoveryPending?'<p class="recovery-prompt">A saved mission is available. Resume it, restore its turn start, or start a new mission.</p>':''}
-    <details class="mission-drawer" ${recoveryPending?'open':''}><summary>Mission · briefing, recovery and exports</summary>
-      <p>${esc(v.briefing)}</p><div class="setup"><label>Replay seed<input id="seed" value="${esc(seed)}"></label><button id="restart">Start new mission</button><button id="export">Export current replay</button></div>
-      <div class="recovery-controls"><button id="resume" ${!recovery.bundle?'disabled':''}>Resume latest</button><button id="restore" ${!recovery.bundle?'disabled':''}>Restore turn start</button><button id="save-export" ${!recovery.raw?'disabled':''}>Export saved record</button><button id="previous-export">Export prior replacement backup</button></div>
-      <p>${recovery.bundle?`Latest: turn ${recovery.bundle.latest.turn} · ${esc(recovery.bundle.latest.phase)} · ${esc(recovery.bundle.latest.timestamp)}. Turn start: ${recovery.bundle.turnStart.turn} · ${esc(recovery.bundle.turnStart.phase)} · ${esc(recovery.bundle.turnStart.timestamp)}.`:'No readable recovery record.'}</p>
-      <details><summary>Sequence of play</summary><ol class="sequence">${PHASES.map(([id,label])=>`<li ${id===v.phase?'aria-current="step"':''}>${esc(label)}</li>`).join('')}</ol></details>
-    </details>
-    <section class="command-mat" aria-label="HQ command display">${v.units.filter(u=>['HQ','STAFF'].includes(u.kind)).map(u=>`<div class="${v.impulse?.hq===u.id?'current-hq':''}"><b>${esc(u.name)}</b>${u.activated?`<small class="activation-status">${u.impulse_completed?'Activated · impulse completed':v.impulse?.hq===u.id?'Activated · spending commands':'Activated · commands available in 3.3.1c'}</small>`:''}<span>${v.impulse?.hq===u.id?`${v.impulse.commands} available · ${v.impulse.spent}/6 spent`:`${u.saved} saved`}</span><small title="${esc(u.communication_reason)}">${esc(u.communication??(v.impulse?'No communication link':'No active issuer'))}</small>${v.eligible_hqs.includes(u.id)?`<button data-hq="${u.id}" ${v.impulse||locked?'disabled':''}>Select HQ</button>`:''}</div>`).join('')}</section>
-    <p class="feedback" role="status">${esc(feedback)}</p>
     ${progress&&progress.phase!=='CONTACTS'?`<details class="segment-review" ${progress.phase==='CONTACTS'?'open':''}><summary>${progress.phase==='CONTACTS'?'Contact review':'Combat results'} · ${esc(v.phase_label)}</summary>${reviewEvents.length?reviewEvents.map(e=>`<p>${esc(e.text)}</p>`).join(''):'<p>No resolved combat effects yet.</p>'}${progress.phase==='COMBAT_EFFECTS'&&combat?'<button id="reopen-combat">Open current combat</button>':''}<p>Next: ${progress.phase==='CONTACTS'&&progress.remaining?`${progress.remaining} occupied contact card(s) remain; activity is updated.`:esc(PHASES[(phaseIndex+1)%PHASES.length][1])}</p></details>`:''}
     ${contact?`<section class="contact-review panel" aria-label="Contact resolution"><h2>${contact.resolved?'Contact result':'Potential contact'} · ${esc(name(contact.location)??'No occupied contact')}</h2><p>${contact.resolved?'Review this result, then Continue using the segment control.':'Resolve this terrain card using the segment control. Only one contact is evaluated.'}</p>${contact.events.map(e=>`<p>${esc(e.text)}</p>`).join('')}<p>${contactLocations.size>1?`Focused locations: ${[...contactLocations].filter(Boolean).map(id=>esc(name(id))).join(' · ')}`:''}</p></section>`:''}
     ${combat&&combatOpen?combatScreen(combat,v,name):''}
@@ -133,28 +126,29 @@ function render(){
     <details><summary>Diagnostics and card draws</summary><button id="fast-forward" ${locked?'disabled':''}>Skip remaining orders and finish turn</button><pre>${esc(JSON.stringify({phase:v.phase,impulse:v.impulse,combat:unit.combat,draws:events.filter(e=>e.type==='CARDS_DRAWN').slice(-20)},null,2))}</pre></details>
     <button class="abort" id="abort" ${locked?'disabled':''}>Abort mission</button></aside></div>
     ${aar?`<section id="aar" class="panel aar"><div class="eyebrow">AFTER-ACTION REPORT · PLAYER PERSPECTIVE</div><h2>${esc(aar.outcome)}</h2><p>${aar.orders.length} orders · ${aar.casualties.length} observed casualty steps · ${aar.formations.length} formation changes.</p><button id="aar-export">Export AAR (report)</button><h3>Objective</h3><p>${esc(aar.objectives.at(-1)?.text)}</p><details open><summary>Casualties and formation history</summary><ul>${[...aar.casualties,...aar.formations].sort((a,b)=>a.sequence-b.sequence).map(e=>`<li>T${e.turn}: ${esc(e.text)}</li>`).join('')}</ul></details><details><summary>Orders issued</summary><ol>${aar.orders.map(e=>`<li>T${e.turn}: ${esc(e.text)}</li>`).join('')}</ol></details></section>`:''}`;
-  app.querySelector('#advance').onclick=()=>{if(contact?.resolved&&contact.next_location&&contactAcknowledged!==contactKey){contactAcknowledged=contactKey;persist();render();return;}const previous=PHASES.find(p=>p[0]===mission.phase);const before=mission;const r=advancePhase(mission);mission=r.state;feedback=r.reason??`${mission.phase===previous[0]?'Current segment result':'Previous segment'} — ${previous[1]}: ${r.events.filter(e=>!e.hidden&&!['CARDS_DRAWN','PHASE_ENTERED'].includes(e.type)).at(-1)?.text??'Complete.'}`;if(mission.impulse?.hq!=='general'&&mission.impulse?.hq)selected=mission.impulse.hq;if(mission!==before)persist(before);render();};
-  app.querySelectorAll('[data-hq]').forEach(b=>b.onclick=()=>{const before=mission;const r=selectHQ(mission,b.dataset.hq);mission=r.state;selected=b.dataset.hq;feedback=r.events.at(-1)?.text??r.reason;if(mission!==before)persist(before);render();});
+  cleanupHeader=bindCommandHeader(app,{openFile:recoveryPending});
+  app.querySelector('#advance').onclick=()=>{if(contact?.resolved&&contact.next_location&&contactAcknowledged!==contactKey){contactAcknowledged=contactKey;persist();render();return;}const previous=PHASES.find(p=>p[0]===mission.phase);const before=mission;const r=advancePhase(mission);mission=r.state;feedbackKind=mission.phase===previous[0]?'Current segment result':'Previous segment';feedback=r.reason??`${previous[1]}: ${r.events.filter(e=>!e.hidden&&!['CARDS_DRAWN','PHASE_ENTERED'].includes(e.type)).at(-1)?.text??'Complete.'}`;if(mission.impulse?.hq!=='general'&&mission.impulse?.hq)selected=mission.impulse.hq;if(mission!==before)persist(before);render();};
+  app.querySelectorAll('[data-hq]').forEach(b=>b.onclick=()=>{const before=mission;const r=selectHQ(mission,b.dataset.hq);mission=r.state;selected=b.dataset.hq;feedbackKind='HQ selection';feedback=r.events.at(-1)?.text??r.reason;if(mission!==before)persist(before);render();});
   app.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>{selected=b.dataset.unit;persist();render();});
-  const resolveButton=app.querySelector('#combat-resolve');if(resolveButton)resolveButton.onclick=()=>{const before=mission,r=resolveCombat(mission,combat.id);mission=r.state;combatStage='result';feedback=r.reason??`Combat resolved: ${getPlayerView(mission).combat_resolution?.result}.`;if(mission!==before)persist(before);render();};
+  const resolveButton=app.querySelector('#combat-resolve');if(resolveButton)resolveButton.onclick=()=>{const before=mission,r=resolveCombat(mission,combat.id);mission=r.state;combatStage='result';feedbackKind='Combat result';feedback=r.reason??`Combat resolved: ${getPlayerView(mission).combat_resolution?.result}.`;if(mission!==before)persist(before);render();};
 
-  const nextCombat=app.querySelector('#combat-next');if(nextCombat)nextCombat.onclick=()=>{const before=mission,r=advancePhase(mission);mission=r.state;combatId=null;combatStage='pre';combatOpen=true;feedback=r.reason??'Proceeding to the next frozen combat exposure.';if(mission!==before)persist(before);render();};
+  const nextCombat=app.querySelector('#combat-next');if(nextCombat)nextCombat.onclick=()=>{const before=mission,r=advancePhase(mission);mission=r.state;combatId=null;combatStage='pre';combatOpen=true;feedbackKind='Combat review';feedback=r.reason??'Proceeding to the next frozen combat exposure.';if(mission!==before)persist(before);render();};
   const closeCombat=app.querySelector('#combat-close');if(closeCombat)closeCombat.onclick=()=>{combatOpen=false;persist();render();};
   if(aar){app.querySelector('#result-replay').onclick=()=>download(`company-${seed}-replay.json`,exportReplay(mission));app.querySelector('#result-aar').onclick=()=>download(`company-${seed}-aar.json`,aar);}
   app.querySelector('#clear-selection').onclick=()=>{selected=null;persist();render();};
   app.querySelector('.map-layer').onclick=e=>{if(!e.target.closest('button,details,.pdf-badge')){selected=null;persist();render();}};
   app.querySelector('#resume').onclick=()=>resume('latest');app.querySelector('#restore').onclick=()=>resume('turnStart');
   app.querySelector('#save-export').onclick=()=>download('company-recovery.json',recovery.raw);
-  app.querySelector('#previous-export').onclick=()=>{try{const raw=localStorage.getItem(`${SAVE_KEY}-previous`);if(raw)download('company-prior-save.json',raw);else{feedback='No prior replacement backup.';render();}}catch(e){storageError=e.message;render();}};
+  app.querySelector('#previous-export').onclick=()=>{try{const raw=localStorage.getItem(`${SAVE_KEY}-previous`);if(raw)download('company-prior-save.json',raw);else{feedbackKind='File';feedback='No prior replacement backup.';render();}}catch(e){storageError=e.message;render();}};
   const reopen=app.querySelector('#reopen-combat');if(reopen)reopen.onclick=()=>{combatOpen=true;persist();render();};
   app.querySelector('#unit').onchange=e=>{selected=e.target.value||null;persist();render();};
   if(opt){app.querySelector('#action').onchange=e=>{action=e.target.value;target='';persist();render();};const t=app.querySelector('#target');if(t)t.onchange=e=>{target=e.target.value;persist();render();};
-    app.querySelector('#order').onclick=()=>{const before=mission;const r=submitCommand(mission,{type:action,unit_id:selected,issuer_id:issuer,target_id:target||null});mission=r.state;feedback=r.reason??r.events.filter(e=>!e.hidden&&!['CARDS_DRAWN','COMMAND_RESOLVED'].includes(e.type)).map(e=>e.text).join(' ');if(mission!==before)persist(before);render();};}
+    app.querySelector('#order').onclick=()=>{const before=mission;const r=submitCommand(mission,{type:action,unit_id:selected,issuer_id:issuer,target_id:target||null});mission=r.state;feedbackKind='Last order';feedback=r.reason??r.events.filter(e=>!e.hidden&&!['CARDS_DRAWN','COMMAND_RESOLVED'].includes(e.type)).map(e=>e.text).join(' ');if(mission!==before)persist(before);render();};}
   const gi=app.querySelector('#issuer');if(gi)gi.onchange=e=>{generalIssuer=e.target.value;render();};
-  app.querySelector('#restart').onclick=()=>{seed=app.querySelector('#seed').value.trim()||'company-1';mission=createMission(companyAssault,seed);combatId=null;combatStage='pre';combatOpen=true;contactAcknowledged=null;selected='co';feedback='Mission started with seed '+seed+'.';recoveryPending=false;persist(null,true);render();};
+  app.querySelector('#restart').onclick=()=>{seed=app.querySelector('#seed').value.trim()||'company-1';mission=createMission(companyAssault,seed);combatId=null;combatStage='pre';combatOpen=true;contactAcknowledged=null;selected='co';feedbackKind='Status';feedback='Mission started with seed '+seed+'.';recoveryPending=false;persist(null,true);render();};
   app.querySelector('#export').onclick=()=>download(`company-${seed}-replay.json`,exportReplay(mission));
-  app.querySelector('#abort').onclick=()=>{const before=mission;combatId=null;mission=abortMission(mission).state;feedback='Mission aborted. Review the AAR below.';persist(before);render();};
-  app.querySelector('#fast-forward').onclick=()=>{const before=mission;mission=endTurn(mission).state;feedback='Diagnostic fast-forward complete; unused orders were skipped.';persist(before);render();};
+  app.querySelector('#abort').onclick=()=>{const before=mission;combatId=null;mission=abortMission(mission).state;feedbackKind='Mission outcome';feedback='Mission aborted. Review the AAR below.';persist(before);render();};
+  app.querySelector('#fast-forward').onclick=()=>{const before=mission;mission=endTurn(mission).state;feedbackKind='Previous segment';feedback='Diagnostic fast-forward complete; unused orders were skipped.';persist(before);render();};
   const ae=app.querySelector('#aar-export');if(ae)ae.onclick=()=>download(`company-${seed}-aar.json`,aar);
 }
 render();

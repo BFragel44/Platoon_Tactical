@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Header interaction checks</title></head><body><main id="fixture"></main><button id="outside">Outside header</button><pre id="results"></pre><script type="module">
+import '../src/style.css';import '../src/ui/company.css';
+import {commandHeader,bindCommandHeader} from '../src/ui/commandHeader.js';
+import {createMission,getPlayerView} from '../src/sim/company/engine.js';import {companyAssault} from '../src/scenarios/companyAssault.js';
+const s=createMission(companyAssault,'header-browser'),before=JSON.stringify(s),root=document.querySelector('#fixture'),results=[];
+root.innerHTML=commandHeader({v:getPlayerView(s),name:id=>id,seed:s.seed,recovery:{},recoveryPending:true,locked:true,advanceLabel:'Resolve segment',phaseIndex:0,feedback:'Long result. '.repeat(60),feedbackKind:'Last order'});
+const dispose=bindCommandHeader(root,{openFile:true});
+const check=(name,ok)=>{if(!ok)throw Error(name);results.push('PASS '+name);};
+const opened=()=>[...root.querySelectorAll('.menu-panel')].filter(p=>!p.hidden);
+try{
+ check('Pending recovery opens File',opened()[0]?.id==='panel-file');check('Recovery keeps progression locked',root.querySelector('#advance').disabled);
+ root.querySelector('#menu-mission').click();check('One menu at a time',opened().length===1&&opened()[0].id==='panel-mission');
+ document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));check('Escape closes and returns focus',opened().length===0&&document.activeElement.id==='menu-mission');
+ root.querySelector('#menu-file').dispatchEvent(new KeyboardEvent('keydown',{key:'ArrowDown',bubbles:true}));check('ArrowDown enters File controls',document.activeElement.id==='seed');
+ document.querySelector('#outside').click();check('Outside click closes menu',opened().length===0);
+ root.querySelector('#menu-settings').click();check('Settings placeholder',opened()[0].textContent.includes('Game settings coming later'));
+ document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
+ root.querySelector('.header-result summary').click();check('Full result can expand',root.querySelector('.header-result').open);
+ check('Presentation leaves simulation and RNG unchanged',JSON.stringify(s)===before);
+ dispose();root.querySelector('#menu-file').click();document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));check('Cleanup removes document listeners',opened().length===1);
+ document.querySelector('#results').textContent=results.join('\n');
+}catch(error){document.querySelector('#results').textContent=results.join('\n')+'\nFAIL '+error.message;throw error;}
+</script></body></html>
