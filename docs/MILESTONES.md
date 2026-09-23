@@ -23,3 +23,7 @@ Revision 6 implements initial-engagement obstruction checks, persistent directio
 ## Visible terrain borders and LOS verification
 
 Implemented in rules revision 7 / scenario 4: shared eight-direction borders, printed terrain provenance, independent SVG map borders, safe LOS explanations, stepped-elevation correction and directional spotting concealment. Existing formation panels and probability resolution are preserved. Automated and scripted validation is recorded in COMPANY_PLAYTEST_RESULTS.md; human manual acceptance remains open.
+
+## Explicit reconstitution and readable fire paths
+
+Rules revision 8 / scenario 4 requires explicit contributor teams and an eliminated squad target, enforcing the restored counter's step capacity. Cease Fire retains its rule-correct card-wide effect with clearer source/result feedback. Selectable projected PDF traces and All Pinned marker explanations address the September 23 notes. Automated regressions, the six scripted policies and a production build pass. Human acceptance remains open for reconstitution and long-range fire-path comprehension.

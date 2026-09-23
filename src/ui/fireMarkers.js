@@ -7,8 +7,8 @@ export function fireMarkers(view,location) {
   if(fire.length) {
     const value=Math.min(...fire.map(f=>f.value));
     const art=({'0':'small-arms','-1':'automatic','-3':'heavy','2':'all-pinned'})[value];
-    markers.push({art,label:`VOF ${value>=0?'+':''}${value}`,detail:fire.map(f=>`${f.source?name(f.source):'Unidentified attacker'}: ${loc(f.origin)} → ${loc(f.target)} (${f.value}).`).join(' ')+
-      ' Applies to occupants; same-card fire affects opponents only. Established fire may continue after a position is cleared.'});
+    markers.push({art,label:`${value===2?'All Pinned fire':'VOF'} ${value>=0?'+':''}${value}`,detail:fire.map(f=>`${f.source?name(f.source):'Unidentified attacker'}: ${loc(f.origin)} → ${loc(f.target)} (${f.value}${f.value===2?'; pinned firing source':''}).`).join(' ')+
+      ' This marker belongs on the card receiving fire, not the firing card. Same-card basic fire affects opposing occupants, never its own source. Established fire may continue after a position is cleared.'});
     const directions=new Set(fire.filter(f=>!f.indirect&&f.origin!==location.id).map(f=>{const a=view.locations.find(l=>l.id===f.origin);return `${Math.sign(a.row-location.row)},${Math.sign(a.col-location.col)}`;}));
     if(directions.size>1)markers.push({art:'crossfire',label:'Crossfire −1',detail:'Fire arrives from at least two directions. Crossfire adds −1 separately from the strongest applicable VOF.'});
   }
@@ -26,11 +26,24 @@ export function pdfDirections(view,location) {
   for(const f of view.fire.filter(f=>f.origin===location.id&&f.target!==location.id&&!f.indirect)) {
     const target=view.locations.find(l=>l.id===f.target),dr=Math.sign(target.row-location.row),dc=Math.sign(target.col-location.col);
     const side=f.friendly?'friendly':f.source?'enemy':'unknown',key=`${dr},${dc},${side}`;
-    if(!groups.has(key))groups.set(key,{dr,dc,side,targets:[],sources:[]});
+    if(!groups.has(key))groups.set(key,{dr,dc,side,targets:[],sources:[],paths:[]});
     groups.get(key).targets.push(target.name);
+    groups.get(key).paths.push({origin:location.id,target:f.target,side});
     const unit=[...view.units,...view.enemies].find(u=>u.id===f.source);
     groups.get(key).sources.push(`${unit?.name??'Unidentified source'} — ${unit?.kind==='MORTAR'?'mortar direct lay':'basic fire'} → ${target.name}`);
   }
   return [...groups.values()].map(d=>({...d,angle:Math.atan2(d.dc,d.dr)*180/Math.PI,
     label:`${d.side==='unknown'?'Unidentified':d.side==='friendly'?'Friendly':'Enemy'} PDF: ${[...new Set(d.sources)].join('; ')}. Only these sources contribute; other card occupants may not fire.`}));
+}
+export function pdfPaths(view) {
+  const locations=new Map(view.locations.map(l=>[l.id,l]));
+  return view.fire.filter(f=>f.origin!==f.target&&!f.indirect&&locations.has(f.origin)&&locations.has(f.target)).map(f=>{
+    const origin=locations.get(f.origin),target=locations.get(f.target);
+    const dr=Math.sign(target.row-origin.row),dc=Math.sign(target.col-origin.col);
+    const steps=Math.max(Math.abs(target.row-origin.row),Math.abs(target.col-origin.col));
+    const cards=Array.from({length:steps+1},(_,i)=>view.locations.find(l=>l.row===origin.row+dr*i&&l.col===origin.col+dc*i)?.id).filter(Boolean);
+    const side=f.friendly?'friendly':f.source?'enemy':'unknown';
+    return {id:`${f.origin}|${f.target}|${side}`,origin:f.origin,target:f.target,side,cards,
+      label:`${side==='unknown'?'Unidentified':f.source?view.units.find(u=>u.id===f.source)?.name??view.enemies.find(u=>u.id===f.source)?.name??'Enemy':'Friendly fire'}: ${origin.name} → ${target.name}; ${cards.length-2} intervening card${cards.length===3?'':'s'}.`};
+  });
 }

@@ -79,7 +79,7 @@ describe('Trustworthy orders and visible consequences',()=>{
   expect(completeCombatStage('effect')).toBe('result');expect(supportContext({kind:'OFF_MAP_SUPPORT'})).toBe(true);expect(supportContext({kind:'BASIC_FIRE'})).toBe(false);
  });
  it('exports an identified versioned AAR and rejects earlier rule revisions',()=>{
-  const s=abortMission(fresh()).state,a=getAfterActionReport(s);expect(a).toMatchObject({record_type:'AAR',rules_version:7,scenario_version:4,seed:'company-1'});
+  const s=abortMission(fresh()).state,a=getAfterActionReport(s);expect(a).toMatchObject({record_type:'AAR',rules_version:8,scenario_version:4,seed:'company-1'});
   const record=exportReplay(s);expect(replayMission(companyAssault,record)).toEqual(s);record.rules_version=4;expect(()=>replayMission(companyAssault,record)).toThrow();
  });
  it('previews one contact and projects only the just-resolved visible result',()=>{

@@ -1,6 +1,14 @@
 # Company Assault: implemented rules and manual playtest
 
-This is the gameplay authority for `company-v1`, rules revision 7, scenario version 4. It describes a validation candidate, not a certified complete digital reproduction of Fields of Fire.
+This is the gameplay authority for `company-v1`, rules revision 8, scenario version 4. It describes a validation candidate, not a certified complete digital reproduction of Fields of Fire.
+
+## Revision 8: explicit squad reconstitution and readable PDF paths
+
+The third-edition Action Menus §4.2.3i permits an attempt using 2–4 unpinned Assault/Fire Teams to restore a previously removed squad counter with the same number of steps. The selected recipient must now be one of those teams. The command records every contributor and the removed squad to restore. All contributors must be one-step teams in the same card area; the chosen counter must have room for their steps. Current Company Assault rifle squad counters have a three-step capacity. A successful attempt consumes only the named teams; a failed attempt consumes the command and draw but changes no formation. The earlier behavior implicitly gathered up to four teams and restored the first eliminated squad, regardless of the player's chosen formation.
+
+Action Menus §4.2.2k makes Cease Fire card-wide once one firing occupant is reached by communication. This was already the simulation behavior; the order is now labelled by card and its result names sources that stopped or automatically reopened fire. It does not require individual cease orders. The All Pinned +2 VOF counter remains on the affected card, with its pinned source explained. Same-card basic fire excludes the firing unit's own side. Selectable PDF traces connect source and affected card through intermediate terrain; they change presentation only and disclose only projected sources.
+
+Revision-7 saves and executable replays remain exportable but fail strict revision-8 loading. The September 23 human replay/AAR remain unchanged as historical evidence. No scenario composition, combat probabilities or balance values changed.
 
 ## Revision 7: visible LOS borders (scenario 4)
 

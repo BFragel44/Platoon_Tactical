@@ -3,7 +3,7 @@ import { values, live, good, friendly, visible, expMod, emit, draw, attempt, ran
 import { adjacent, occupants, distance, los, communication, chain, coverOf, basicValue, canFire, refresh, spot, hasFire, incoming, movementReason, communicationReason, spottingLocations, vofOf, rangeOf } from './battlefield.js';
 export const ACTIONS = {
   ACTIVATE:'Activate HQ / staff', MOVE:'Move', PLATOON_MOVE:'Move platoon', INFILTRATE:'Infiltrate', PLATOON_INFILTRATE:'Infiltrate platoon',
-  INFILTRATE_WITHIN:'Infiltrate within card', SEEK_COVER:'Seek cover', ENTER_COVER:'Move within card', SPOT:'Spot position', SHIFT_FIRE:'Shift fire', CEASE_FIRE:'Cease fire',
+  INFILTRATE_WITHIN:'Infiltrate within card', SEEK_COVER:'Seek cover', ENTER_COVER:'Move within card', SPOT:'Spot position', SHIFT_FIRE:'Shift fire', CEASE_FIRE:'Cease fire on this card',
   CONCENTRATE:'Concentrate fire', GRENADE:'Grenade / close assault', RALLY:'Remove pin', RECOVER:'Recover cohesion',
   DEPLOY_FIRE_TEAM:'Deploy named Fire Team', RECONSTITUTE:'Reconstitute squad', RECONSTITUTE_HQ:'Reconstitute HQ', DETACH:'Detach assault team',
   CALL_MORTAR:'Call 81mm fire', CALL_ARTILLERY:'Call 105mm fire', INDIRECT:'Direct mortar section',
@@ -25,6 +25,7 @@ export function eligibleTargets(s,u,type) {
   if(['SHIFT_FIRE','CALL_MORTAR','CALL_ARTILLERY'].includes(type)) return values(s.locations).filter(l=>!l.staging&&los(s,u.location,l.id)).map(l=>l.id);
   if(['GRENADE','CONCENTRATE'].includes(type)) return areaTargets(s,u).filter(t=>los(s,u.location,t.location,type==='GRENADE'?(vofOf(u)==='G'?rangeOf(u):0):rangeOf(u))).map(t=>t.id);
   if(type==='RECONSTITUTE_HQ') return values(s.units).filter(t=>friendly(t)&&t.kind==='HQ'&&!live(t)).map(t=>t.id);
+  if(type==='RECONSTITUTE') return values(s.units).filter(t=>t.faction===u.faction&&t.kind==='SQUAD'&&!live(t)).map(t=>t.id);
   if(type==='PICKUP_RADIO') return s.assets.filter(a=>a.location===u.location&&['RADIO','EQUIPMENT'].includes(a.type)&&!a.destroyed).map(a=>a.id);
   if(type==='PICKUP_CASUALTY') return s.casualties.filter(c=>c.location===u.location&&c.cover===u.cover&&c.faction===u.faction&&!c.carrier&&!c.evacuated).map(c=>c.id);
   return [];
@@ -92,8 +93,11 @@ export function orderReason(s,c) {
   if(type.startsWith('SIGNAL_')&&(!good(u)||!u.assets[type==='SIGNAL_ADVANCE'?'advance':'cease'])) return 'This unit has no remaining asset for that signal.';
   if(type==='DETACH'&&(!good(u)||!((u.kind==='SQUAD'&&u.steps.length>=3)||(u.kind==='MG'&&u.steps.length===2)))) return 'Detach from a good-order squad of at least three steps or a two-step weapon team.';
   if(type==='RECONSTITUTE') {
-    const candidates=occupants(s,u.location).filter(t=>t.faction===u.faction&&t.cover===u.cover&&!t.pinned&&t.kind==='LAT'&&['A','F'].includes(t.cohesion));
-    if(candidates.length<2||!values(s.units).some(t=>t.kind==='SQUAD'&&!live(t)&&t.faction===u.faction)) return 'Need 2–4 co-located unpinned generic assault/fire teams and an eliminated squad counter.';
+    const squad=s.units[target],ids=c.contributor_ids;
+    if(!squad||squad.kind!=='SQUAD'||live(squad)||squad.faction!==u.faction) return 'Choose a previously eliminated squad counter to restore.';
+    if(!Array.isArray(ids)||ids.length<2||ids.length>4||new Set(ids).size!==ids.length||!ids.includes(u.id)) return 'Choose 2–4 distinct contributing teams, including the selected team.';
+    if(ids.length>(squad.max_steps??squad.steps.length)) return `${squad.name} can hold at most ${squad.max_steps??0} steps; choose fewer teams.`;
+    if(ids.some(id=>{const t=s.units[id];return !live(t)||t.faction!==u.faction||t.kind!=='LAT'||!['A','F'].includes(t.cohesion)||t.pinned||t.location!==u.location||t.cover!==u.cover||t.steps.length!==1;})) return 'Every contributor must be an unpinned one-step Fire/Assault Team in the same area.';
   }
   if(type==='RECONSTITUTE_HQ') {
     const t=s.units[target];
@@ -250,13 +254,13 @@ export function execute(s,c) {
   }
   else if(type==='DETACH'){const step=u.steps.pop();splitTeam(s,u,'A',step);}
   else if(type==='RECONSTITUTE') {
-    const group=occupants(s,u.location).filter(v=>v.faction===u.faction&&v.cover===u.cover&&!v.pinned&&v.kind==='LAT'&&['A','F'].includes(v.cohesion)).slice(0,4);
+    const group=c.contributor_ids.map(id=>s.units[id]);
     if(attempt(s,issuer,2,'rally','Reconstitute squad')) {
-      const squad=values(s.units).find(v=>v.kind==='SQUAD'&&!live(v)&&v.faction===u.faction);
+      const squad=s.units[c.target_id];
       squad.steps=group.flatMap(v=>v.steps);squad.location=u.location;squad.cover=u.cover;squad.cohesion='GOOD';squad.removed=null;squad.pinned=false;squad.exposed=group.some(v=>v.exposed);squad.fire=null;
       squad.experience=group.filter(v=>v.experience==='Line').length>=Math.ceil(group.length/2)?'Line':'Green';
       for(const v of group){v.steps=[];v.removed='RECONSTITUTED';}
-      emit(s,'FORMATION_RECONSTITUTED',`${squad.name} reconstituted from ${group.length} teams.`,{actor:squad.id,contributors:group.map(v=>v.id)});
+      emit(s,'FORMATION_RECONSTITUTED',`${squad.name} restored with ${group.length} steps from ${group.map(v=>v.name).join(', ')}.`,{actor:squad.id,contributors:group.map(v=>v.id),location:u.location});
     }
   }
   else if(type==='RECONSTITUTE_HQ') {
@@ -279,7 +283,9 @@ export function submitCommand(state,command) {
   const reason=orderReason(state,command);
   if(reason)return {state,events:[],accepted:false,reason};
   const s=structuredClone(state),u=s.units[command.unit_id],key=actionKey(u,command.type,command.target_id);
-  const event=emit(s,'COMMAND_ISSUED',`${s.impulse.hq==='general'?'General initiative':s.units[s.impulse.hq].name}: ${ACTIONS[command.type]} — ${u.name}${command.target_id?' → '+(s.locations[command.target_id]?.name??s.units[command.target_id]?.name??command.target_id):''}.`,{command:structuredClone(command)});
+  const beforeFire=command.type==='CEASE_FIRE'||command.type==='SHIFT_FIRE'?occupants(s,u.location).filter(v=>v.faction===u.faction&&(v.fire||v.indirect)).map(v=>v.id):[];
+  const contributors=command.type==='RECONSTITUTE'?` using ${command.contributor_ids.map(id=>s.units[id].name).join(', ')}`:'';
+  const event=emit(s,'COMMAND_ISSUED',`${s.impulse.hq==='general'?'General initiative':s.units[s.impulse.hq].name}: ${ACTIONS[command.type]} — ${u.name}${command.target_id?' → '+(s.locations[command.target_id]?.name??s.units[command.target_id]?.name??command.target_id):''}${contributors}.`,{command:structuredClone(command)});
   s.impulse.commands-=costOf(command.type);s.impulse.spent+=costOf(command.type);
   u.used.push(`${s.impulse.id}:${key}`);
   execute(s,command);
@@ -287,7 +293,9 @@ export function submitCommand(state,command) {
   refresh(s);
   if(['CEASE_FIRE','SHIFT_FIRE'].includes(command.type)){
     const fires=s.fire.filter(f=>f.origin===u.location&&s.units[f.source].faction===u.faction);
-    emit(s,'FIRE_ORDER_RESULT',fires.length?`${command.type==='CEASE_FIRE'?'Cease fire: eligible targets caused fire to reopen':'Shift fire resolved'} toward ${[...new Set(fires.map(f=>s.locations[f.target].name))].join(', ')}.`:'Fire stopped; no eligible target caused automatic reopening.',{actor:u.id,location:u.location});
+    const stopped=beforeFire.map(id=>s.units[id].name).join(', ')||'No active sources';
+    const reopened=[...new Set(fires.map(f=>s.units[f.source].name))].join(', ');
+    emit(s,'FIRE_ORDER_RESULT',`${command.type==='CEASE_FIRE'?'Card-wide cease fire':'Card-wide shift fire'} at ${s.locations[u.location].name}. Previous sources: ${stopped}. ${fires.length?`${command.type==='CEASE_FIRE'?'Automatic fire reopened':'Fire now directed'} toward ${[...new Set(fires.map(f=>s.locations[f.target].name))].join(', ')} by ${reopened}.`:'Fire stopped; no eligible target caused automatic reopening.'}`,{actor:u.id,location:u.location,affected:beforeFire,reopened:[...new Set(fires.map(f=>f.source))]});
   }
   emit(s,'COMMAND_RESOLVED','Order resolved; fire relationships updated.',{caused_by_event_id:event.id});
   s.replay.push({op:'submitCommand',command:structuredClone(command)});
@@ -296,8 +304,8 @@ export function submitCommand(state,command) {
 export function commandOptions(s,u,issuerId) {
   return Object.entries(ACTIONS).map(([type,label])=>{
     const targets=eligibleTargets(s,u,type);
-    const targeted=['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','INDIRECT','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
-    const checks=(targeted?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id})}));
+    const targeted=['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','INDIRECT','RECONSTITUTE','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
+    const checks=(targeted?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id,contributor_ids:type==='RECONSTITUTE'?[u.id,...occupants(s,u.location).filter(t=>t.id!==u.id&&t.faction===u.faction&&t.cover===u.cover&&!t.pinned&&t.kind==='LAT'&&['A','F'].includes(t.cohesion)).slice(0,Math.max(0,(s.units[target_id]?.max_steps??3)-1)).map(t=>t.id)]:undefined})}));
     const displayLabel=type==='RECONSTITUTE_HQ'?'Reconstitute eliminated HQ':type==='DEPLOY_FIRE_TEAM'&&['HQ','STAFF'].includes(u.kind)?'Deploy HQ Fire Team':type==='RECOVER'&&u.named&&u.cohesion==='F'?(['HQ','STAFF'].includes(u.kind)?'Restore HQ command side':u.kind==='FO'?'Restore observer side':'Restore weapon side'):label;
     return {type,label:displayLabel,cost:costOf(type),targeted,targets:checks,available:checks.some(c=>!c.reason),reason:checks.find(c=>c.reason)?.reason??'No eligible target.'};
   });

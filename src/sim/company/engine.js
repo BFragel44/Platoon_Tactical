@@ -25,7 +25,7 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 7;
+export const RULES_VERSION = 8;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 const index = a => Object.fromEntries(a.map(v=>[v.id,structuredClone(v)]));
 export function createMission(scenario,seed) {
@@ -38,7 +38,7 @@ export function createMission(scenario,seed) {
   const surnames=['Miller','Davis','Wilson','Taylor','Anderson','Thomas','Moore','Martin','Jackson','Thompson','White','Harris','Clark','Lewis','Robinson','Walker','Hall','Allen','Young','King','Wright','Scott','Green','Baker','Adams','Nelson','Hill','Campbell','Mitchell','Roberts','Carter','Phillips','Evans','Turner','Parker','Collins','Edwards','Stewart','Morris','Rogers','Reed','Cook','Morgan','Bell','Murphy','Bailey','Rivera','Cooper','Richardson','Cox','Howard','Ward','Torres','Peterson','Gray','Ramirez','James','Watson','Brooks','Kelly','Sanders','Price','Bennett','Wood','Barnes','Ross','Henderson','Coleman','Jenkins','Perry','Powell','Long','Patterson','Hughes','Flores','Washington','Butler','Simmons','Foster','Gonzales','Bryant','Alexander','Russell','Griffin','Diaz','Hayes','Myers','Ford','Hamilton','Graham','Sullivan','Wallace','Woods','Cole','West','Jordan','Owens','Reynolds','Fisher','Ellis'];
   let person=0;
   for(const raw of scenario.units) {
-    const u={...structuredClone(raw),cohesion:'GOOD',original_experience:raw.experience,named:raw.kind!=='SQUAD',pinned:false,exposed:false,cover:null,fire:null,indirect:null,
+    const u={...structuredClone(raw),max_steps:raw.steps,cohesion:'GOOD',original_experience:raw.experience,named:raw.kind!=='SQUAD',pinned:false,exposed:false,cover:null,fire:null,indirect:null,
       saved:0,used:[],removed:null,assets:structuredClone(scenario.assets[raw.id]??{})};
     // Four named people per rifle step; command/weapon steps have two. No extra casualty roll.
     u.steps=Array.from({length:raw.steps},(_,n)=>({id:`${u.id}_step${n+1}`,personnel:Array.from({length:raw.kind==='SQUAD'?4:2},()=>{

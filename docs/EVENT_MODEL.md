@@ -41,3 +41,7 @@ Contact presentation consumes only the current segment's visible event slice, in
 ## Revision 6 fire explanation
 
 `FIRE_ESTABLISHED` adds a visibility-safe reason for the affected card (engaged, continuing at a cleared position, moved along the existing direction, or blocked by smoke/incoming). `FIRE_ORDER_RESULT` explains stopped, shifted or immediately reopened fire following Cease/Shift Fire. Existing source anonymization and causal-reference filtering apply. Mission-ending markers are frozen historical display, not new combat events.
+
+## Revision 8 order records
+
+`RECONSTITUTE` commands record `target_id` for the previously removed squad and `contributor_ids` for the chosen teams, including the selected recipient. `FORMATION_RECONSTITUTED` identifies the restored counter, its contributing teams and card. Failed attempts have only the issued order and draw; they do not remove teams. `FIRE_ORDER_RESULT` records the card-wide set of prior firing sources and any sources that reopened or shifted after refresh. UI PDF traces derive only from the existing visibility-filtered fire projection; they create no simulation events.
