@@ -131,6 +131,12 @@ Exports include `rules_version: 3` and scenario `version: 3`. Strict replay reje
 
 ## Known fidelity limitations / follow-up acceptance work
 
+### Testing Notes 6: rule interpretation and current display
+
+Third-edition §§6.1.1–6.1.2 govern the new explanations. An established PDF/VOF does not cease when an opponent is captured or leaves; Cease/Shift Fire changes it and eligible automatic fire can reopen. Same-card basic fire applies to opposing occupants, never its own side. A cleared point-blank card can display held established fire with **no current opposing recipient**. Movement can change the affected card along a PDF; a Fire Mission Update can remove an Incoming marker and reopen an existing path. The German Litter Team in the submitted run did not project basic VOF.
+
+The normal player view now shows only friendly dropped recoverable equipment and names it in pickup targets; hidden enemy equipment is not projected. Combat review uses the segment's recorded event boundary, and combat remains full-width above the map. Source/path/recipient explanations, HQ counter side and radio status, and pinned-recovery highlights are presentation changes. Rules revision 8 and scenario version 4 remain unchanged. Human validation of these explanations is still required.
+
 - Enemy tie-breaking, counter reuse, full weapon-specific breakdown charts, jamming/short fire and the complete range of action-menu options are not exhaustively reproduced. Exhort, runners, radio-net switching and platoon grenade/concentrated-fire orders are not present.
 - The enemy LAT hierarchy is a compact implementation; some litter-team casualty-seeking and reconstitution branches remain simplified. The course's ignore-removal/no-action exception is applied.
 - Named-person casualty history is step-based; it does not distinguish wounds from deaths. Full transport/equipment handling is deferred.

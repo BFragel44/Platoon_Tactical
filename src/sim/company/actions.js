@@ -132,8 +132,8 @@ export function move(s,u,target,infiltrate=false) {
   const following=occupants(s,from).filter(v=>v.faction!==u.faction&&v.fire===from&&(!friendly(v)||s.knowledge.spotted[u.id])&&!occupants(s,from).some(t=>t.id!==u.id&&t.faction===u.faction));
   if(u.pinned||u.cohesion==='P') {
     for(const c of s.casualties.filter(c=>c.carrier===u.id))c.carrier=null;
-    for(const net of u.radios)s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:from});
-    for(const [key,quantity] of Object.entries(u.assets))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,location:from});
+    for(const net of u.radios)s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:from,faction:u.faction});
+    for(const [key,quantity] of Object.entries(u.assets))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,location:from,faction:u.faction});
     u.radios=[];u.assets={};
     emit(s,'ASSETS_DROPPED',`${u.name} dropped carried equipment and casualties before withdrawing.`,{actor:u.id,location:from},!visible(s,u));
   }

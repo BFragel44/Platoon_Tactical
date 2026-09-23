@@ -14,7 +14,7 @@ export function casualty(s,u,step) {
 function loseAssets(s,u,casualtyLoss=true) {
   for(const net of u.radios) {
     const destroyed=casualtyLoss&&randomNumber(s,2,`${u.name}: radio damage`,!visible(s,u))===1;
-    s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:u.location,destroyed});
+    s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:u.location,destroyed,faction:u.faction});
     emit(s,'RADIO_LOST',`${u.name}: ${net} radio ${destroyed?'destroyed':'dropped for recovery'}.`,{actor:u.id,net,destroyed},!visible(s,u));
   }
   u.radios=[];u.assets={};u.saved=0;

@@ -217,6 +217,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     strongest:pending.strongest?{...structuredClone(pending.strongest),source_id:pending.strongest.known?pending.strongest.source_id:null}:null,
     sources:pending.sources.map(source=>({...structuredClone(source),source_id:source.known?source.source_id:null}))}:null;
   const segment_progress=s.phase==='COMBAT_EFFECTS'&&s.segment_progress?{phase:s.segment_progress.phase,status:s.segment_progress.status,
+    events_after:s.segment_progress.events_after,index:s.segment_progress.index,total:s.segment_progress.total,
     visible_total:s.pending_combat.filter(r=>r.target_visible).length,visible_resolved:s.pending_combat.filter(r=>r.target_visible&&r.status==='RESOLVED').length}:structuredClone(s.segment_progress);
   const contactEvents=s.phase==='CONTACTS'&&s.segment_progress?getVisibleEvents(s,'friendly',s.segment_progress.events_after):[];
   const contact_review=s.phase==='CONTACTS'?{location:s.segment_progress?.contact??eligibleContacts(s)[0]?.location??null,next_location:eligibleContacts(s)[0]?.location??null,resolved:!!s.segment_progress,events:contactEvents}:null;
@@ -230,6 +231,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     markers:s.markers.filter(m=>occupants(s,m.location).some(u=>friendly(u)||s.knowledge.spotted[u.id])).map(m=>({type:m.type,location:m.location,value:m.value,critical:!!m.critical})),
     support:s.support.map(f=>({location:f.location,status:f.status,value:f.value})),
     personnel:values(s.personnel),casualties:s.casualties.filter(c=>c.faction==='friendly').map(c=>({...structuredClone(c),label:`${c.origin_name??'Friendly formation'} casualty step`,carrier_name:c.carrier?s.units[c.carrier]?.name:null})),
+    assets:s.assets.filter(a=>!a.destroyed&&a.faction==='friendly').map(a=>({...structuredClone(a),label:a.type==='RADIO'?`${a.net} radio`:`${String(a.key??'Equipment').replaceAll('_',' ')}${a.quantity>1?` ×${a.quantity}`:''}`,carrier_name:a.carrier?s.units[a.carrier]?.name:null})),
     deck:{draws:getVisibleEvents(s).filter(e=>e.type==='CARDS_DRAWN').reduce((n,e)=>n+e.card_ids.length,0)},
   };
 }

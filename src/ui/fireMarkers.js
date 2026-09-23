@@ -47,3 +47,12 @@ export function pdfPaths(view) {
       label:`${side==='unknown'?'Unidentified':f.source?view.units.find(u=>u.id===f.source)?.name??view.enemies.find(u=>u.id===f.source)?.name??'Enemy':'Friendly fire'}: ${origin.name} → ${target.name}; ${cards.length-2} intervening card${cards.length===3?'':'s'}.`};
   });
 }
+export function fireExplanation(view,fire) {
+  const source=[...view.units,...view.enemies].find(u=>u.id===fire.source);
+  const occupants=[...view.units,...view.enemies].filter(u=>u.location===fire.target&&u.steps&&!u.removed);
+  const opponents=occupants.filter(u=>(u.faction==='friendly')!==fire.friendly);
+  const sameCard=fire.origin===fire.target;
+  const recipient=opponents.length?`Visible opposing recipients: ${opponents.map(u=>u.name).join(', ')}.`:'No known opposing recipient.';
+  const reason=fire.reason==='CONTINUING_AT_CLEARED_POSITION'?'Established fire held at a cleared position.':fire.reason==='INTERCEPTED_OR_FOLLOWING'?'Movement changed the affected card along the established direction.':fire.reason?.startsWith('BLOCKED')?'Smoke or Incoming fire interrupts the outward path.':'Established engagement.';
+  return `${source?.name??(fire.friendly?'Friendly formation':'Unidentified source')} ${source?.kind==='MORTAR'?'(mortar direct lay)':'(basic fire)'}: ${view.locations.find(l=>l.id===fire.origin)?.name??fire.origin} → ${view.locations.find(l=>l.id===fire.target)?.name??fire.target}. ${reason} ${recipient}${sameCard?' Same-card basic fire affects only the opposing side; the firing side does not attack itself.':''}`;
+}
