@@ -54,3 +54,9 @@ Enemy stale-fire orders apply collectively before enemy activity; cleanup also c
 ## Terrain LOS contract (revision 7)
 
 `src/sim/company/terrain.js` owns eight-direction border definitions, printed-sheet references and receiving-border protection. Scenario 4 supplies explicit border objects (null for staging); hill overlays are applied during scenario construction. `explainLos` returns visibility, reason, crossed entry/exit borders, elevations and blocker without mutation; `los` retains its boolean interface. Player unit projections add sanitized `los_explanations` keyed by location. The SVG renderer consumes the same location borders and has no tactical state of its own. Selection/contact outlines and PDF markers use separate layers. No combat event or RNG operation is introduced by inspecting LOS.
+
+## Mission foundation, revision 9
+
+`src/scenarios/missions.js` owns the catalog and availability explanations. `createMission` rejects definitions explicitly marked unplayable. `previewMissionSetup` returns a safe, read-only setup projection, never an active mission. `materializeScenario` creates seeded terrain and validates tactical controls, equipment, attachments and staging positions. `missionKnowledge` separates terrain discovery from combat/spotting LOS. Replay creation/loading carries the original setup choices and checks both rules and mission-content versions.
+
+Mission-specific contacts, events and special-enemy modules are development implementations behind the Keep Up the Fire availability gate. They do not replace the playable course's authored tables. See KEEP_UP_THE_FIRE_STATUS.md before treating any draft subsystem as complete. The new setup preview is separate from the full-width combat screen.

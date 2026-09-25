@@ -1,0 +1,56 @@
+[
+  {
+    "seed": "kut-1",
+    "policy": "direct",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 100,
+    "casualty_steps": 12,
+    "contacts_remaining": 5
+  },
+  {
+    "seed": "kut-1",
+    "policy": "support",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 124,
+    "casualty_steps": 10,
+    "contacts_remaining": 0
+  },
+  {
+    "seed": "kut-1",
+    "policy": "recovery",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 100,
+    "casualty_steps": 17,
+    "contacts_remaining": 4
+  },
+  {
+    "seed": "kut-2",
+    "policy": "direct",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 103,
+    "casualty_steps": 11,
+    "contacts_remaining": 1
+  },
+  {
+    "seed": "kut-2",
+    "policy": "support",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 66,
+    "casualty_steps": 12,
+    "contacts_remaining": 6
+  },
+  {
+    "seed": "kut-2",
+    "policy": "recovery",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 84,
+    "casualty_steps": 13,
+    "contacts_remaining": 7
+  }
+]

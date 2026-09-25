@@ -1,5 +1,7 @@
+import {prepareSpecialTargets,specialActivity} from './specialEnemies.js';
+import {resolveMissionContact} from './missionContacts.js';
 import { values, live, good, friendly, visible, emit, draw, randomNumber, pick, shuffle } from './core.js';
-import { adjacent, occupants, los, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire } from './battlefield.js';
+import { adjacent, occupants, los, unitLos, coverAvailable, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire } from './battlefield.js';
 import { seekCover, rally, grenade, concentrate, move, splitTeam } from './actions.js';
 import { combatResolutionTable, hitEffectTable, resolveCombatOutcome, resolveHitEffect } from './combatProbability.js';
 
@@ -14,8 +16,12 @@ export function casualty(s,u,step) {
 function loseAssets(s,u,casualtyLoss=true) {
   for(const net of u.radios) {
     const destroyed=casualtyLoss&&randomNumber(s,2,`${u.name}: radio damage`,!visible(s,u))===1;
-    s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:u.location,destroyed,faction:u.faction});
+    s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:u.location,...(s.mission_rules?.specialEnemies?{cover:u.cover}:{}),destroyed,faction:u.faction});
     emit(s,'RADIO_LOST',`${u.name}: ${net} radio ${destroyed?'destroyed':'dropped for recovery'}.`,{actor:u.id,net,destroyed},!visible(s,u));
+  }
+  if(s.mission_rules?.specialEnemies)for(const [key,quantity] of Object.entries(u.assets))if(quantity){
+    s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,location:u.location,cover:u.cover,faction:u.faction});
+    emit(s,'ASSETS_DROPPED',`${u.name}: carried equipment dropped for recovery.`,{actor:u.id,location:u.location,key,quantity},!visible(s,u));
   }
   u.radios=[];u.assets={};u.saved=0;
   for(const c of s.casualties.filter(c=>c.carrier===u.id))c.carrier=null;
@@ -32,8 +38,17 @@ export function applyHit(s,u,letters) {
       if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[child.id]={id:child.id};
     }
   }
-  if(u.steps.length===1&&u.kind==='SQUAD'){const child=splitTeam(s,u,'F',u.steps.pop());child.pinned=true;affected.push(child);if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[child.id]={id:child.id};}
-  if(u.steps.length){u.pinned=true;if(!affected.includes(u))affected.push(u);}else{u.removed='BROKEN';loseAssets(s,u,letters.includes('C'));}
+  if(u.steps.length===1&&u.kind==='SQUAD'){const child=splitTeam(s,u,'F',u.steps.pop());if(s.mission_rules?.specialEnemies&&u.last_step_vof)child.fire_team_vof=u.last_step_vof;child.pinned=true;affected.push(child);if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[child.id]={id:child.id};}
+  if(u.steps.length){u.pinned=true;if(!affected.includes(u))affected.push(u);}else{
+    u.removed='BROKEN';
+    const recipient=s.mission_rules?.specialEnemies?affected.at(-1):null;
+    if(recipient){
+      recipient.radios=[...u.radios];recipient.assets={...u.assets};
+      for(const c of s.casualties.filter(c=>c.carrier===u.id))c.carrier=recipient.id;
+      u.radios=[];u.assets={};u.saved=0;
+      emit(s,'ASSETS_TRANSFERRED',`${u.name}: carried items remain with the final surviving team.`,{actor:u.id,recipient:recipient.id,location:u.location},!visible(s,u));
+    }else loseAssets(s,u,letters.includes('C'));
+  }
   if(['P','L'].includes(u.cohesion))u.saved=0;
   emit(s,'FORMATION_CHANGED',`${u.name}: ${letters} hit; ${u.steps.length} step(s) remain in the original formation.`,
     {actor:u.id,effect:letters,formations:affected.map(v=>v.id)},!visible(s,u));
@@ -43,9 +58,10 @@ const sourceRecord=(s,source)=>{
   const unit=s.units[source?.source_id],known=unit&&visible(s,unit);
   return source?{kind:source.kind,source_id:source.source_id??null,origin:source.origin,value:source.value,vof:source.vof,
     faction:unit?.faction??(source.kind==='OFF_MAP_SUPPORT'?'enemy':null),known:!!known,
-    label:source.kind==='OFF_MAP_SUPPORT'?source.label:source.kind==='ON_MAP_INDIRECT'?'On-map mortar fire':source.kind==='GRENADE'?'Grenade effect':known?unit.name:'Unidentified fire'}:null;
+    label:source.kind==='OFF_MAP_SUPPORT'?source.label:source.kind==='ON_MAP_INDIRECT'?'On-map mortar fire':source.kind==='MINES'?'Mine explosion':source.kind==='SNIPER'?'Sniper fire':source.kind==='GRENADE'?(source.label??'Grenade effect'):known?unit.name:'Unidentified fire'}:null;
 };
 export function prepareCombat(s) {
+  prepareSpecialTargets(s);
   const resolutions=[];
   for(const u of values(s.units).filter(live)) {
     const exposure=combatExposure(s,u);if(!exposure)continue;
@@ -118,6 +134,7 @@ function available(s,p,trigger) {
 }
 export const eligibleContacts = s => values(s.contacts).filter(pc=>!pc.resolved&&occupants(s,pc.location).some(friendly));
 export function resolveContacts(s,contactId=null) {
+  if(s.mission_contacts){for(const pc of eligibleContacts(s).filter(pc=>contactId===null||pc.id===contactId))resolveMissionContact(s,pc);return;}
   const counts={NO_CONTACT:{A:0,B:0},CONTACT:{A:7,B:5},ENGAGED:{A:5,B:3},HEAVILY_ENGAGED:{A:3,B:2}};
   for(const pc of eligibleContacts(s).filter(pc=>contactId===null||pc.id===contactId)) {
     const count=counts[s.activity][pc.type];
@@ -147,7 +164,7 @@ export function resolveContacts(s,contactId=null) {
 }
 function fallBack(s,u) {
   const from=s.locations[u.location];
-  if(!friendly(u)&&from.row===3){u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW',`${u.name} withdrew from the battlefield.`,{actor:u.id},!visible(s,u));return;}
+  if(!friendly(u)&&from.row===Math.max(...values(s.locations).map(l=>l.row))){u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW',`${u.name} withdrew from the battlefield.`,{actor:u.id},!visible(s,u));return;}
   const possible=adjacent(s,u.location).filter(l=>(friendly(u)?l.row<from.row:l.row>from.row)&&!occupants(s,l.id).some(v=>v.faction!==u.faction));
   if(!possible.length)return;
   possible.sort((a,b)=>Number(hasFire(s,a.id))-Number(hasFire(s,b.id))||b.protection-a.protection);
@@ -155,12 +172,12 @@ function fallBack(s,u) {
   move(s,u,pick(s,best,'Retreat destination',!visible(s,u)).id);
 }
 function enemyCover(s,u) {
-  const cover=s.locations[u.location].covers.filter(c=>!occupants(s,u.location).some(v=>friendly(v)&&v.cover===c.id)).sort((a,b)=>b.value-a.value)[0];
+  const cover=s.locations[u.location].covers.filter(c=>coverAvailable(s,u,c)).sort((a,b)=>b.value-a.value)[0];
   if(cover){u.cover=cover.id;u.exposed=true;}else seekCover(s,u);
 }
 function attack(s,u) {
   const close=occupants(s,u.location).find(v=>v.faction!==u.faction);
-  if(close){if(coverOf(s,u)?.type==='Bunker'){u.cover=null;u.exposed=true;}grenade(s,u,close);}
+  if(close){if(['Bunker','Pillbox'].includes(coverOf(s,u)?.type)){u.cover=null;u.exposed=true;}grenade(s,u,close);}
   else if(u.fire){const target=occupants(s,u.fire).find(v=>v.faction!==u.faction);if(target)concentrate(s,u,target);}
 }
 // First matching row of Deliberate Defence / No Leader LAT hierarchy.
@@ -171,8 +188,9 @@ export function enemyActivity(s) {
   for(const loc of shuffle(s,locations)) {
     const units=occupants(s,loc).filter(u=>!friendly(u)).sort((a,b)=>Number(good(a))-Number(good(b))||a.id.localeCompare(b.id));
     for(const u of units) {
-      if(!live(u)||processed.has(u.id))continue;
+      if(!live(u)||processed.has(u.id)||u.event_acted===s.turn)continue;
       processed.add(u.id);
+      if(specialActivity(s,u,fallBack)){refresh(s);continue;}
       refresh(s);
       const same=occupants(s,u.location).some(friendly),under=hasFire(s,u.location),covered=!!u.cover;
       const roll=n=>randomNumber(s,n,`${u.name}: activity`,!visible(s,u));
@@ -189,10 +207,16 @@ export function enemyActivity(s) {
         else if(u.cohesion==='L')action=roll(3)===3?'RECOVER':'NONE';
       }else if(same&&!covered)action=['COVER','FALL_BACK','ATTACK'][roll(3)-1];
       else if(same&&covered)action=['NONE','ATTACK','ATTACK'][roll(3)-1];
-      else if(!under&&!values(s.units).some(v=>friendly(v)&&live(v)&&los(s,u.location,v.location)))action='NONE';
+      else if(!under&&!values(s.units).some(v=>friendly(v)&&live(v)&&unitLos(s,u,v)))action='NONE';
       else if(!under&&u.fire)action='ATTACK';
       else if(under&&!covered)action=['COVER','COVER','ATTACK'][roll(3)-1];
-      else if(incoming(s,u).some(f=>f.origin!==u.fire))action=['NONE','ATTACK','SHIFT','SHIFT'][roll(4)-1];
+      else if(incoming(s,u).some(f=>f.origin!==u.fire)){
+        do{
+          action=['NONE','ATTACK','SHIFT','SHIFT'][roll(4)-1];
+          if(action==='SHIFT'&&s.mission_rules?.specialEnemies&&['Bunker','Pillbox'].includes(coverOf(s,u)?.type))emit(s,'ENEMY_ACTIVITY_REDRAW','Fortification firing arc cannot shift; redraw enemy activity.',{actor:u.id},!visible(s,u));
+          else break;
+        }while(true);
+      }
       else if(['A','H'].includes(u.vof)&&u.fire)action='ATTACK';
       else if(u.fire)action=roll(2)===2?'ATTACK':'NONE';
       if(action==='COVER')enemyCover(s,u);
@@ -224,9 +248,16 @@ export function capture(s) {
       if(!guard)continue;
       const step=guard.steps.pop();s.prisoners.push({guard:step,prisoners:victims.flatMap(u=>u.steps)});
       if(!guard.steps.length)guard.removed='GUARD';
-      for(const u of victims){u.removed='CAPTURED';emit(s,'UNIT_CAPTURED',`${u.name} captured; one opposing step assigned as guard.`,{actor:u.id},!visible(s,u));}
+      for(const u of victims){
+        if(s.objectives&&side==='enemy')spot(s,u);
+        u.removed='CAPTURED';emit(s,'UNIT_CAPTURED',`${u.name} captured; one opposing step assigned as guard.`,{actor:u.id,...(s.objectives?{faction:u.faction,location:l.id,step_ids:u.steps.map(step=>step.id)}:{})},!visible(s,u));
+      }
     }
-    if(!occupants(s,l.id).some(u=>!friendly(u)))for(const c of s.casualties.filter(c=>c.location===l.id&&c.faction==='enemy'))c.evacuated=true;
+    if(s.objectives){
+      if(occupants(s,l.id).some(friendly)&&!occupants(s,l.id).some(u=>!friendly(u)))for(const c of s.casualties.filter(c=>c.location===l.id&&c.faction==='enemy'&&!c.evacuated)){
+        c.evacuated=true;emit(s,'ENEMY_CASUALTY_CAPTURED','An enemy casualty step was captured.',{location:l.id,step_id:c.step.id});
+      }
+    }else if(!occupants(s,l.id).some(u=>!friendly(u)))for(const c of s.casualties.filter(c=>c.location===l.id&&c.faction==='enemy'))c.evacuated=true;
   }
 }
 export function retreat(s) {

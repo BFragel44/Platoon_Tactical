@@ -103,3 +103,23 @@ The submitted `company-company-2-replay9_23_2.json` remains unchanged. Strict re
 The turn-1 German Litter Team did not generate basic fire; U.S. formations on its card fired. Under third-edition §§6.1.1–6.1.2, established fire may remain after capture or departure and can affect later friendly entrants. The apparent turn-9 same-card friendly fire was a held point-blank direction with no opposing recipient; basic fire does not attack its own faction. Turn-7 movement changed an affected PDF card, while the turn-8 Incoming removal reopened an established path. No combat legality or probabilities were changed.
 
 The player projection now names friendly dropped radios/equipment, retains the combat review event boundary, and supplies an explicit PDF source/path/recipient explanation. The combat panel remains full-width above the map after the cramped side layout was reverted; the page uses the full viewport width without outer margins. HQ side and radio capability and pinned-recovery results are more visible. Rules revision 8 and scenario version 4 remain. All 166 tests pass with the thread pool; production build passes. Browser walkthrough and another human comprehension run remain open.
+
+## Revision 9: mission foundation wrap-up
+
+183 tests and production build pass. All six Company Assault policy outcomes and order/casualty/contact counts remain identical to revision 8, with exact revision-9 replay reconstruction. Historical files were not modified. Setup preview, mission gating and desktop/narrow browser evidence are recorded in [KEEP_UP_THE_FIRE_STATUS.md](KEEP_UP_THE_FIRE_STATUS.md).
+
+### September 24 continuation: mission contact, event and scoring corrections
+
+214 tests and production build pass. New fixtures cover contact rays, invalid-direction redraws, enemy/PDF exclusions, counter reuse with surviving LATs, atomic strongpoints, package exhaustion, delayed maneuvering fire, final-position scoring, capture scoring, and every higher-HQ table entry at turn-band boundaries. Behavioral event checks cover command obligations, outage expiry, rally activity exclusion and unguarded surrender. Keep Up the Fire content is now v2; course content remains v4 and rules remain v9.
+
+All six Company Assault policies were rerun with exact replay reconstruction: company-1 direct/support/recovery remain 40/8/6, 28/6/5, 31/4/6; company-2 remain 40/8/5, 80/6/1, 57/8/5 (orders/casualty steps/contacts remaining). All end in turn-10 defeat, unchanged from the prior checkpoint. This continuation changes no playable UI layout; no new browser or human playthrough was performed. Keep Up the Fire remains gated pending the substantive checklist and integrated acceptance.
+
+### September 24 continuation: buildings and tripod fire
+
+227 tests and production build pass. Content-v3 fixtures cover occupied elevation and reciprocal LOS, safe unknown-source projection, tower capacity, bunker firing/observation separation, rifle-grenade building restrictions, grazing and overhead fire, smoke/slope limits, exposure/ammunition effects and HMG contact exceptions. The six course runs again retain the counts above and reconstruct exactly. No balance changes or historical-export edits. New browser and human validation remains open; the standalone mission is still gated.
+
+### September 25 continuation: support and offensive WP
+
+241 tests and production build pass. New checks cover all six caller/agency draw allowances, required caller networks, HE/WP target eligibility, experience and registration, short-round precedence/self-target displacement, failed requests, support timing/expiry, WP screening, shared enemy mortar registration, spotter withdrawal and source secrecy. Offensive WP tests cover success/miss, asset consumption, attempt limits, deterministic results, stronger-HC preservation and invalid-order rejection. All six Company Assault policies retain the prior summaries and exact replay reconstruction. Content is v4 for the gated standalone mission; rules remain v9 and course content v4. New browser and complete human-mission validation remain open.
+
+**Keep Up the Fire is not a complete playable mission yet.** New mechanics remain developmental; browser validation covers setup preview only. Full rules validation, complete scripted mission runs and a human playthrough are still required. Normandy remains locked.

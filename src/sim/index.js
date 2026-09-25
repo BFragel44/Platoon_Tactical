@@ -5,7 +5,7 @@ import * as legacyPhases from './advancePhase.js';
 import * as legacyView from './playerView.js';
 // Preserve existing callers and the earlier uncommitted prototype as regression fixtures.
 const isCompany = value => value.ruleset === 'company-v1';
-export const createMission = (scenario, seed) => isCompany(scenario) ? company.createMission(scenario,seed) : legacyCreate(scenario,seed);
+export const createMission = (scenario, seed, setup) => isCompany(scenario) ? company.createMission(scenario,seed,setup) : legacyCreate(scenario,seed);
 export const submitCommand = (state, command) => isCompany(state) ? company.submitCommand(state,command) : legacyCommand(state,command);
 export const advancePhase = state => (isCompany(state)?company:legacyPhases).advancePhase(state);
 export const endTurn = state => (isCompany(state)?company:legacyPhases).endTurn(state);

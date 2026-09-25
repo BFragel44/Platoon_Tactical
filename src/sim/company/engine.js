@@ -1,6 +1,10 @@
+import {contactQueue} from './missionContacts.js';
+import {materializeScenario} from './missionSetup.js';
+import {revealTerrain,terrainProjection} from './missionKnowledge.js';
+import {higherEvent,scoreMission,secureStatus} from './missionFeatures.js';
 import { createRng } from '../rng.js';
 import { values, live, good, friendly, expMod, visible, emit, newDeck, draw, result } from './core.js';
-import { refresh, hasFire, combatModifier, observeRecord, occupants, incoming, los, explainLos, communication, communicationReason, spottingLocations } from './battlefield.js';
+import { refresh, hasFire, combatModifier, observeRecord, occupants, incoming, temporaryMortarFire, seesCard, explainUnitCard, communication, communicationReason, spottingLocations } from './battlefield.js';
 import { submitCommand as order, commandOptions } from './actions.js';
 import { resolveContacts, eligibleContacts, prepareCombat, resolvePreparedCombat, enemyActivity, capture, retreat } from './combat.js';
 export const PHASES = [
@@ -25,20 +29,44 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 8;
+export const RULES_VERSION = 9;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
+function phaseDescription(s){
+  if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(s.phase))return s.turn===1?'No higher-HQ event check on turn 1.':'Draw for a higher-HQ event; resolve this turn’s mission table and any command obligations.';
+  if(s.mission_rules.communications==='simplified'&&s.phase==='BN_ACTIVATION')return 'BN activates an unpinned command-side Company HQ unless this turn’s communications event prevents activation.';
+  if(s.objectives&&s.phase==='CLEANUP')return 'Remove temporary markers, evacuate transported and unloaded CCP casualties, update fire and check mission objectives. Position achievements are scored when the mission ends.';
+  return phaseInfo(s.phase)[2];
+}
 const index = a => Object.fromEntries(a.map(v=>[v.id,structuredClone(v)]));
-export function createMission(scenario,seed) {
+export function createMission(definition,seed,setup={}) {
+  if(definition.readiness?.playable===false)throw new Error(`${definition.name} is not playable yet: ${definition.readiness.missing.join('; ')}.`);
+  return initializeMission(definition,seed,setup);
+}
+// Read-only pre-mission inspection. Does not bypass the playable-mission gate.
+export function previewMissionSetup(definition,seed,setup={}) {
+  const s=initializeMission(definition,seed,setup);
+  const view=getPlayerView(s);
+  return {mission_id:definition.id,mission_version:definition.version,seed:String(seed),setup:structuredClone(setup),
+    playable:definition.readiness?.playable!==false,missing:structuredClone(definition.readiness?.missing??[]),
+    locations:view.locations,units:view.units.map(({id,name,kind,platoon,location,steps,experience,assets})=>({id,name,kind,platoon,location,steps,experience,assets})),objectives:view.objectives};
+}
+function initializeMission(definition,seed,setup={}) {
+  const scenario=materializeScenario(definition,seed,setup);
   if(scenario.ruleset!=='company-v1'||!scenario.units.length||!scenario.locations.length)throw new TypeError('Invalid company scenario');
   const s={ruleset:'company-v1',rules_version:RULES_VERSION,scenario_id:scenario.id,scenario_version:scenario.version,id:`mission_${scenario.id}`,seed:String(seed),rng:createRng(seed),
     status:'ACTIVE',turn:1,turn_limit:scenario.turn_limit,phase:PHASES[0][0],briefing:scenario.briefing,locations:index(scenario.locations),units:{},contacts:index(scenario.contacts),
     events:[],replay:[],next_id:1,impulse:null,impulse_number:0,activated:[],completed:[],fire:[],support:[],markers:[],assets:[],casualties:[],prisoners:[],personnel:{},pending_combat:[],
     segment_progress:null,activity:'NO_CONTACT',knowledge:{spotted:{},suspected:{}},enemy_pool:{mg:3,squads:['A/S','A/S','A'],fox:2,trench:2,bunker:1},signal_phase_line:scenario.signal_phase_line};
+  s.terrain_deck=structuredClone(scenario.terrain_deck??[]);s.setup=structuredClone(setup);s.mission_name=scenario.name??'Company Assault';
+  s.mission_rules={...structuredClone(scenario.rules??{}),hiddenTerrain:!!scenario.map?.hidden};
+  s.objectives=structuredClone(scenario.objectives??null);s.achievements=[];s.hq_events=[];s.support_unavailable=[];s.registered_targets={};
+  s.mission_contacts=structuredClone(scenario.package_tables?{tables:scenario.package_tables,packages:scenario.packages,draws:scenario.contact_draws,counters:scenario.enemy_counters}:null);
+  s.support_agencies=structuredClone(scenario.support_agencies??null);
   s.deck=newDeck(s);
   const surnames=['Miller','Davis','Wilson','Taylor','Anderson','Thomas','Moore','Martin','Jackson','Thompson','White','Harris','Clark','Lewis','Robinson','Walker','Hall','Allen','Young','King','Wright','Scott','Green','Baker','Adams','Nelson','Hill','Campbell','Mitchell','Roberts','Carter','Phillips','Evans','Turner','Parker','Collins','Edwards','Stewart','Morris','Rogers','Reed','Cook','Morgan','Bell','Murphy','Bailey','Rivera','Cooper','Richardson','Cox','Howard','Ward','Torres','Peterson','Gray','Ramirez','James','Watson','Brooks','Kelly','Sanders','Price','Bennett','Wood','Barnes','Ross','Henderson','Coleman','Jenkins','Perry','Powell','Long','Patterson','Hughes','Flores','Washington','Butler','Simmons','Foster','Gonzales','Bryant','Alexander','Russell','Griffin','Diaz','Hayes','Myers','Ford','Hamilton','Graham','Sullivan','Wallace','Woods','Cole','West','Jordan','Owens','Reynolds','Fisher','Ellis'];
   let person=0;
   for(const raw of scenario.units) {
-    const u={...structuredClone(raw),max_steps:raw.steps,cohesion:'GOOD',original_experience:raw.experience,named:raw.kind!=='SQUAD',pinned:false,exposed:false,cover:null,fire:null,indirect:null,
+    const u={...structuredClone(raw),mission_weapon:!!scenario.rules,max_steps:raw.steps,cohesion:'GOOD',original_experience:raw.experience,named:raw.kind!=='SQUAD',pinned:false,exposed:false,cover:null,fire:null,indirect:null,
       saved:0,used:[],removed:null,assets:structuredClone(scenario.assets[raw.id]??{})};
     // Four named people per rifle step; command/weapon steps have two. No extra casualty roll.
     u.steps=Array.from({length:raw.steps},(_,n)=>({id:`${u.id}_step${n+1}`,personnel:Array.from({length:raw.kind==='SQUAD'?4:2},()=>{
@@ -47,7 +75,10 @@ export function createMission(scenario,seed) {
   }
   for(const l of values(s.locations)){l.covers=[];l.smoke=false;}
   emit(s,'MISSION_STARTED',scenario.briefing,{scenario:scenario.id,version:scenario.version,seed:String(seed)});
-  emit(s,'PHASE_ENTERED',phaseInfo(s.phase)[1],{description:phaseInfo(s.phase)[2]});
+  revealTerrain(s,{setup:true});
+  if(s.objectives&&!s.locations[s.objectives.ccp].known)throw new Error('Choose a revealed terrain or staging card for the CCP.');
+  if(scenario.map)emit(s,'MISSION_SETUP_CONFIRMED','Mission setup confirmed.',{setup:structuredClone(setup)});
+  emit(s,'PHASE_ENTERED',phaseInfo(s.phase)[1],{description:phaseDescription(s)});
   return s;
 }
 export function eligibleHQs(s) {
@@ -64,6 +95,7 @@ function startImpulse(s,id,activation=false) {
     const card=draw(s,1,`${u.name}: ${activation?'activation':'initiative'}`)[0];
     cardId=card.id;base=activation?card.activated:card.initiative;
     const pressure=incoming(s,u).map(f=>f.value);
+    if(s.fire.some(f=>f.target===u.location&&s.units[f.source]?.vof==='S!'&&!s.units[f.source].pinned))pressure.push(-3);
     if(s.support.some(f=>f.status==='ACTIVE'&&f.location===u.location))pressure.push(-3);
     const worst=pressure.length?Math.min(...pressure):null;
     const fireMod=worst===null||worst===2?0:worst===0?-1:worst===-1?-2:-3;
@@ -72,6 +104,7 @@ function startImpulse(s,id,activation=false) {
   }
   s.impulse={id:`t${s.turn}_i${++s.impulse_number}`,hq:id,commands:allowance+(u?.saved??0),allowance,spent:0,card_id:cardId,base,modifiers,reserve_used:u?.saved??0};
   if(u)u.saved=0;
+  if(id==='co'&&s.command_obligation){const paid=Math.min(s.command_obligation,s.impulse.commands,6);s.command_obligation-=paid;s.impulse.commands-=paid;s.impulse.spent+=paid;emit(s,'HQ_OBLIGATION',`Company HQ spent ${paid} commands on its higher-HQ obligation.`,{paid,remaining:s.command_obligation});if(!s.command_obligation){const event=s.hq_events.findLast(e=>e.turn===s.turn&&['COMM','SITREP'].includes(e.code));if(event)event.completed=true;}}
   emit(s,'IMPULSE_STARTED',`${u?.name??'General initiative'}: ${s.impulse.commands} commands available; maximum six may be spent.`,{hq:id,allowance,total:s.impulse.commands});
 }
 function finishImpulse(s) {
@@ -84,7 +117,8 @@ function finishImpulse(s) {
 }
 function enter(s) {
   s.segment_progress=null;
-  emit(s,'PHASE_ENTERED',phaseInfo(s.phase)[1],{description:phaseInfo(s.phase)[2]});
+  emit(s,'PHASE_ENTERED',phaseInfo(s.phase)[1],{description:phaseDescription(s)});
+  if(s.phase==='CONTACTS'&&s.mission_contacts)s.contact_queue=contactQueue(s,eligibleContacts(s));
   if(s.phase==='COMBAT_EFFECTS') {
     const start=s.events.length;
     const resolutions=prepareCombat(s);
@@ -108,14 +142,26 @@ export function resolveCombat(state,resolutionId) {
   const s=structuredClone(state);resolvePreparedCombat(s,resolutionId);s.segment_progress.status='reviewing_result';
   s.replay.push({op:'resolveCombat',id:resolutionId});return result(state,s,{accepted:true});
 }
-function endMission(s,status,text) { s.status=status;s.impulse=null;emit(s,'MISSION_ENDED',text,{outcome:status}); }
+function endMission(s,status,text) { s.status=status;s.impulse=null;scoreMission(s,{final:true});emit(s,'MISSION_ENDED',text,{outcome:status}); }
 export function checkObjective(s) {
   const assault=values(s.units).some(u=>friendly(u)&&live(u)&&['SQUAD','LAT','MG','AT'].includes(u.kind));
+  if(s.objectives){
+    scoreMission(s);const complete=['primary','secondary'].every(k=>secureStatus(s,s.objectives[k]).secured);
+    emit(s,'OBJECTIVE_CHECK',complete?'Both objectives secured.':'Secure and hold both designated objectives.',{secured:complete});
+    if(!assault)endMission(s,'DEFEAT','Assault force lost.');
+    else if(s.turn>=s.turn_limit)endMission(s,complete?'SUCCESS':'DEFEAT',complete?'Primary and secondary objectives secured.':'Turn limit reached without both objectives secured.');
+    return;
+  }
   const unresolved=values(s.contacts).filter(c=>!c.resolved).length;
   const opposition=values(s.units).some(u=>!friendly(u)&&live(u));
   emit(s,'OBJECTIVE_CHECK',`${unresolved} contact markers remain; ${!opposition&&!unresolved?'all positions cleared':'continue the assault'}.`,{contacts_remaining:unresolved});
   if(!assault)endMission(s,'DEFEAT','Assault force lost.');
   else if(s.turn>=s.turn_limit)endMission(s,!opposition&&!unresolved?'SUCCESS':'DEFEAT',!opposition&&!unresolved?'Company assault complete: contacts cleared and defenders eliminated or captured.':'Turn limit reached before all contacts and defenders were cleared.');
+}
+// Inspection and resolution must follow the same already-seeded queue.
+function nextContact(s) {
+  const eligible=eligibleContacts(s);
+  return s.mission_contacts?s.contact_queue?.map(id=>eligible.find(pc=>pc.id===id)).find(Boolean):eligible[0];
 }
 export function advancePhase(state) {
   if(state.status!=='ACTIVE')return {state,events:[]};
@@ -126,9 +172,10 @@ export function advancePhase(state) {
   if(s.impulse){finishImpulse(s);if(eligibleHQs(s).length)return result(state,s);}
   if(eligibleHQs(s).length)return {state,events:[],reason:'Select each eligible HQ and complete its impulse before advancing.'};
   const phase=s.phase;
-  if(['FRIENDLY_EVENTS','DEFENSIVE_EVENTS','DEFENSIVE_ACTIVITY','ENEMY_EVENTS','AT_COMBAT'].includes(phase))emit(s,'PHASE_SKIPPED',phaseInfo(phase)[2]);
+  if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(phase))higherEvent(s,phase==='FRIENDLY_EVENTS'?'friendly':'enemy');
+  else if(['FRIENDLY_EVENTS','DEFENSIVE_EVENTS','DEFENSIVE_ACTIVITY','ENEMY_EVENTS','AT_COMBAT'].includes(phase))emit(s,'PHASE_SKIPPED',phaseInfo(phase)[2]);
   if(phase==='BN_ACTIVATION') {
-    if(live(s.units.co)&&s.units.co.cohesion==='GOOD'&&s.units.co.radios.includes('BN')){s.activated.push('co');emit(s,'HQ_ACTIVATED','Off-map Battalion HQ activated Company HQ over the BN radio net.',{hq:'co'});}
+    if(!s.bn_blocked&&live(s.units.co)&&s.units.co.cohesion==='GOOD'&&(s.mission_rules.communications==='simplified'?!s.units.co.pinned:s.units.co.radios.includes('BN'))){s.activated.push('co');emit(s,'HQ_ACTIVATED',s.mission_rules.communications==='simplified'?'Off-map Battalion HQ activated Company HQ using mission communications.':'Off-map Battalion HQ activated Company HQ over the BN radio net.',{hq:'co'});}
     else emit(s,'ACTIVATION_UNAVAILABLE','Company HQ cannot receive BN activation; it must use initiative.');
   }
   if(phase==='ENEMY_ACTIVITY')enemyActivity(s);
@@ -138,7 +185,7 @@ export function advancePhase(state) {
     s.support=s.support.filter(f=>f.status==='PENDING');for(const f of s.support){f.status='ACTIVE';emit(s,'SUPPORT_ACTIVE',`Incoming fire active at ${s.locations[f.location].name}.`,{location:f.location,value:f.value});}refresh(s);
   }
   if(phase==='CONTACTS') {
-    const next=eligibleContacts(s)[0];
+    const next=nextContact(s);
     if(next||!s.segment_progress) {
       const start=s.events.length;
       if(next)resolveContacts(s,next.id);
@@ -166,11 +213,13 @@ export function advancePhase(state) {
     return result(state,s);
   }
   if(phase==='CLEANUP') {
+    for(const u of values(s.units))if(u.temporary_pdf)delete u.temporary_pdf;
+    for(const u of values(s.units))if(u.hold_fire_until_cleanup)delete u.hold_fire_until_cleanup;
     s.markers=[];for(const l of values(s.locations))l.smoke=false;
-    for(const u of values(s.units)){u.exposed=false;u.used=[];u.indirect=null;if(!friendly(u)&&u.fire&&!occupants(s,u.fire).some(friendly)){u.fire=null;u.fire_direction=null;u.fire_effect=null;}}
-    for(const c of s.casualties.filter(c=>friendly(c)&&s.locations[c.location].staging&&!c.evacuated)){c.evacuated=true;emit(s,'CASUALTY_EVACUATED','A casualty step was evacuated from staging.',{step_id:c.step.id,personnel:c.step.personnel});}
+    for(const u of values(s.units)){u.exposed=false;u.mine_hit=false;u.used=[];u.indirect=null;if(!friendly(u)&&u.fire&&!occupants(s,u.fire).some(friendly)){u.fire=null;u.fire_direction=null;u.fire_effect=null;}}
+    for(const c of s.casualties.filter(c=>friendly(c)&&(s.objectives?c.location===s.objectives.ccp&&!c.carrier&&c.transported:s.locations[c.location].staging)&&!c.evacuated)){c.evacuated=true;emit(s,'CASUALTY_EVACUATED','A casualty step was evacuated from the designated evacuation area.',{step_id:c.step.id,personnel:c.step.personnel});}
     refresh(s);s.pending_combat=[];checkObjective(s);emit(s,'TURN_ENDED',`Turn ${s.turn} complete.`,{outcome:s.status});
-    if(s.status==='ACTIVE'){s.turn++;s.activated=[];s.completed=[];s.phase=PHASES[0][0];enter(s);}
+    if(s.status==='ACTIVE'){s.turn++;s.bn_blocked=false;s.command_obligation=0;s.support_unavailable=[];s.activated=[];s.completed=[];s.phase=PHASES[0][0];enter(s);}
     return result(state,s);
   }
   if(phase!=='COMBAT_EFFECTS')refresh(s);
@@ -200,8 +249,8 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
   if(faction!=='friendly')throw new TypeError('Only the player perspective is available');
   const units=values(s.units).filter(friendly).map(u=>({...structuredClone(u),steps:u.steps.length,
     activated:s.activated.includes(u.id),impulse_completed:s.completed.includes(u.id),
-    los_explanations:Object.fromEntries(values(s.locations).map(l=>{const trace=explainLos(s,u.location,l.id);const publicTrace=explainLos({...s,support:s.support.filter(f=>f.source!=='enemy'||occupants(s,f.location).some(v=>friendly(v)||s.knowledge.spotted[v.id]))},u.location,l.id);return [l.id,{visible:trace.visible,reason:trace.visible===publicTrace.visible?publicTrace.reason:'No LOS: battlefield conditions block this view.'}];})),
-    los:values(s.locations).filter(l=>los(s,u.location,l.id)).map(l=>l.id),
+    los_explanations:Object.fromEntries(values(s.locations).map(l=>{const trace=explainUnitCard(s,u,l.id);const publicTrace=explainUnitCard({...s,support:s.support.filter(f=>friendly(s.units[f.source]??{})||occupants(s,f.location).some(v=>friendly(v)||s.knowledge.spotted[v.id]))},u,l.id);return [l.id,l.known===false?{visible:false,reason:'Terrain not yet revealed.'}:{visible:trace.visible,reason:trace.visible===publicTrace.visible?publicTrace.reason:'No LOS: battlefield conditions block this view.'}];})),
+    los:values(s.locations).filter(l=>l.known!==false&&seesCard(s,u,l.id)).map(l=>l.id),
     communication:issuerId==='general'?'General initiative':communication(s,s.units[issuerId],u),
     communication_reason:communicationReason(s,s.units[issuerId],u),
     attempted:[...new Set(u.used.filter(k=>k.startsWith(`${s.impulse?.id}:`)).map(k=>k.slice(s.impulse.id.length+1)))],
@@ -220,16 +269,17 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     events_after:s.segment_progress.events_after,index:s.segment_progress.index,total:s.segment_progress.total,
     visible_total:s.pending_combat.filter(r=>r.target_visible).length,visible_resolved:s.pending_combat.filter(r=>r.target_visible&&r.status==='RESOLVED').length}:structuredClone(s.segment_progress);
   const contactEvents=s.phase==='CONTACTS'&&s.segment_progress?getVisibleEvents(s,'friendly',s.segment_progress.events_after):[];
-  const contact_review=s.phase==='CONTACTS'?{location:s.segment_progress?.contact??eligibleContacts(s)[0]?.location??null,next_location:eligibleContacts(s)[0]?.location??null,resolved:!!s.segment_progress,events:contactEvents}:null;
-  return {id:s.id,status:s.status,seed:s.seed,turn:s.turn,turn_limit:s.turn_limit,phase:s.phase,phase_label:phaseInfo(s.phase)[1],phase_description:phaseInfo(s.phase)[2],combat_resolution,contact_review,
+  const contact_review=s.phase==='CONTACTS'?{location:s.segment_progress?.contact??nextContact(s)?.location??null,next_location:nextContact(s)?.location??null,resolved:!!s.segment_progress,events:contactEvents}:null;
+  return {id:s.id,scenario_id:s.scenario_id,status:s.status,seed:s.seed,turn:s.turn,turn_limit:s.turn_limit,phase:s.phase,phase_label:phaseInfo(s.phase)[1],phase_description:phaseDescription(s),combat_resolution,contact_review,
     historical_losses:getVisibleEvents(s).filter(e=>e.type==='FORMATION_LOST'),
     segment_progress,briefing:s.briefing,activity:s.activity,impulse:structuredClone(s.impulse),eligible_hqs:eligibleHQs(s),units,
-    locations:values(s.locations).map(l=>({...structuredClone(l),covers:l.covers.filter(c=>c.known).map(c=>structuredClone(c))})),
+    locations:values(s.locations).map(terrainProjection),
+    mission_name:s.mission_name,objectives:s.objectives?Object.fromEntries(['primary','secondary','attack','ccp'].map(k=>[k,{location:s.objectives[k],...secureStatus(s,s.objectives[k])}])):null,achievements:structuredClone(s.achievements),
     contacts:values(s.contacts).filter(c=>!c.returning||s.knowledge.suspected[c.location]).map(c=>({id:c.id,location:c.location,type:c.type,resolved:c.resolved})),
     enemies:knownEnemy,suspected:spottingLocations(s),historical_reports:Object.keys(s.knowledge.suspected),
-    fire:s.fire.filter(f=>friendly(s.units[f.source])||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>({...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:visible(s,s.units[f.source])?f.source:null,friendly:friendly(s.units[f.source])})),
-    markers:s.markers.filter(m=>occupants(s,m.location).some(u=>friendly(u)||s.knowledge.spotted[u.id])).map(m=>({type:m.type,location:m.location,value:m.value,critical:!!m.critical})),
-    support:s.support.map(f=>({location:f.location,status:f.status,value:f.value})),
+    fire:[...s.fire,...temporaryMortarFire(s)].filter(f=>friendly(s.units[f.source])||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>({...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:visible(s,s.units[f.source])?f.source:null,friendly:friendly(s.units[f.source])})),
+    markers:s.markers.filter(m=>occupants(s,m.location).some(u=>friendly(u)||s.knowledge.spotted[u.id])).map(m=>({type:m.type,location:m.location,value:m.value,critical:!!m.critical,...(m.weapon?{weapon:m.weapon}:{})})),
+    support:s.support.filter(f=>s.units[f.source]?.faction==='friendly'||occupants(s,f.location).some(friendly)||s.units[f.source]&&s.knowledge.spotted[f.source]).map(f=>({location:f.location,status:f.status,value:f.value,...(f.agency?{agency:f.agency.includes('mortar')?'mortar':'artillery',ammo:f.ammo??'HE'}:{})})),
     personnel:values(s.personnel),casualties:s.casualties.filter(c=>c.faction==='friendly').map(c=>({...structuredClone(c),label:`${c.origin_name??'Friendly formation'} casualty step`,carrier_name:c.carrier?s.units[c.carrier]?.name:null})),
     assets:s.assets.filter(a=>!a.destroyed&&a.faction==='friendly').map(a=>({...structuredClone(a),label:a.type==='RADIO'?`${a.net} radio`:`${String(a.key??'Equipment').replaceAll('_',' ')}${a.quantity>1?` ×${a.quantity}`:''}`,carrier_name:a.carrier?s.units[a.carrier]?.name:null})),
     deck:{draws:getVisibleEvents(s).filter(e=>e.type==='CARDS_DRAWN').reduce((n,e)=>n+e.card_ids.length,0)},
@@ -237,10 +287,10 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
 }
 export function getAfterActionReport(s) {
   if(s.status==='ACTIVE')return null;const events=getVisibleEvents(s);
-  return {record_type:'AAR',ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,scenario_version:s.scenario_version,seed:s.seed,outcome:s.status,turns:s.turn,events,orders:events.filter(e=>e.type==='COMMAND_ISSUED'),casualties:events.filter(e=>e.type==='CASUALTY'),
+  return {record_type:'AAR',ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,scenario_version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),achievements:structuredClone(s.achievements),score:s.achievements.reduce((n,a)=>n+a.points,0),outcome:s.status,turns:s.turn,events,orders:events.filter(e=>e.type==='COMMAND_ISSUED'),casualties:events.filter(e=>e.type==='CASUALTY'),
     formations:events.filter(e=>['FORMATION_CHANGED','FORMATION_RECONSTITUTED','HQ_RECONSTITUTED','COHESION_CHANGED','UNIT_CAPTURED'].includes(e.type)),objectives:events.filter(e=>['OBJECTIVE_CHECK','MISSION_ENDED'].includes(e.type))};
 }
-export function exportReplay(s) { return {ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,operations:structuredClone(s.replay)}; }
+export function exportReplay(s) { return {ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),operations:structuredClone(s.replay)}; }
 function replayOperation(s,op) {
   if(op.op==='submitCommand')return submitCommand(s,op.command);
   if(op.op==='selectHQ')return selectHQ(s,op.id);
@@ -252,7 +302,7 @@ function replayOperation(s,op) {
 export function replayMission(scenario,record) {
   if(record.scenario!==scenario.id||record.ruleset!==scenario.ruleset||record.version!==scenario.version||record.rules_version!==RULES_VERSION)
     throw new Error('Replay rules/scenario version mismatch. Preserve historical exports; use compareReplay for a diagnostic comparison.');
-  let s=createMission(scenario,record.seed);
+  let s=createMission(scenario,record.seed,record.setup??{});
   for(const [index,op] of record.operations.entries()) {
     const r=replayOperation(s,op);
     if(r.accepted===false||r.reason||r.state===s)throw new Error(`Replay operation ${index+1} rejected: ${r.reason??'mission already ended'}`);
@@ -262,7 +312,7 @@ export function replayMission(scenario,record) {
 // Explicitly diagnostic: every rejected historical operation is recorded, never silently omitted.
 export function compareReplay(scenario,record) {
   if(record.scenario!==scenario.id||record.ruleset!==scenario.ruleset)throw new Error('Different scenario/ruleset');
-  let s=createMission(scenario,record.seed);const operations=[];
+  let s=createMission(scenario,record.seed,record.setup??{});const operations=[];
   for(const [index,op] of record.operations.entries()) {
     const before={turn:s.turn,phase:s.phase};
     const r=replayOperation(s,op),rejected=r.accepted===false||!!r.reason||r.state===s;

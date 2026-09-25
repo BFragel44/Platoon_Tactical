@@ -1,3 +1,4 @@
+import {missionCatalog} from '../scenarios/missions.js';
 import {PHASES} from '../sim/company/engine.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function commandHeader({v,name,seed,recovery,recoveryPending,locked,combatBlocked,advanceLabel,phaseIndex,progress,feedback,feedbackKind}) {
@@ -14,7 +15,7 @@ export function commandHeader({v,name,seed,recovery,recoveryPending,locked,comba
  </header>
  <section id="panel-file" class="header-popover menu-panel" aria-labelledby="menu-file" hidden>
  <p>Progress saves automatically after accepted operations.</p>
- <div class="setup"><label>Replay seed<input id="seed" value="${esc(seed)}"></label><button id="restart">Start new mission</button><button id="export">Export current replay</button></div>
+ <div class="setup"><label>Mission<select id="mission-select">${missionCatalog.map(m=>`<option value="${esc(m.id)}" ${m.id===v.scenario_id?'selected':''}>${esc(m.name)}</option>`).join('')}</select></label><label>Replay seed<input id="seed" value="${esc(seed)}"></label><button id="restart">Start new mission</button><button id="preview-setup">Preview setup</button><p id="mission-availability" role="status"></p><button id="export">Export current replay</button></div>
       <div class="recovery-controls"><button id="resume" ${!recovery.bundle?'disabled':''}>Resume latest</button><button id="restore" ${!recovery.bundle?'disabled':''}>Restore turn start</button><button id="save-export" ${!recovery.raw?'disabled':''}>Export saved record</button><button id="previous-export">Export prior replacement backup</button></div>
       <p>${recovery.bundle?`Latest: turn ${recovery.bundle.latest.turn} · ${esc(recovery.bundle.latest.phase)} · ${esc(recovery.bundle.latest.timestamp)}. Turn start: ${recovery.bundle.turnStart.turn} · ${esc(recovery.bundle.turnStart.phase)} · ${esc(recovery.bundle.turnStart.timestamp)}.`:'No readable recovery record.'}</p>
 

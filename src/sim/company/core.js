@@ -53,8 +53,17 @@ export function randomNumber(s, n, purpose, hidden = false) {
   if (n > 12) throw new Error('Action card random range exceeds 12');
   return draw(s,1,purpose,hidden)[0].random[n-2];
 }
-export function pick(s, items, purpose, hidden=false) { return items[randomNumber(s,items.length,purpose,hidden)-1]; }
+export function pick(s, items, purpose, hidden=false) { if(items.length>12){const chosen=shuffle(s,items)[0];emit(s,'RANDOM_SELECTION',`${purpose}: seeded selection from ${items.length} candidates.`,{},hidden);return chosen;}return items[randomNumber(s,items.length,purpose,hidden)-1]; }
 export function attempt(s,u, count, icon, purpose, hidden = !visible(s,u)) {
   return draw(s,Math.max(1,count+expMod(u)),purpose,hidden).filter(c => c[icon] || c.word.toLowerCase() === icon).length;
 }
 export function result(before,next,extra={}) { return { state:next, events:next.events.slice(before.events.length), ...extra }; }
+
+// Rule 5.1.6: assets and casualty loads use independent infantry capacities.
+export function transportReason(s,u,extraAssets=0) {
+  if(!s.mission_rules?.specialEnemies)return null;
+  const assets=u.radios.length+Object.values(u.assets).reduce((n,q)=>n+q,0)+extraAssets;
+  if(assets>6*u.steps.length)return 'Over transport capacity: each step can carry six assets. Drop equipment before moving.';
+  if(s.casualties.filter(c=>c.carrier===u.id).length>u.steps.length)return 'Over transport capacity: each step can carry one casualty. Unload before moving.';
+  return null;
+}

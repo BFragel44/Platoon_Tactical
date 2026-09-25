@@ -1,6 +1,12 @@
 # Milestones
 
-## Current: Correct fire paths and explain continuing fire (revision 6)
+## Current: Complete Keep Up the Fire — in progress
+
+The mission/setup foundation and preview are implemented. **The complete mission is not ready to play.** Mission contacts, special units, buildings/fire, event ammunition and scoring still require the work listed in [KEEP_UP_THE_FIRE_STATUS.md](KEEP_UP_THE_FIRE_STATUS.md). An explicit availability gate prevents the draft being mistaken for a complete published mission. Company Assault remains the regression scenario. Normandy Mission 1 follows a complete human Keep Up the Fire playthrough; campaigns and vehicles follow later.
+
+Rules revision 9 records setup in strict replay. Company Assault content remains version 4; Keep Up the Fire draft content is version 1. Historical milestones below retain their original validation claims and do not imply completion of this milestone.
+
+## Historical: Correct fire paths and explain continuing fire (revision 6)
 
 One ten-turn company mission, not a tutorial. Two platoons and support assets must clear eight Potential Contacts and the resulting defenders. Company/platoon command, movement, known-position combat and uncertain contacts are parts of one encounter.
 
