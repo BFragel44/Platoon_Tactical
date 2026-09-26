@@ -25,7 +25,7 @@ export function scoreMission(s,{final=false}={}){
  for(const e of s.hq_events.filter(e=>e.side==='friendly'&&e.turn===s.turn)){
   if(s.phase==='CLEANUP'){
    const advanced=s.events.some(v=>v.turn===s.turn&&v.type==='UNIT_MOVED'&&s.units[v.actor]?.faction==='friendly'&&s.locations[v.target]?.row>e.lead);
-   if(e.code==='ADVANCE'&&e.lead<Math.max(...values(s.locations).map(l=>l.row)))e.completed=advanced;
+   if(e.code==='ADVANCE'&&e.lead<(s.boundaries?.rows??Math.max(...values(s.locations).map(l=>l.row))))e.completed=advanced;
    if(e.code==='HOLD')e.completed=!advanced;
   }
   if(e.completed)add(`event_${e.turn}_${e.code}`,1,'Higher HQ obligation completed');

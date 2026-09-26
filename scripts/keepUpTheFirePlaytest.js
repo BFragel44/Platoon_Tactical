@@ -1,8 +1,8 @@
 import { mkdirSync,writeFileSync } from 'node:fs';
 import { createMission,advancePhase,resolveCombat,selectHQ,submitCommand,getPlayerView,exportReplay,replayMission } from '../src/sim/company/engine.js';
 import {keepUpTheFire} from '../src/scenarios/keepUpTheFire.js';
-// Internal integration fixture; never removes the public readiness gate.
-const companyAssault={...keepUpTheFire,readiness:{playable:true}};
+// Exercise the public mission definition, including its readiness check.
+const companyAssault=keepUpTheFire;
 import { isDeepStrictEqual } from 'node:util';
 
 // These policies use only the player projection. They do not inspect hidden units/deck.
@@ -21,7 +21,7 @@ function choose(v,policy){
     if(o.type==='SEEK_COVER'&&u.incoming.length)score=policy==='recovery'?80:policy==='support'?55:15;
     if(o.type==='MOVE'||o.type==='INFILTRATE'||o.type==='PLATOON_MOVE'){
       const goals=v.contacts.filter(c=>!c.resolved).map(c=>v.locations.find(l=>l.id===c.location));
-      goals.push(...['primary','secondary'].map(k=>v.locations.find(l=>l.id===v.objectives?.[k])).filter(Boolean));
+      goals.push(...['primary','secondary'].map(k=>v.locations.find(l=>l.id===v.objectives?.[k]?.location)).filter(Boolean));
       goals.push(...v.enemies.filter(e=>!e.removed&&e.steps).map(e=>v.locations.find(l=>l.id===e.location)));
       const d=l=>goals.length?Math.min(...goals.map(g=>Math.max(Math.abs(g.row-l.row),Math.abs(g.col-l.col)))):0;
       if(goals.length&&(d(dest)<d(here)||goals.some(g=>g.id===dest.id)))score=40+(d(here)-d(dest))*10+(o.type==='PLATOON_MOVE'?12:0);
@@ -50,8 +50,10 @@ export function run(seed,policy){
 }
 const output=`output/keep-up-the-fire-integration-v${companyAssault.version}`;mkdirSync(output,{recursive:true});
 const results=[];
-for(const seed of ['kut-1','kut-2'])for(const policy of ['direct','support','recovery']){
+const requestedSeed=process.argv[2],requestedPolicy=process.argv[3];
+if(requestedSeed&&!['kut-1','kut-2'].includes(requestedSeed)||requestedPolicy&&!['direct','support','recovery'].includes(requestedPolicy))throw new Error('Use kut-1 or kut-2 and direct, support or recovery.');
+for(const seed of requestedSeed?[requestedSeed]:['kut-1','kut-2'])for(const policy of requestedPolicy?[requestedPolicy]:['direct','support','recovery']){
   const {s,record,summary}=run(seed,policy);results.push(summary);
   writeFileSync(`${output}/${seed}-${policy}.json`,JSON.stringify({summary,replay:record,events:s.events.filter(e=>!e.hidden)},null,2));
 }
-writeFileSync(`${output}/summary.json`,JSON.stringify(results,null,2));console.table(results);
+writeFileSync(`${output}/summary${requestedSeed?`-${requestedSeed}-${requestedPolicy??'all'}`:''}.json`,JSON.stringify(results,null,2));console.table(results);

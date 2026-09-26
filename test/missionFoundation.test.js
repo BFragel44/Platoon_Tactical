@@ -12,21 +12,21 @@ import {cards} from '../src/sim/company/core.js';
 import {checkpoint,resumeCheckpoint} from '../src/ui/localRecovery.js';
 import {setupMarkup} from '../src/ui/missionSetup.js';
 
-// Explicit internal development fixture; the published mission remains gated.
+// The standalone validation mission is available; Normandy remains gated.
 const draft={...keepUpTheFire,readiness:{playable:true}};
 const fresh=()=>createMission(draft,'keep-1');
 const stack=(s,ids)=>{s.deck.order=[...ids,...s.deck.order.filter(id=>!ids.includes(id))];};
 describe('Mission foundation and development gates',()=>{
- it('keeps unsupported published missions unavailable, including the public API',()=>{
-  expect(()=>createMission(keepUpTheFire,'x')).toThrow('not playable yet');
-  expect(()=>playableMissionById('keep_up_the_fire')).toThrow('unavailable');
+ it('enables standalone acceptance while keeping unsupported Normandy unavailable',()=>{
+  expect(createMission(keepUpTheFire,'x').scenario_id).toBe(keepUpTheFire.id);
+  expect(playableMissionById('keep_up_the_fire')).toBe(keepUpTheFire);
   expect(()=>playableMissionById('normandy_1')).toThrow('unavailable');
   expect(playableMissionById(companyAssault.id)).toBe(companyAssault);
   expect(missionCatalog.find(m=>m.id==='normandy_1').scenario).toBeUndefined();
  });
  it('previews 16 terrain cards, staging and the published 25-formation force',()=>{
   const p=previewMissionSetup(keepUpTheFire,'keep-1');
-  expect(p.playable).toBe(false);expect(p.locations).toHaveLength(20);expect(p.units).toHaveLength(25);
+  expect(p.playable).toBe(true);expect(p.locations).toHaveLength(20);expect(p.units).toHaveLength(25);
   expect(p.units.filter(u=>u.kind==='SQUAD')).toHaveLength(9);
   expect(p.units.filter(u=>['AT','MG','MORTAR'].includes(u.kind)).every(u=>u.steps===1)).toBe(true);
   expect(p.units.filter(u=>u.kind==='HQ')).toHaveLength(4);
@@ -50,7 +50,7 @@ describe('Mission foundation and development gates',()=>{
   let s=createMission(draft,'keep-1',setup);s=endTurn(s).state;s=abortMission(s).state;
   expect(exportReplay(s).setup).toEqual(setup);expect(replayMission(draft,exportReplay(s))).toEqual(s);
   expect(resumeCheckpoint(draft,checkpoint(s,{combatStage:'result'}))).toEqual({state:s,presentation:{combatStage:'result'}});
-  expect(getAfterActionReport(s)).toMatchObject({scenario:keepUpTheFire.id,scenario_version:9,rules_version:9,setup});
+  expect(getAfterActionReport(s)).toMatchObject({scenario:keepUpTheFire.id,scenario_version:11,rules_version:9,setup});
  });
  it('rejects unknown setup data and invalid tactical controls or attachments',()=>{
   for(const setup of [{positions:{ghost:'r0c1'}},{objectives:{primary:'r4c3'}},{objectives:{attack:'r2c1'}},{assignments:{mg1:{platoon:0}}},{positions:{co:'r1c1'}},{assets:{co:{smoke:999}}}])expect(()=>materializeScenario(keepUpTheFire,'x',setup)).toThrow();
@@ -59,7 +59,7 @@ describe('Mission foundation and development gates',()=>{
   const s=fresh(),v=getPlayerView(s),hidden=v.locations.filter(l=>l.known===false);
   expect(hidden.length).toBeGreaterThan(0);
   for(const l of hidden){expect(l.terrain).toBeUndefined();expect(l.terrain_card).toBeUndefined();expect(l.protection).toBeUndefined();expect(l.borders).toBeNull();}
-  expect(setupMarkup(previewMissionSetup(keepUpTheFire,'keep-1'))).toContain('Not playable yet');
+  expect(setupMarkup(previewMissionSetup(keepUpTheFire,'keep-1'),true)).toContain('Start mission with this setup');
  });
  it('reveals staging-visible terrain without allowing staging combat or spotting',()=>{
   const s=fresh();expect(Object.values(s.locations).filter(l=>l.row===1).every(l=>l.known)).toBe(true);

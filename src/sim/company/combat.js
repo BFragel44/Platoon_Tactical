@@ -164,7 +164,7 @@ export function resolveContacts(s,contactId=null) {
 }
 function fallBack(s,u) {
   const from=s.locations[u.location];
-  if(!friendly(u)&&from.row===Math.max(...values(s.locations).map(l=>l.row))){u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW',`${u.name} withdrew from the battlefield.`,{actor:u.id},!visible(s,u));return;}
+  if(!friendly(u)&&(s.boundaries?(from.row>=s.boundaries.rows||from.col<1||from.col>s.boundaries.columns):from.row===Math.max(...values(s.locations).map(l=>l.row)))){u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW',`${u.name} withdrew from the battlefield.`,{actor:u.id},!visible(s,u));return;}
   const possible=adjacent(s,u.location).filter(l=>(friendly(u)?l.row<from.row:l.row>from.row)&&!occupants(s,l.id).some(v=>v.faction!==u.faction));
   if(!possible.length)return;
   possible.sort((a,b)=>Number(hasFire(s,a.id))-Number(hasFire(s,b.id))||b.protection-a.protection);

@@ -47,7 +47,7 @@ export function previewMissionSetup(definition,seed,setup={}) {
   const s=initializeMission(definition,seed,setup);
   const view=getPlayerView(s);
   return {mission_id:definition.id,mission_version:definition.version,seed:String(seed),setup:structuredClone(setup),
-    playable:definition.readiness?.playable!==false,missing:structuredClone(definition.readiness?.missing??[]),
+    playable:definition.readiness?.playable!==false,assumptions:structuredClone(definition.readiness?.assumptions??[]),missing:structuredClone(definition.readiness?.missing??[]),
     locations:view.locations,units:view.units.map(({id,name,kind,platoon,location,steps,experience,assets})=>({id,name,kind,platoon,location,steps,experience,assets})),objectives:view.objectives};
 }
 function initializeMission(definition,seed,setup={}) {
@@ -57,6 +57,7 @@ function initializeMission(definition,seed,setup={}) {
     status:'ACTIVE',turn:1,turn_limit:scenario.turn_limit,phase:PHASES[0][0],briefing:scenario.briefing,locations:index(scenario.locations),units:{},contacts:index(scenario.contacts),
     events:[],replay:[],next_id:1,impulse:null,impulse_number:0,activated:[],completed:[],fire:[],support:[],markers:[],assets:[],casualties:[],prisoners:[],personnel:{},pending_combat:[],
     segment_progress:null,activity:'NO_CONTACT',knowledge:{spotted:{},suspected:{}},enemy_pool:{mg:3,squads:['A/S','A/S','A'],fox:2,trench:2,bunker:1},signal_phase_line:scenario.signal_phase_line};
+  s.boundaries=scenario.map?{rows:scenario.map.rows,columns:scenario.map.columns}:null;
   s.terrain_deck=structuredClone(scenario.terrain_deck??[]);s.setup=structuredClone(setup);s.mission_name=scenario.name??'Company Assault';
   s.mission_rules={...structuredClone(scenario.rules??{}),hiddenTerrain:!!scenario.map?.hidden};
   s.objectives=structuredClone(scenario.objectives??null);s.achievements=[];s.hq_events=[];s.support_unavailable=[];s.registered_targets={};

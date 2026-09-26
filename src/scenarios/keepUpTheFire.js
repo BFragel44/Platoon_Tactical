@@ -15,11 +15,11 @@ add('artyfo','Artillery Observer','FO',null,1,null,0,{agency_role:'artyfo',radio
 add('mtrfo','Mortar Observer','FO',null,1,null,0,{agency_role:'mtrfo',radios:['MTR']});
 const force=(kind,cover=null)=>({kind,cover});
 export const keepUpTheFire={
- id:'keep_up_the_fire',name:'Keep Up the Fire',ruleset:'company-v1',version:9,turn_limit:10,
- readiness:{playable:false,missing:['Off-map contact expansion, fortification counter limits and upper-story placement','Enemy weapon certification and integrated transport acceptance','Final scoring and special-enemy acceptance fixtures','Integrated browser and full-mission validation']},
- briefing:'Secure the Primary and Secondary Objectives on row 4 by turn 10. Achievement points also reward cleared positions, prisoners and casualty evacuation. This standalone mission uses simplified communications and event-driven ammunition; there are no vehicles or pyrotechnic signals.',
+ id:'keep_up_the_fire',name:'Keep Up the Fire',ruleset:'company-v1',version:11,turn_limit:10,
+ readiness:{playable:true,stage:'human_acceptance',missing:[],assumptions:['Fortification markers are unlimited; printed step capacities and enemy unit counters remain limited.']},
+ briefing:'Human-acceptance build. Fortification markers are unlimited; printed capacities and enemy unit limits apply. Secure the Primary and Secondary Objectives on row 4 by turn 10. Achievement points also reward cleared positions, prisoners and casualty evacuation. This standalone mission uses simplified communications and event-driven ammunition; there are no vehicles or pyrotechnic signals.',
  map:{columns:4,rows:4,hidden:true,deck:normandyTerrain},locations:[],units,contacts:[],
- rules:{communications:'simplified',events:true,grenade:-4,contactOrder:true,coverTable:true,specialEnemies:true,signals:false,ammo:'events'},
+ rules:{fortificationSupply:'unlimited_markers',contactExpansion:true,communications:'simplified',events:true,grenade:-4,contactOrder:true,coverTable:true,specialEnemies:true,signals:false,ammo:'events'},
  objectives:{type:'secure',primary:'r4c2',secondary:'r4c3',attack:'r3c2',ccp:'r0c2',clear_rows:[]},
  contact_rows:{1:'C',2:'B',3:'A',4:'B'},
  contact_draws:{NO_CONTACT:{A:0,B:0,C:4},CONTACT:{A:7,B:5,C:3},ENGAGED:{A:5,B:3,C:2},HEAVILY_ENGAGED:{A:3,B:2,C:1}},

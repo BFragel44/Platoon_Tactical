@@ -62,8 +62,8 @@ describe('Mission package placement',()=>{
   s.phase='CLEANUP';const after=advancePhase(s).state;
   expect(after.units[u.id].hold_fire_until_cleanup).toBeUndefined();
  });
- it('records and redraws an off-map direction using the original five-way table',()=>{
-  const s=fresh(),pc=s.contacts.pc_r1c1;pc.type='A';s.units.s11.location=pc.location;
+ it('redraws an off-map direction when map expansion is disabled',()=>{
+  const s=fresh(),pc=s.contacts.pc_r1c1;s.mission_rules.contactExpansion=false;pc.type='A';s.units.s11.location=pc.location;
   s.mission_contacts.tables.A=Array(10).fill(4);s.mission_contacts.counters=s.mission_contacts.counters.filter(c=>c.id==='lmg1');
   const invalid=Object.values(cards).find(c=>c.random[3]===1);
   const valid=Object.values(cards).find(c=>c.random[3]===2&&c.id!==invalid.id);

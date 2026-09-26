@@ -1,5 +1,10 @@
 # Company Assault architecture
 
+## Current standalone validation update — September 25, 2026
+
+Keep Up the Fire content 11 starts through validated setup confirmation. Public createMission records setup for strict replay. Contact placement probes possible upper-story elevation without mutation, then verifies actual cover and LOS in the atomic package trial. Failed expanded positions retain terrain without tentative covers.
+
+
 ## Boundary
 
 `src/sim/company/` is DOM-independent. `src/scenarios/companyAssault.js` authors the course. `src/ui/companyMain.js` renders only player projections and visible event text. The old platoon modules remain regression fixtures; the public simulation index dispatches by `ruleset`.

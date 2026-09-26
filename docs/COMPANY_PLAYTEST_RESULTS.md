@@ -1,5 +1,10 @@
 # Fire paths and continuing fire — 2026-09-22
 
+## Current standalone validation update — September 25, 2026
+
+Keep Up the Fire content 11: focused upper-story/fortification checks and full regression/build pass. Public-mission kut-1/support and kut-2/recovery runs both finish at turn 10 and replay exactly. These are scripted validation, not human acceptance; detailed results and remaining audit are in KEEP_UP_THE_FIRE_STATUS.md.
+
+
 Rules revision 6, scenario version 3. Implementation and automated verification are complete; human acceptance is open. Earlier results are preserved in [revision 1 validation](archive/company-v1-validation.md) and repository history.
 
 ## Automated verification

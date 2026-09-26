@@ -1,5 +1,10 @@
 # Company Assault event model
 
+## Current standalone validation update — September 25, 2026
+
+Content 11 adds hidden CONTACT_POSITION_REJECTED records when the actual building-cover draw cannot support contact placement. A nearer legal position is attempted; no rejected cover leaks into committed terrain. These internal records must not reveal hidden enemy identities or terrain through visible history.
+
+
 Each event has a stable ID/sequence, turn, phase, impulse, type, readable text, optional structured payload and a simulation-only `hidden` flag. Events record what happened when it happened; later spotting does not rewrite old reports.
 
 Implemented families:
@@ -71,3 +76,5 @@ Keep Up the Fire content v7 free unloading uses replay `submitCommand` operation
 Content v8 mission `COVER_ATTEMPT` adds `location`, occupied `cover` (null on failure), and `upper_story`. `SEEK_COVER_UPPER` is an explicit replay command sharing the normal seek-cover allowance. Combined grenade source context is labelled **Combined grenade effects**, with no source identity assigned to the aggregate; underlying visible attempt events retain individual attribution. Frozen combat records store the cumulative grenade value.
 
 Content v9 `CONTACT_REMOVED` records `location` and `reason: ENEMY_FIRE_PATH` when opening enemy fire removes an intervening same-level PC. No package or contact draws occur. No attacker identity or causal reference is exposed. Hidden-only fire produces a hidden event. The contact stores `removal_reason` alongside its resolved flag, distinguishing removal from evaluated contact.
+
+Content v10 `MAP_EXPANDED` records `location` and `terrain_card` for new face-up terrain drawn during contact placement. These records contain terrain only, never a hidden counter identity. Rejected package attempts retain expansion events and terrain draws. `boundaries` stores the original map rows/columns independently from expanded locations; `outside_boundary` identifies cards friendly units cannot enter.

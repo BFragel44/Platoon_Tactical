@@ -2,9 +2,7 @@
 
 ## Current: Complete Keep Up the Fire — in progress
 
-The mission/setup foundation and preview are implemented. **The complete mission is not ready to play.** Mission contacts, special units, buildings/fire, event ammunition and scoring still require the work listed in [KEEP_UP_THE_FIRE_STATUS.md](KEEP_UP_THE_FIRE_STATUS.md). An explicit availability gate prevents the draft being mistaken for a complete published mission. Company Assault remains the regression scenario. Normandy Mission 1 follows a complete human Keep Up the Fire playthrough; campaigns and vehicles follow later.
-
-Rules revision 9 records setup in strict replay. Company Assault content remains version 4; Keep Up the Fire draft content is version 1. Historical milestones below retain their original validation claims and do not imply completion of this milestone.
+Keep Up the Fire content 11 is enabled as a **human-acceptance build** with validated setup confirmation, upper-story contact placement and unlimited fortification markers by explicit user agreement. Printed capacities and finite enemy unit counters remain enforced. See [KEEP_UP_THE_FIRE_STATUS.md](KEEP_UP_THE_FIRE_STATUS.md) for checks and unresolved audits. Human acceptance is still open; Normandy remains gated. Rules revision 9 and Company Assault content 4 remain unchanged.
 
 ## Historical: Correct fire paths and explain continuing fire (revision 6)
 

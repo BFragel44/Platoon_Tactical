@@ -307,6 +307,7 @@ export const combatModifier=combatExposure;
 export function movementReason(s,u,target) {
   const to=s.locations[target],from=s.locations[u.location];
   if(!u.pinned&&u.cohesion!=='P'){const load=transportReason(s,u);if(load)return load;}
+  if(to?.outside_boundary&&friendly(u))return 'Outside the mission boundaries: only enemy placement may expand the battlefield.';
   if(!to || distance(from,to)!==1) return 'Choose an adjacent terrain card.';
   if(u.mine_hit)return 'Mines prevent further movement this turn.';
   if(s.hq_events?.some(e=>e.side==='friendly'&&e.code==='HOLD'&&e.turn===s.turn&&to.row>e.lead)&&friendly(u))return 'Higher HQ ordered the company to hold its current leading row this turn.';

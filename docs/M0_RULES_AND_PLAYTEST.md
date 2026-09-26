@@ -1,5 +1,10 @@
 # Company Assault: implemented rules and manual playtest
 
+## Current standalone validation update — September 25, 2026
+
+Keep Up the Fire content 11 is available for human acceptance. Fortification marker supply is unlimited by user agreement; printed capacities, arcs and enemy unit limits remain enforced. Sniper/spotter placement considers possible upper-story LOS, then validates the actual cover draw before committing the package. See KEEP_UP_THE_FIRE_STATUS.md for launch instructions and open audits.
+
+
 This is the gameplay authority for `company-v1`, rules revision 9, Company Assault scenario version 4. It describes a validation candidate, not a certified complete digital reproduction of Fields of Fire.
 
 ## Revision 9: mission foundation (Keep Up the Fire remains unavailable)
@@ -187,3 +192,5 @@ Content v7 also corrects unengaged sniper target-card priority: HQ/staff/leader 
 Keep Up the Fire content v8 adds an explicit upper-story seek-cover choice (§5.2.2B), sharing the normal attempt/cost. Successful building discovery enters the upper story immediately; an ordinary-cover result occupies that cover instead. A church tower accepts only one step. Grenade effects now accumulate against each receiving formation before strongest-fire comparison (§7.10.2); mines/snipers remain independent categories. This preserves weighted combat probabilities but changes the NCM when multiple grenade attacks land. Historical development content versions fail strict loading.
 
 Keep Up the Fire content v9 corrects contact placement (§§8.4.3–8.4.4): bunker/pillbox positions may share U.S.-occupied cards if they can fire toward the triggering card; building substitution is followed by firing-legality revalidation. Opening enemy fire removes intervening PCs at its elevation without a contact evaluation. Ordinary off-map placement expansion (§8.4.5) remains missing and blocks standalone release; the published mission does not waive this rule.
+
+Content v10 implements ordinary contact map expansion (§8.4.5), superseding the v9 missing-feature note above. Maximum-distance placement can draw beyond the original 4×4 map, using the remaining seeded terrain deck and resolving hill stacks. Newly drawn cards persist after rejected package attempts and receive no PCs. Friendly units remain inside the original boundaries; enemy fallback retains the original edge. Feasibility checks do not mutate terrain or history. Final placement/visual acceptance is still open.
