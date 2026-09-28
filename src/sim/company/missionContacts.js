@@ -103,7 +103,7 @@ function placePackage(s,pc,p){
    }
   }
   const l=location;used.push(l.id);
-  const id=`enemy_${s.next_id++}`,u={...structuredClone(profile),id,counter_id:profile.id,max_steps:profile.steps,platoon:null,faction:'enemy',location:l.id,cohesion:'GOOD',experience:'Line',original_experience:'Line',
+  const id=`enemy_${s.next_id++}`,u={...structuredClone(profile),id,counter_id:profile.id,contact_type:pc.type,max_steps:profile.steps,platoon:null,faction:'enemy',location:l.id,cohesion:'GOOD',experience:'Line',original_experience:'Line',
    steps:Array.from({length:profile.steps},(_,i)=>({id:`${id}_step${i+1}`,personnel:[]})),named:profile.kind!=='SQUAD',pinned:false,exposed:!!p.exposed,cover:cover?.id??null,
    fire:p.no_fire||profile.kind==='SPOTTER'?null:pc.location,hold_fire_until_cleanup:!!p.no_fire,indirect:null,radios:[],assets:{},used:[],saved:0,removed:null,mission_weapon:true,placed_turn:s.turn};
   s.units[id]=u;

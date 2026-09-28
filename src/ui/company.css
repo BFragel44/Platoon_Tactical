@@ -59,3 +59,9 @@
 .combat-counter{display:inline-flex;align-items:center;justify-content:center;flex:0 0 38px;height:38px;border:2px solid #a4b395;box-shadow:inset 0 0 0 3px #14221c;background:#395240;font-size:11px;font-weight:bold;letter-spacing:.03em;color:#f0e7cb}.combat-counter.enemy{background:#4d4940;border-color:#bd9b81}.combat-counter.unknown{background:#3e4238;border-color:#bbb38c}.combat-unit-head>div{flex:1;min-width:0}
 
 .command-arithmetic {font-size:.72rem} .command-arithmetic .header-popover {right:0;width:36rem;max-width:calc(100vw - 24px);text-align:left} .roster-scroll {overflow:auto} .company-roster {width:100%;border-collapse:collapse;font-size:.8rem} .company-roster td,.company-roster th {padding:.45rem;text-align:left;border-bottom:1px solid #52604c} #panel-roster {width:1100px;max-width:calc(100% - 16px)}
+
+/* Compact stored combat consequence; no additional reveal stage. */
+.combat-reveal.compact-result {padding:.65rem 1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap;}
+.combat-reveal.compact-result h3,.combat-reveal.compact-result p {margin:0;}
+.spotting-dialog {max-width:min(34rem,calc(100vw - 2rem));}
+.fire-contributors {font-size:.75rem;margin:.3rem 0;}

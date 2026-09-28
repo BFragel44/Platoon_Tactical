@@ -1,5 +1,18 @@
 # Keep Up the Fire implementation status
 
+## Current closure — rules revision 13
+
+Notes KUTF 3 corrections are implemented: Pending-marker activity, mortar-spotter spotting modifier, multiple-PDF joining, spotting confirmation, command pool/spending/reserve labels, accurate contact queue labels and compact combat/source information. **324 tests and production build pass.** Six scripted KUTF runs strictly reproduce state, RNG and history; headline outcomes match revision 12. Desktop and narrow spotting interaction checks pass, including Cancel/Escape and one confirmed order; compact HIT/contact labels were inspected in the browser. See the validation record.
+
+KUTF remains playable for human validation. The new UI and rare multiple-PDF situations still need human acceptance; this is not exhaustive rules certification. Revision 13 / KUTF content 11 / course content 4. Normandy and persistent campaign play remain gated. This supersedes historical status sections below.
+
+## Current closure — rules revision 12
+
+The confirmed readiness defects are corrected: replacement-PC behavior, Litter Team activity, ammunition/trading-fire priorities, movement/fallback eligibility, casualty capture on empty cleared cards, guard remainders and removal-time loads. Added critical regressions for fortification response, named enemy sides and sniper visibility. **318 tests pass; production build passes.** See [readiness audit](KUTF_READINESS_AUDIT.md) and [validation record](COMPANY_PLAYTEST_RESULTS.md).
+
+Browser interaction/recovery checks now pass on an isolated test address; screenshots timed out, so visual acceptance and the complete revision-12 human playthrough remain open. Mission/roster modularization can begin under regression protection; Normandy and persistent campaign play remain gated. Rules 12, KUTF content 11, course content 4. This section supersedes the historical readiness statements below.
+
+
 ## Current assessment — rules revision 11 (September 28)
 
 The tracker-comparison milestone is implemented: activity/recovery, attack-specific NCM, grenade command penalties, overloaded setup, command arithmetic and a read-only company roster. KUTF remains playable for validation, **not certified rules-complete**. Existing human playthroughs are acknowledged. See [current readiness audit](KUTF_READINESS_AUDIT.md) for concrete enemy activity/casualty-capture blockers and the proposed mission/roster modularization boundary. 309 regression tests and the production build pass; six final-code KUTF scripted runs terminate and strictly replay. Browser visual verification remains open. See [validation results](COMPANY_PLAYTEST_RESULTS.md). This section supersedes historical readiness claims below. Normandy remains gated; no campaign persistence is claimed.

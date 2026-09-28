@@ -1,5 +1,28 @@
 # Company Assault: implemented rules and manual playtest
 
+## Revision 13 — spotting, command clarity and PDF selection
+
+Rules sources: third-edition rulebook §§4.1.2–4.1.4 (pp.19–20), §6.3.5 (p.44), §8.1 (p.61), §8.2.4 (p.62), §8.5 (p.65). Notes source: `reference/playtest_replays/Platoon Tactical - Testing Notes KUTF 3.pdf`.
+
+- Pending fire missions prevent No Contact, without exerting active VOF, preventing recovery or generating combat rolls merely by being pending.
+- KUTF mortar spotters receive the Sniper/FO −1 spotting modifier.
+- Joining units consider every eligible established PDF and use normal card priorities; they do not create another PDF while an existing one is usable. Existing established fire remains persistent.
+- Daylight command pool and spendable commands are distinct: expenditure is capped at six per impulse; saved reserves cap at Green 3 / Line 6 / Veteran 9. These limits are unchanged, now shown explicitly.
+- Spotting opens a Cancel/Confirm preview using only projected information. Known spotter/terrain modifiers are shown; possible concealed target adjustments are explained without revealing their values or final draw count. Confirm invokes the existing validated command once; Cancel/Escape has no simulation effect. Reload closes an unconfirmed preview; no command was accepted. Confirmed outcomes remain in Last order/history and autosave normally.
+- Contact labels distinguish current, eligible queued and unoccupied cards. Ordering is the general rule, not a KUTF exception.
+- Combat source strength, experience and distance are frozen at preparation for known sources only. HIT and formation consequences use one compact result band. Visible PDF contributor/destination labels accompany card-edge arrows; unknown contributors remain anonymous.
+
+Rules revision 13; KUTF content 11 and Company Assault content 4 unchanged. Older executable saves/replays are rejected without migration and remain exportable. No probability or balance changes. Human acceptance remains open.
+
+## Revision 12 — KUTF readiness corrections
+
+Ordinary KUTF defenders leaving contact replace themselves with their original PC letter (§8.6.2); the course exception remains course-only. Litter Teams seek/evacuate casualties before recovery. Deliberate-defense ammunition and fire-comparison rows are corrected, with legal weighted outcomes and fallback movement/LOS/protection priorities. Enemy LAT movement waives friendly occupation, not movement/fire restrictions.
+
+Enemy casualties on empty cards can be captured when no enemy or unresolved PC remains (§8.15.1); earlier contrary descriptions are superseded. Guard steps retain origin/experience records. In the capture header, choose the Fire/Assault side for qualifying friendly squad remainders; this segment-wide preference is recorded for replay. Bunker/pillbox occupants do not make free point-blank grenade responses from inside cover; activity attacks require leaving it exposed (§5.3.2). Removed/captured formations release carried loads as appropriate.
+
+Rules revision 12; mission content versions unchanged. The [readiness audit](KUTF_READINESS_AUDIT.md) distinguishes completed corrections from remaining human/visual acceptance and deferred campaign systems.
+
+
 ## Revision 11 — tracker audit corrections
 
 Activity retains Contact while any VOF/PDF or unactivated mine remains. Automatic pinned recovery requires no VOF on the card, including unactivated mines; enemy activity “under fire” separately excludes inactive mines. Each attack is compared after applicable smoke, burst and crowding, before selecting the strongest; crowding applies only to grenade/Incoming effects in supported systems. Sniper fire receives smoke protection. The NCM explanation separates printed VOF, smoke and burst. Grenade pressure applies the -3 HQ command modifier. Overloaded setup assignments are allowed but prevent movement until unloaded (§5.1.6A).

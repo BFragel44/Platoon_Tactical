@@ -29,7 +29,7 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 11;
+export const RULES_VERSION = 13;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 function phaseDescription(s){
   if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(s.phase))return s.turn===1?'No higher-HQ event check on turn 1.':'Draw for a higher-HQ event; resolve this turn’s mission table and any command obligations.';
@@ -165,12 +165,13 @@ function nextContact(s) {
   const eligible=eligibleContacts(s);
   return s.mission_contacts?s.contact_queue?.map(id=>eligible.find(pc=>pc.id===id)).find(Boolean):eligible[0];
 }
-export function advancePhase(state) {
+export function advancePhase(state,options={}) {
+  if(Object.keys(options).some(k=>k!=='friendlyRemainder')||options.friendlyRemainder&&!['F','A'].includes(options.friendlyRemainder))return {state,events:[],accepted:false,reason:'Choose Fire Team or Assault Team for the guard remainder.'};
   if(state.status!=='ACTIVE')return {state,events:[]};
   const pending=state.phase==='COMBAT_EFFECTS'&&state.pending_combat?.[state.segment_progress?.index];
   if(pending?.status==='PENDING'&&pending.target_visible)
     return {state,events:[],accepted:false,reason:'Resolve the displayed combat exposure before continuing.'};
-  const s=structuredClone(state);s.replay.push({op:'advancePhase'});
+  const s=structuredClone(state);s.replay.push({op:'advancePhase',...(state.phase==='CAPTURE'&&options.friendlyRemainder?{options:structuredClone(options)}: {})});
   if(s.impulse){finishImpulse(s);if(eligibleHQs(s).length)return result(state,s);}
   if(eligibleHQs(s).length)return {state,events:[],reason:'Select each eligible HQ and complete its impulse before advancing.'};
   const phase=s.phase;
@@ -181,7 +182,7 @@ export function advancePhase(state) {
     else emit(s,'ACTIVATION_UNAVAILABLE','Company HQ cannot receive BN activation; it must use initiative.');
   }
   if(phase==='ENEMY_ACTIVITY')enemyActivity(s);
-  if(phase==='CAPTURE')capture(s);
+  if(phase==='CAPTURE')capture(s,options);
   if(phase==='RETREAT')retreat(s);
   if(phase==='FIRE_MISSIONS') {
     s.support=s.support.filter(f=>f.status==='PENDING');for(const f of s.support){f.status='ACTIVE';emit(s,'SUPPORT_ACTIVE',`Incoming fire active at ${s.locations[f.location].name}.`,{location:f.location,value:f.value});}refresh(s);
@@ -280,7 +281,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     events_after:s.segment_progress.events_after,
     visible_total:s.pending_combat.filter(r=>r.target_visible).length,visible_resolved:s.pending_combat.filter(r=>r.target_visible&&r.status==='RESOLVED').length}:structuredClone(s.segment_progress);
   const contactEvents=s.phase==='CONTACTS'&&s.segment_progress?getVisibleEvents(s,'friendly',s.segment_progress.events_after):[];
-  const contact_review=s.phase==='CONTACTS'?{location:s.segment_progress?.contact??nextContact(s)?.location??null,next_location:nextContact(s)?.location??null,resolved:!!s.segment_progress,events:contactEvents}:null;
+  const contact_review=s.phase==='CONTACTS'?{eligible_locations:eligibleContacts(s).map(c=>c.location),location:s.segment_progress?.contact??nextContact(s)?.location??null,next_location:nextContact(s)?.location??null,resolved:!!s.segment_progress,events:contactEvents}:null;
   return {id:s.id,scenario_id:s.scenario_id,status:s.status,seed:s.seed,turn:s.turn,turn_limit:s.turn_limit,phase:s.phase,phase_label:phaseInfo(s.phase)[1],phase_description:phaseDescription(s),combat_resolution,contact_review,
     historical_losses:getVisibleEvents(s).filter(e=>e.type==='FORMATION_LOST'),
     segment_progress,briefing:s.briefing,activity:s.activity,impulse:structuredClone(s.impulse),eligible_hqs:eligibleHQs(s),units,
@@ -305,7 +306,7 @@ export function exportReplay(s) { return {ruleset:s.ruleset,rules_version:s.rule
 function replayOperation(s,op) {
   if(op.op==='submitCommand')return submitCommand(s,op.command);
   if(op.op==='selectHQ')return selectHQ(s,op.id);
-  if(op.op==='advancePhase')return advancePhase(s);
+  if(op.op==='advancePhase')return advancePhase(s,op.options);
   if(op.op==='resolveCombat')return resolveCombat(s,op.id);
   if(op.op==='abortMission')return abortMission(s);
   throw new Error('Unknown replay operation');

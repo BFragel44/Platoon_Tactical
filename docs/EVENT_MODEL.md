@@ -1,5 +1,14 @@
 # Company Assault event model
 
+## Revision 13 projection additions
+
+Public simulation entry points remain unchanged. Prepared combat source records include frozen `steps`, `experience`, `unit_kind` and geometric `range` only when the source was visible at preparation. Unknown source IDs remain stripped by player projection; no concealed statistics are added. Contact review includes friendly-occupied eligible locations for accurate queue labels. Spotting previews use only player projections, emit no events and consume no RNG; confirmation uses ordinary command/history/replay events. Unconfirmed dialogs are intentionally ephemeral across reload.
+
+## Revision 12 — activity, capture and load history
+
+`advancePhase` may record `options.friendlyRemainder` (`F` or `A`) during capture. Strict replay preserves the choice. `FORMATION_CHANGED` records guard-remainder location/cause; prisoner records retain guard origin/experience for future debrief use. This is not implemented campaign persistence. `CONTACT_RENEWED` uses the original PC letter; hidden enemy activity remains filtered. Enemy casualty capture uses an opaque casualty record ID when its original loss was unobserved. `ASSETS_DROPPED` records location/reason for event withdrawal, surrender and capture. No hidden actor IDs are added to public events.
+
+
 ## Revision 11 combat explanations
 
 Prepared/resolved combat modifier lists now include separate SMOKE and BURST entries, with OVERCROWDING applied only to eligible attacks. Selection compares fully adjusted attack candidates from the frozen snapshot. Existing visibility filtering remains mandatory; no hidden source IDs are added to normal projections. Activity and command corrections change simulation results, so strict replay uses rules revision 11. Roster/menu inspection emits no simulation events or random draws.

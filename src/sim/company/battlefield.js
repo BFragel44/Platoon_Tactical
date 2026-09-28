@@ -211,24 +211,25 @@ export function refresh(s) {
   // A spotted unit sharing a card reveals all opposing occupants (8.5).
   for(const u of values(s.units).filter(u=>live(u)&&!friendly(u)&&s.knowledge.spotted[u.id]))spot(s,u);
   const established=new Map();
+  const establish=(key,target)=>{if(!established.has(key))established.set(key,new Set());established.get(key).add(target);};
   for(const u of values(s.units).filter(u=>u.temporary_pdf)){
     if(!live(u)||u.location!==u.temporary_pdf.origin)delete u.temporary_pdf;
-    else established.set(`${u.faction}:${u.location}`,u.temporary_pdf.target);
+    else establish(`${u.faction}:${u.location}`,u.temporary_pdf.target);
   }
   for(const u of values(s.units).filter(live)) {
     rememberDirection(s,u);
     if(u.fire)u.fire=fireDestination(s,u,u.fire,true);
     u.fire_effect=u.fire;
     if(u.fire&&!canFire(s,u,u.fire))u.fire=null;
-    if(u.fire)established.set(`${u.faction}:${u.location}`,u.fire);
+    if(u.fire)establish(`${u.faction}:${u.location}`,u.fire);
   }
   const selectionSnapshot={units:structuredClone(s.units)};
   const indirectUnits=values(s.units).filter(u=>live(u)&&u.indirect&&!u.exposed&&u.steps.length>=2&&u.cohesion==='GOOD'&&!u.pinned&&u.indirect!==u.location&&!['Building','Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type)&&s.locations[u.location].terrain!=='woods');
   const projectedFire=values(s.units).filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)&&!indirectUnits.includes(u)).map(u=>({source:u.id,origin:u.location,value:basicValue(u,distance(s.locations[u.location],s.locations[u.fire]))})).filter(f=>f.value!==null).concat(indirectUnits.map(u=>({source:u.id,origin:u.location,value:-3})));
   for (const u of values(s.units).filter(live)) {
     if (occupants(s,u.location).some(t=>t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]))&&canFire(s,u,u.location))u.fire=u.location;
-    const key=`${u.faction}:${u.location}`,joined=established.get(key);
-    if(!u.fire&&joined&&canFire(s,u,joined))u.fire=joined;
+    const key=`${u.faction}:${u.location}`,joined=[...(established.get(key)??[])].filter(id=>canFire(s,u,id));
+    if(!u.fire&&joined.length)u.fire=automaticTargetCard(s,u,joined.map(location=>({location})),projectedFire);
     if (!u.fire && !u.indirect && basicValue(u) !== null) {
       const targets = values(s.units).filter(t => live(t) && t.faction !== u.faction &&
         (!friendly(u) || s.knowledge.spotted[t.id]) && canFire(s,u,t.location) && fireDestination(s,u,t.location)===t.location &&
@@ -236,7 +237,7 @@ export function refresh(s) {
       if (targets.length)u.fire=fireDestination(s,u,u.mission_weapon&&vofOf(u)==='S!'?sniperTargetCard(s,u,targets,selectionSnapshot):automaticTargetCard(s,u,targets,projectedFire));
     }
     rememberDirection(s,u);u.fire_effect=u.fire;
-    if(u.fire)established.set(key,u.fire);
+    if(u.fire)establish(key,u.fire);
   }
   s.fire = values(s.units).filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)).flatMap(u => basicFireTargets(s,u,u.fire).map(target=>({
     source:u.id, origin:u.location, target, value:basicValue(u,distance(s.locations[u.location],s.locations[target])), indirect:false,
@@ -269,7 +270,7 @@ export function refresh(s) {
   for(const u of values(s.units).filter(u=>!friendly(u)&&s.knowledge.spotted[u.id])) s.knowledge.spotted[u.id]=observeRecord(u);
   const under = values(s.locations).filter(l=>occupants(s,l.id).length && hasFire(s,l.id));
   s.activity = under.length >= 2 ? (under.some(l=>new Set(occupants(s,l.id).map(u=>u.faction)).size>1) ? 'HEAVILY_ENGAGED' : 'ENGAGED')
-    : values(s.locations).some(l=>hasFire(s,l.id)) || temporaryMortarFire(s).length || Object.keys(s.knowledge.spotted).some(id=>live(s.units[id])) ? 'CONTACT' : 'NO_CONTACT';
+    : values(s.locations).some(l=>hasFire(s,l.id)) || temporaryMortarFire(s).length || s.support.some(f=>f.status==='PENDING') || Object.keys(s.knowledge.spotted).some(id=>live(s.units[id])) ? 'CONTACT' : 'NO_CONTACT';
 }
 export const observeRecord = u => ({id:u.id,name:u.name,kind:u.kind,location:u.location,cohesion:u.cohesion,pinned:u.pinned,exposed:u.exposed,steps:u.steps.length,cover:u.cover,removed:u.removed});
 export function spot(s,u) {
@@ -328,7 +329,7 @@ export function movementReason(s,u,target) {
   if(s.hq_events?.some(e=>e.side==='friendly'&&e.code==='HOLD'&&e.turn===s.turn&&to.row>e.lead)&&friendly(u))return 'Higher HQ ordered the company to hold its current leading row this turn.';
   if(u.exposed) return 'Already exposed: cannot move to another card until cleanup.';
   if((u.pinned||['P','L','F'].includes(u.cohesion)) && !to.staging &&
-    (hasFire(s,target)||!occupants(s,target).some(v=>v.faction===u.faction))) return 'This unit can only withdraw to staging or a friendly occupied card free of fire.';
+    (hasFire(s,target)||friendly(u)&&!occupants(s,target).some(v=>v.faction===u.faction))) return 'This unit can only withdraw to staging or a friendly occupied card free of fire.';
   const steps=occupants(s,target).filter(v=>v.faction===u.faction).reduce((n,v)=>n+v.steps.length,0);
   if(!to.staging && steps+u.steps.length>16) return 'The destination would exceed the 16-step stacking limit.';
   if(Math.abs(from.row-to.row)===1 && Math.abs(from.col-to.col)===1) {

@@ -1,5 +1,14 @@
 # Company Assault architecture
 
+## Revision 13 clarification milestone
+
+Established fire lookup holds all directions per faction/card, filters them by the joining unit's fire capability, and ranks them through the existing card-priority selector. Pending support affects activity separately from active VOF. Combat source display data is captured at preparation, never rebuilt from post-casualty live units. The spotting dialog receives a sanitized player view and calls the existing command submission callback only on Confirm. Rules 13 rejects prior executable versions; mission content versions are unchanged.
+
+## Revision 12 — readiness closure interfaces
+
+Capture accepts a segment-wide friendly remainder preference, recorded as optional `advancePhase` replay options. Existing callers retain the Fire Team default. Contact-created units retain their originating PC letter for replacement markers. Removal-time load handling is centralized in `core.dropLoad` for event/capture use; combat radio-damage handling remains distinct. Full mission replay remains the recovery authority. Campaign roster/debrief extraction remains planned, not implemented.
+
+
 ## Revision 11 readiness boundary
 
 `companyOverview.js` renders command arithmetic and a friendly roster from sanitized projections; it owns no simulation state. `combatExposure` compares attack-specific modifiers before selecting fire and supplies separately labelled NCM components. `hasFire` includes inactive mines for card-level activity/recovery, with an explicit exclusion for enemy hierarchy “under fire”. Rules version 11 rejects older executable records; content versions remain unchanged.

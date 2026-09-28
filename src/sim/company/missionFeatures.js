@@ -1,4 +1,4 @@
-import {values,live,friendly,visible,good,emit,draw,randomNumber,pick} from './core.js';
+import {values,live,friendly,visible,good,emit,draw,randomNumber,pick,dropLoad} from './core.js';
 import {occupants,los,distance,spot,refresh,coverOf} from './battlefield.js';
 
 export function discoveredCover(s,l,known=true,enemy=false) {
@@ -60,9 +60,9 @@ export function higherEvent(s,side){
   const before={pinned:u.pinned,cohesion:u.cohesion,removed:u.removed};
   if(code==='UNPIN'&&u.pinned){u.pinned=false;u.event_acted=s.turn;}
   if(code==='RECOVER'&&['P','L'].includes(u.cohesion)){u.cohesion='F';u.experience='Green';u.event_acted=s.turn;}
-  if(code==='BREAK'&&u.cohesion==='P'){u.removed='WITHDRAWN';u.event_acted=s.turn;}
+  if(code==='BREAK'&&u.cohesion==='P'){dropLoad(s,u,'withdrawal');u.removed='WITHDRAWN';u.event_acted=s.turn;}
   else if(code==='BREAK'&&u.cohesion==='L'){u.cohesion='P';u.event_acted=s.turn;}
-  if(code==='SURRENDER'&&occupants(s,u.location).some(friendly)){spot(s,u);s.prisoners.push({guard:null,prisoners:structuredClone(u.steps)});u.removed='CAPTURED';u.event_acted=s.turn;emit(s,'UNIT_CAPTURED','Enemy formation surrendered without requiring guards.',{actor:u.id,location:u.location,faction:'enemy',step_ids:u.steps.map(step=>step.id)});}
+  if(code==='SURRENDER'&&occupants(s,u.location).some(friendly)){spot(s,u);dropLoad(s,u,'surrender');s.prisoners.push({guard:null,prisoners:structuredClone(u.steps)});u.removed='CAPTURED';u.event_acted=s.turn;emit(s,'UNIT_CAPTURED','Enemy formation surrendered without requiring guards.',{actor:u.id,location:u.location,faction:'enemy',step_ids:u.steps.map(step=>step.id)});}
   if(before.pinned!==u.pinned||before.cohesion!==u.cohesion||before.removed!==u.removed)emit(s,'HQ_EVENT_FORMATION',`${u.name}: ${u.removed==='CAPTURED'?'captured':u.removed?'withdrawn':before.pinned&&!u.pinned?'unpinned':`${before.cohesion} → ${u.cohesion}`}.`,{actor:u.id,location:u.location,faction:u.faction,code},!visible(s,u));
  }
  if(code==='EVAC')s.casualties=s.casualties.filter(c=>occupants(s,c.location).some(friendly));

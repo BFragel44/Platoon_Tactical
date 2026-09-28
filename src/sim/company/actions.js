@@ -219,6 +219,7 @@ export function rally(s,u,issuer=u,recover=false) {
   emit(s,'RALLY_ATTEMPT',`${u.name}: ${success ? (recover?'cohesion recovered':'pin removed') : 'rally failed'}.`,{actor:u.id,success},!visible(s,u));
 }
 export function grenade(s,u,t,response=false,wp=false) {
+  if(response&&s.mission_contacts&&['Bunker','Pillbox'].includes(coverOf(s,u)?.type))return;
   const mortar=!wp&&u.mission_weapon&&u.kind==='MORTAR'&&u.cohesion==='GOOD'&&u.steps.length===1&&u.location!==t.location;
   if(mortar){u.temporary_pdf={origin:u.location,target:t.location};emit(s,'MORTAR_PDF_PLACED','Mortar direct lay establishes a temporary firing direction; it counts for crossfire even if the attack misses.',{actor:visible(s,u)?u.id:null,origin:u.location,target:t.location},!visible(s,u)&&!visible(s,t));}
   const targets=t.cover?occupants(s,t.location).filter(v=>v.cover===t.cover&&v.faction===t.faction):[t];
@@ -239,7 +240,7 @@ export function concentrate(s,u,t) {
 export function spottingBaseDraws(s,u,t) {
   const l=s.locations[t.location],protection=terrainProtection(l,s.locations[u.location]);
   return 2+(unitElevation(s,u)>unitElevation(s,t)?1:0)+(u.location===t.location?1:0)+(protection>=3?-1:protection===0?1:0)
-    -(t.cover?1:0)+(t.exposed?2:0)+(t.vof==='A'?1:['H','G'].includes(t.vof)?2:0)-expMod(t)-(['FO','SNIPER'].includes(t.kind)?1:0);
+    -(t.cover?1:0)+(t.exposed?2:0)+(t.vof==='A'?1:['H','G'].includes(t.vof)?2:0)-expMod(t)-(['FO','SPOTTER','SNIPER'].includes(t.kind)?1:0);
 }
 export function spotAttempt(s,u,id) {
   const targets=occupants(s,id).filter(t=>t.faction!==u.faction&&!s.knowledge.spotted[t.id]&&unitLos(s,u,t));

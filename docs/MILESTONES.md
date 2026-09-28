@@ -1,5 +1,14 @@
 # Milestones
 
+## Notes KUTF 3 — implemented, human acceptance open
+
+Spotting/command clarity and PDF selection are implemented at rules revision 13: Pending activity, spotter penalty, multi-PDF joining, safe spotting confirmation, command limits, contact labels and compact combat consequences. Automated and short browser verification is recorded in COMPANY_PLAYTEST_RESULTS.md. Human acceptance should confirm spotting stakes, actual PDF contributors and readable consequences before calling this milestone accepted. Normandy remains unavailable.
+
+## September 28 — KUTF audit closure (revision 12)
+
+Confirmed activity/capture/readiness defects corrected and critical fixtures added. Remaining gate is focused human and visual acceptance; see [audit](KUTF_READINESS_AUDIT.md). Behavior-preserving mission/roster modularization may proceed. Normandy Mission 1 still requires its documented systems; no persistent campaign is enabled.
+
+
 ## September 28: rules explanations and readiness audit
 
 Implemented the revision-11 tracker-audit corrections, command arithmetic and roster overview. KUTF remains a playable validation build; enemy activity and casualty-capture fidelity prevent declaring it complete. Next: close those confirmed gaps, then modular mission/roster contracts. Normandy and campaign continuity remain gated. Details: [KUTF readiness audit](KUTF_READINESS_AUDIT.md).

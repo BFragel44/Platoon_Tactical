@@ -67,3 +67,12 @@ export function transportReason(s,u,extraAssets=0) {
   if(s.casualties.filter(c=>c.carrier===u.id).length>u.steps.length)return 'Over transport capacity: each step can carry one casualty. Unload before moving.';
   return null;
 }
+
+// Removal without combat does not destroy carried radios or silently delete loads.
+export function dropLoad(s,u,reason='removed') {
+ for(const net of u.radios)s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:u.location,cover:u.cover,faction:u.faction});
+ for(const [key,quantity] of Object.entries(u.assets))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,location:u.location,cover:u.cover,faction:u.faction});
+ for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.carrier=null;c.location=u.location;c.cover=u.cover;}
+ u.radios=[];u.assets={};
+ emit(s,'ASSETS_DROPPED',`${visible(s,u)?u.name:'Enemy formation'}: carried load left at its current position (${reason}).`,{actor:visible(s,u)?u.id:null,location:u.location,reason},!visible(s,u));
+}

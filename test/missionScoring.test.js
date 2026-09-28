@@ -26,12 +26,12 @@ describe('Keep Up the Fire achievements',()=>{
   const s=fresh();s.objectives.ccp='r2c1';s.contacts.pc_r2c1.resolved=true;
   expect(abortMission(s).state.achievements).toContainEqual(expect.objectContaining({key:'clear_pc_r2c1',points:1}));
  });
- it('scores captured steps once and never scores merely unoccupied enemy casualties',()=>{
+ it('scores captured steps once and does not capture enemy casualties while unresolved contacts remain',()=>{
   const s=fresh();s.units.s11.location='r1c1';enemy(s,'prisoner','r1c1');
   s.casualties.push({id:'wounded1',faction:'enemy',location:'r1c1',step:{id:'w1',personnel:[]},evacuated:false},
    {id:'wounded2',faction:'enemy',location:'r2c2',step:{id:'w2',personnel:[]},evacuated:false});
   capture(s);scoreMission(s);capture(s);scoreMission(s);
-  expect(s.achievements.map(a=>[a.key,a.points])).toEqual([['prisoner_prisoner_step',2],['enemy_casualty_w1',1]]);
+  expect(s.achievements.map(a=>[a.key,a.points])).toEqual([['prisoner_prisoner_step',2],['enemy_casualty_wounded1',1]]);
   expect(s.casualties.find(c=>c.id==='wounded2').evacuated).toBe(false);
  });
  it('does not reveal undiscovered fortifications through final score',()=>{

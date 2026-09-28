@@ -1,7 +1,7 @@
 import {prepareSpecialTargets,specialActivity} from './specialEnemies.js';
 import {resolveMissionContact} from './missionContacts.js';
-import { values, live, good, friendly, visible, emit, draw, randomNumber, pick, shuffle } from './core.js';
-import { adjacent, occupants, los, unitLos, coverAvailable, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire } from './battlefield.js';
+import { values, live, good, friendly, visible, emit, draw, randomNumber, pick, shuffle, dropLoad } from './core.js';
+import { adjacent, occupants, los, unitLos, coverAvailable, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire, movementReason } from './battlefield.js';
 import { seekCover, rally, grenade, concentrate, move, splitTeam } from './actions.js';
 import { combatResolutionTable, hitEffectTable, resolveCombatOutcome, resolveHitEffect } from './combatProbability.js';
 
@@ -54,9 +54,10 @@ export function applyHit(s,u,letters) {
     {actor:u.id,effect:letters,formations:affected.map(v=>v.id)},!visible(s,u));
 }
 const distributionRecord=d=>({total:d.total,counts:{...d.counts},probabilities:{...d.probabilities}});
-const sourceRecord=(s,source)=>{
+const sourceRecord=(s,source,target)=>{
   const unit=s.units[source?.source_id],known=unit&&visible(s,unit);
   return source?{kind:source.kind,source_id:source.source_id??null,origin:source.origin,value:source.value,vof:source.vof,
+    ...(known?{steps:unit.steps.length,experience:unit.experience,unit_kind:unit.kind,range:distance(s.locations[unit.location],s.locations[target.location])}:{}),
     faction:unit?.faction??(source.kind==='OFF_MAP_SUPPORT'?'enemy':null),known:!!known,
     label:source.kind==='OFF_MAP_SUPPORT'?source.label:source.kind==='ON_MAP_INDIRECT'?'On-map mortar fire':source.kind==='MINES'?'Mine explosion':source.kind==='SNIPER'?'Sniper fire':source.kind==='GRENADE'?(source.label??'Grenade effect'):known?unit.name:'Unidentified fire'}:null;
 };
@@ -69,7 +70,7 @@ export function prepareCombat(s) {
     const resolution={id,target_id:u.id,target_name:u.name,target_location:u.location,target_faction:u.faction,target_visible:!!visible(s,u),
       target_experience:u.experience,target_kind:u.kind,target_steps:u.steps.length,target_cohesion:u.cohesion,target_pinned:u.pinned,
       ncm:exposure.ncm,total:exposure.total,parts:structuredClone(exposure.parts),modifiers:structuredClone(exposure.modifiers),
-      sources:exposure.sources.map(source=>sourceRecord(s,source)),strongest:sourceRecord(s,exposure.strongest),
+      sources:exposure.sources.map(source=>sourceRecord(s,source,u)),strongest:sourceRecord(s,exposure.strongest,u),
       probabilities:distributionRecord(combatResolutionTable[exposure.ncm]),hit_probabilities:distributionRecord(hitEffectTable[u.experience]),
       status:'PENDING',result:null,roll:null,hit_effect:null,hit_roll:null,after:null,casualty_steps:0};
     resolutions.push(resolution);
@@ -163,12 +164,15 @@ export function resolveContacts(s,contactId=null) {
   }
 }
 function fallBack(s,u) {
+  if(u.exposed||u.mine_hit)return;
   const from=s.locations[u.location];
-  if(!friendly(u)&&(s.boundaries?(from.row>=s.boundaries.rows||from.col<1||from.col>s.boundaries.columns):from.row===Math.max(...values(s.locations).map(l=>l.row)))){u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW',`${u.name} withdrew from the battlefield.`,{actor:u.id,location:u.location,faction:u.faction},!visible(s,u));return;}
-  const possible=adjacent(s,u.location).filter(l=>(friendly(u)?l.row<from.row:l.row>from.row)&&!occupants(s,l.id).some(v=>v.faction!==u.faction));
+  if(!friendly(u)&&(s.boundaries?(from.row>=s.boundaries.rows||from.col<1||from.col>s.boundaries.columns):from.row===Math.max(...values(s.locations).map(l=>l.row)))){if(u.pinned||u.cohesion==='P')dropLoad(s,u,'withdrawal');else for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.evacuated=true;c.carrier=null;}u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW',`${u.name} withdrew from the battlefield.`,{actor:u.id,location:u.location,faction:u.faction},!visible(s,u));return;}
+  const possible=adjacent(s,u.location).filter(l=>(friendly(u)?l.row<from.row:l.row>from.row)&&!movementReason(s,u,l.id));
   if(!possible.length)return;
-  possible.sort((a,b)=>Number(hasFire(s,a.id))-Number(hasFire(s,b.id))||b.protection-a.protection);
-  const best=possible.filter(l=>hasFire(s,l.id)===hasFire(s,possible[0].id)&&l.protection===possible[0].protection);
+  const seen=l=>values(s.units).some(v=>v.faction!==u.faction&&live(v)&&unitLos(s,v,l.id));
+  const protection=l=>l.protection+Math.max(0,...l.covers.filter(c=>coverAvailable(s,u,c,l.id)).map(c=>c.value));
+  possible.sort((a,b)=>Number(seen(a))-Number(seen(b))||protection(b)-protection(a));
+  const best=possible.filter(l=>seen(l)===seen(possible[0])&&protection(l)===protection(possible[0]));
   move(s,u,pick(s,best,'Retreat destination',!visible(s,u)).id);
 }
 function enemyCover(s,u) {
@@ -176,9 +180,13 @@ function enemyCover(s,u) {
   if(cover){u.cover=cover.id;u.exposed=true;}else seekCover(s,u);
 }
 function attack(s,u) {
-  const close=occupants(s,u.location).find(v=>v.faction!==u.faction);
+  const opponents=occupants(s,u.location).filter(v=>v.faction!==u.faction);
+  const size=v=>v.cover?opponents.filter(t=>t.cover===v.cover).reduce((n,t)=>n+t.steps.length,0):v.steps.length;
+  const areas=opponents.filter((v,i,a)=>!v.cover||a.findIndex(t=>t.cover===v.cover)===i);
+  const largest=Math.max(0,...areas.map(size));
+  const close=areas.length?pick(s,areas.filter(v=>size(v)===largest),'Enemy point-blank target',!visible(s,u)):null;
   if(close){if(['Bunker','Pillbox'].includes(coverOf(s,u)?.type)){u.cover=null;u.exposed=true;}grenade(s,u,close);}
-  else if(u.fire){const target=occupants(s,u.fire).find(v=>v.faction!==u.faction);if(target)concentrate(s,u,target);}
+  else if(u.fire){const targets=occupants(s,u.fire).filter(v=>v.faction!==u.faction);const target=targets.length?pick(s,targets,'Enemy fire target',!visible(s,u)):null;if(target)concentrate(s,u,target);}
 }
 // First matching row of Deliberate Defence / No Leader LAT hierarchy.
 export function enemyActivity(s) {
@@ -193,45 +201,68 @@ export function enemyActivity(s) {
       if(specialActivity(s,u,fallBack)){refresh(s);continue;}
       refresh(s);
       const same=occupants(s,u.location).some(friendly),under=hasFire(s,u.location,{includeInactiveMines:false}),covered=!!u.cover;
+      const casualties=s.casualties.filter(c=>!c.evacuated&&c.faction===u.faction&&(!c.carrier||c.carrier===u.id));
+      const localCasualty=casualties.find(c=>c.location===u.location&&c.cover===u.cover);
+      const seenCasualties=casualties.filter(c=>unitLos(s,u,c.location));
       const roll=n=>randomNumber(s,n,`${u.name}: activity`,!visible(s,u));
+      const canFallBack=!u.exposed&&!u.mine_hit&&(s.locations[u.location].row>=(s.boundaries?.rows??3)||s.locations[u.location].col<1||s.locations[u.location].col>(s.boundaries?.columns??4)||adjacent(s,u.location).some(l=>l.row>s.locations[u.location].row&&!movementReason(s,u,l.id)));
+      const choices=list=>{
+        const legal=!s.mission_contacts?list:list.filter(a=>{
+          if(['FALL_BACK','EVACUATE'].includes(a))return canFallBack;
+          if(a==='COVER')return (s.locations[u.location].covers.some(c=>coverAvailable(s,u,c))||!u.cover&&s.locations[u.location].covers.filter(c=>c.discovered&&!c.parent).length<s.locations[u.location].cover_limit);
+          if(a==='SHIFT')return !['Bunker','Pillbox'].includes(coverOf(s,u)?.type)&&incoming(s,u).some(f=>canFire(s,u,f.origin));
+          if(a==='ADVANCE')return adjacent(s,u.location).some(l=>!l.staging&&!movementReason(s,u,l.id));
+          if(a==='SEEK_CASUALTY')return !u.mine_hit&&seenCasualties.some(c=>c.location===u.location?(!c.cover||coverAvailable(s,u,s.locations[u.location].covers.find(v=>v.id===c.cover))):adjacent(s,u.location).some(l=>!movementReason(s,u,l.id)&&distance(l,s.locations[c.location])<distance(s.locations[u.location],s.locations[c.location])));
+          if(a==='ATTACK')return same||!!u.fire&&occupants(s,u.fire).some(v=>v.faction!==u.faction);
+          return true;
+        });
+        return legal.length?legal[roll(legal.length)-1]:'NONE';
+      };
       let action='NONE';
       if(u.pinned) {
-        if(same&&!covered)action=['NONE','COVER','RALLY','FALL_BACK','FALL_BACK'][roll(5)-1];
-        else if(same&&covered)action=['NONE','NONE','RALLY','FALL_BACK','FALL_BACK'][roll(5)-1];
-        else if(!covered)action=['NONE','NONE','COVER','RALLY','FALL_BACK'][roll(5)-1];
-        else action=['NONE','NONE','RALLY','FALL_BACK'][roll(4)-1];
+        if(same&&!covered)action=choices(['NONE','COVER','RALLY','FALL_BACK','FALL_BACK']);
+        else if(same&&covered)action=choices(['NONE','NONE','RALLY','FALL_BACK','FALL_BACK']);
+        else if(!covered)action=choices(['NONE','NONE','COVER','RALLY','FALL_BACK']);
+        else action=choices(['NONE','NONE','RALLY','FALL_BACK']);
       }else if(u.cohesion!=='GOOD') {
-        if(u.named&&u.cohesion==='F')action=roll(2)===2?'RECOVER':'NONE';
-        else if(u.cohesion==='A')action=roll(2)===2?(same?'ATTACK':'ADVANCE'):'NONE';
-        else if(u.cohesion==='F'&&same)action=(covered?['NONE','NONE','ATTACK','FALL_BACK','FALL_BACK']:['NONE','COVER','FALL_BACK','FALL_BACK','FALL_BACK'])[roll(5)-1];
-        else if(u.cohesion==='L')action=roll(3)===3?'RECOVER':'NONE';
-      }else if(same&&!covered)action=['COVER','FALL_BACK','ATTACK'][roll(3)-1];
-      else if(same&&covered)action=['NONE','ATTACK','ATTACK'][roll(3)-1];
-      else if(!under&&!values(s.units).some(v=>friendly(v)&&live(v)&&unitLos(s,u,v)))action='NONE';
+        if(u.named&&u.cohesion==='F'&&!same)action=choices(['NONE','RECOVER']);
+        else if(u.cohesion==='A')action=choices(['NONE',same?'ATTACK':'ADVANCE']);
+        else if(u.cohesion==='F'&&same)action=choices(covered?['NONE','NONE','ATTACK','FALL_BACK','FALL_BACK']:['NONE','COVER','FALL_BACK','FALL_BACK','FALL_BACK']);
+        else if(u.cohesion==='L')action=s.mission_contacts&&localCasualty?choices(['NONE','EVACUATE','EVACUATE']):s.mission_contacts&&seenCasualties.length?choices(['NONE','SEEK_CASUALTY','SEEK_CASUALTY']):roll(3)===3?'RECOVER':'NONE';
+      }else if(same&&!covered)action=choices(['COVER','FALL_BACK','ATTACK']);
+      else if(same&&covered)action=choices(['NONE','ATTACK','ATTACK']);
+      else if(s.mission_contacts&&u.out_of_ammo&&(u.tripod||['G','H'].includes(u.vof)))action=choices(['NONE','FALL_BACK']);
+      else if(!under&&!values(s.units).some(v=>friendly(v)&&live(v)&&unitLos(s,u,v)))action=s.mission_contacts?'HIDE':'NONE';
       else if(!under&&u.fire)action='ATTACK';
-      else if(under&&!covered)action=['COVER','COVER','ATTACK'][roll(3)-1];
-      else if(incoming(s,u).some(f=>f.origin!==u.fire)){
+      else if(under&&!covered)action=choices(['COVER','COVER','ATTACK']);
+      else if(incoming(s,u).some(f=>{const here=s.locations[u.location],aim=s.locations[u.fire],origin=s.locations[f.origin];return !aim||Math.sign(aim.row-here.row)!==Math.sign(origin.row-here.row)||Math.sign(aim.col-here.col)!==Math.sign(origin.col-here.col);})){
         do{
-          action=['NONE','ATTACK','SHIFT','SHIFT'][roll(4)-1];
+          action=choices(['NONE','ATTACK','SHIFT','SHIFT']);
           if(action==='SHIFT'&&s.mission_rules?.specialEnemies&&['Bunker','Pillbox'].includes(coverOf(s,u)?.type))emit(s,'ENEMY_ACTIVITY_REDRAW','Fortification firing arc cannot shift; redraw enemy activity.',{actor:u.id,location:u.location,faction:u.faction},!visible(s,u));
           else break;
         }while(true);
       }
-      else if(['A','H'].includes(u.vof)&&u.fire)action='ATTACK';
-      else if(u.fire)action=roll(2)===2?'ATTACK':'NONE';
+      else if((s.mission_contacts?(u.tripod||u.vof==='H'):['A','H'].includes(u.vof))&&u.fire)action='ATTACK';
+      else if(u.fire){const opposing=incoming(s,u).map(f=>f.value);const stronger=opposing.length&&basicValue(u)<Math.min(...opposing);action=roll(s.mission_contacts&&stronger?3:2)>1?'ATTACK':'NONE';}
       if(action==='COVER')enemyCover(s,u);
       if(action==='RALLY')rally(s,u);
       if(action==='RECOVER')rally(s,u,u,true);
+      if(action==='EVACUATE'){localCasualty.carrier=u.id;fallBack(s,u);}
+      if(action==='SEEK_CASUALTY'){
+        const nearest=Math.min(...seenCasualties.map(c=>distance(s.locations[u.location],s.locations[c.location])));
+        const target=pick(s,seenCasualties.filter(c=>distance(s.locations[u.location],s.locations[c.location])===nearest),'Litter team casualty destination',!visible(s,u));
+        if(target.location===u.location){u.cover=target.cover;u.exposed=true;}else{const choices=adjacent(s,u.location).filter(l=>!l.staging&&!hasFire(s,l.id)&&!movementReason(s,u,l.id)&&distance(l,s.locations[target.location])<nearest);if(choices.length)move(s,u,pick(s,choices,'Litter team approach',!visible(s,u)).id);}
+      }
       if(action==='FALL_BACK')fallBack(s,u);
       if(action==='ATTACK')attack(s,u);
       if(action==='SHIFT'){const f=incoming(s,u).find(f=>canFire(s,u,f.origin));if(f)u.fire=f.origin;}
       if(action==='ADVANCE') {
-        const dest=adjacent(s,u.location).filter(l=>!l.staging).sort((a,b)=>Math.min(...values(s.units).filter(v=>friendly(v)&&live(v)).map(v=>distance(a,s.locations[v.location])))-Math.min(...values(s.units).filter(v=>friendly(v)&&live(v)).map(v=>distance(b,s.locations[v.location]))))[0];
-        if(dest&&!u.exposed)move(s,u,dest.id,under);
+        const dest=adjacent(s,u.location).filter(l=>!l.staging&&!movementReason(s,u,l.id)).sort((a,b)=>Math.min(...values(s.units).filter(v=>friendly(v)&&live(v)).map(v=>distance(a,s.locations[v.location])))-Math.min(...values(s.units).filter(v=>friendly(v)&&live(v)).map(v=>distance(b,s.locations[v.location]))))[0];
+        if(dest&&!movementReason(s,u,dest.id))move(s,u,dest.id,s.mission_contacts?(hasFire(s,u.location)||hasFire(s,dest.id)):under);
       }
       if(action==='HIDE') {
         u.removed='HIDDEN';u.fire=null;
-        const id=`pc_return_${s.next_id++}`;s.contacts[id]={id,location:u.location,type:'A',resolved:false,returning:[u.id]};
+        if(!values(s.contacts).some(c=>c.location===u.location&&!c.resolved)){const id=`pc_return_${s.next_id++}`;s.contacts[id]={id,location:u.location,type:u.contact_type??pick(s,['A','B','C'],'Replacement contact letter',true),resolved:false};}
         emit(s,'CONTACT_RENEWED',`A previously engaged position at ${s.locations[u.location].name} must be cleared again.`,{location:u.location},!visible(s,u));
       }
       emit(s,'ENEMY_ACTIVITY',`${u.name}: ${action.toLowerCase().replaceAll('_',' ')}${action==='NONE'?'; existing fire continues':''}.`,{actor:u.id,action},!visible(s,u));
@@ -239,23 +270,30 @@ export function enemyActivity(s) {
     }
   }
 }
-export function capture(s) {
+export function capture(s,{friendlyRemainder='F'}={}) {
   for(const l of values(s.locations)) {
     for(const side of ['friendly','enemy']) {
       const units=occupants(s,l.id),victims=units.filter(u=>u.faction===side&&['P','L'].includes(u.cohesion));
       if(!victims.length||units.some(u=>u.faction===side&&!['P','L'].includes(u.cohesion)))continue;
       const guard=units.find(u=>u.faction!==side&&!u.pinned&&basicValue(u)!==null);
       if(!guard)continue;
-      const step=guard.steps.pop();s.prisoners.push({guard:step,prisoners:victims.flatMap(u=>u.steps)});
-      if(!guard.steps.length)guard.removed='GUARD';
+      const step=guard.steps.pop();s.prisoners.push({guard:step,guard_origin:guard.id,guard_experience:guard.experience,prisoners:victims.flatMap(u=>u.steps)});
+      if(s.mission_contacts&&guard.kind==='SQUAD'&&guard.steps.length===1){
+        const child=splitTeam(s,guard,friendly(guard)?friendlyRemainder:pick(s,['F','A'],'Guard remainder side',!visible(s,guard)),guard.steps.pop());
+        child.radios=guard.radios;child.assets=guard.assets;guard.radios=[];guard.assets={};
+        for(const c of s.casualties.filter(c=>c.carrier===guard.id))c.carrier=child.id;
+        guard.removed='BROKEN';if(!friendly(guard)&&s.knowledge.spotted[guard.id])s.knowledge.spotted[child.id]={id:child.id};
+        emit(s,'FORMATION_CHANGED',`${guard.name}: remaining step becomes ${child.cohesion==='A'?'Assault':'Fire'} Team after guard assignment.`,{actor:guard.id,location:l.id,formations:[child.id],cause:'GUARD_ASSIGNMENT'},!visible(s,guard));
+      }
+      if(!guard.steps.length&&!guard.removed){loseAssets(s,guard,false);guard.removed='GUARD';}
       for(const u of victims){
         if(s.objectives&&side==='enemy')spot(s,u);
-        u.removed='CAPTURED';emit(s,'UNIT_CAPTURED',`${u.name} captured; one opposing step assigned as guard.`,{actor:u.id,faction:u.faction,location:l.id,...(s.objectives?{step_ids:u.steps.map(step=>step.id)}:{})},!visible(s,u));
+        if(s.mission_contacts)dropLoad(s,u,'capture');u.removed='CAPTURED';emit(s,'UNIT_CAPTURED',`${u.name} captured; one opposing step assigned as guard.`,{actor:u.id,faction:u.faction,location:l.id,...(s.objectives?{step_ids:u.steps.map(step=>step.id)}:{})},!visible(s,u));
       }
     }
     if(s.objectives){
-      if(occupants(s,l.id).some(friendly)&&!occupants(s,l.id).some(u=>!friendly(u)))for(const c of s.casualties.filter(c=>c.location===l.id&&c.faction==='enemy'&&!c.evacuated)){
-        c.evacuated=true;emit(s,'ENEMY_CASUALTY_CAPTURED','An enemy casualty step was captured.',{location:l.id,step_id:c.step.id});
+      if(!occupants(s,l.id).some(u=>!friendly(u))&&(occupants(s,l.id).some(friendly)||!values(s.contacts).some(c=>c.location===l.id&&!c.resolved)))for(const c of s.casualties.filter(c=>c.location===l.id&&c.faction==='enemy'&&!c.evacuated)){
+        c.evacuated=true;emit(s,'ENEMY_CASUALTY_CAPTURED','An enemy casualty step was captured.',{location:l.id,step_id:s.events.some(e=>e.type==='CASUALTY'&&!e.hidden&&e.step_id===c.step.id)?c.step.id:c.id});
       }
     }else if(!occupants(s,l.id).some(u=>!friendly(u)))for(const c of s.casualties.filter(c=>c.location===l.id&&c.faction==='enemy'))c.evacuated=true;
   }

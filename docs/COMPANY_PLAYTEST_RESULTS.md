@@ -1,5 +1,44 @@
 # Fire paths and continuing fire — 2026-09-22
 
+## Revision 13 — Notes KUTF 3 validation (September 28, 2026)
+
+324 tests / 40 files pass; production build passes. Focused checks cover Pending activity without combat effects, mortar spotter penalty, joining a usable earlier PDF when the last one is out of range, nearest-PDF selection, frozen known-source strength, concealed source statistics, public-only spotting preview, eligible contact labels and strict revision-12 rejection. Existing command, seeded targeting, fog-of-war and frozen-combat regressions remain passing.
+
+Six runs in `output/keep-up-the-fire-integration-r13-v11/` verify exact strict replay reconstruction. Outcomes/order counts/casualties/contact counts match revision 12:
+
+| Seed | Strategy | Outcome / turn | Orders | Casualties | PCs left |
+| --- | --- | --- | ---: | ---: | ---: |
+| kut-1 | direct | Defeat / 10 | 124 | 10 | 5 |
+| kut-1 | support | Success / 10 | 102 | 12 | 4 |
+| kut-1 | recovery | Defeat / 10 | 71 | 11 | 11 |
+| kut-2 | direct | Defeat / 10 | 51 | 12 | 6 |
+| kut-2 | support | Defeat / 10 | 54 | 17 | 10 |
+| kut-2 | recovery | Defeat / 10 | 54 | 9 | 10 |
+
+Browser: isolated 127.0.0.1:4183 Company Assault run, turns 1–2. Verified seven pooled commands versus six spendable; separate reserve cap labels; unoccupied PC waiting label; one-contact review; anonymous combat context; single `HIT · C` consequence band; spotting Cancel preserves displayed budget; Confirm issues one attempt; narrow dialog fits and Escape closes it. Requested narrow viewport 390×844 (browser zoom yielded a 433 CSS-pixel viewport); screenshot visually inspected. No browser console errors. The user's existing server/save origin was untouched.
+
+Unverified by this short browser run: a naturally occurring multiple-PDF scene and known-source strength after earlier losses; these have simulation fixtures, but still need human visual acceptance. No full new human playthrough is claimed. Historical submitted exports and r12 evidence are preserved.
+
+## September 28 — revision 12 readiness closure
+
+318 tests pass across 39 files; production build and whitespace checks pass. Nine focused closure tests cover replacement PCs, LAT casualties, capture, guard preference/replay, fortification response, enemy counter sides, event loads, sniper identity protection and ammunition priority. Six final-code scripted KUTF runs terminate and reconstruct full state, RNG and events exactly. These are scripted strategies, not human acceptance or balance tuning.
+
+| Seed | Strategy | Outcome | Turn | Orders | Friendly casualty steps | Contacts left |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| kut-1 | direct | DEFEAT | 10 | 124 | 10 | 5 |
+| kut-1 | support | SUCCESS | 10 | 102 | 12 | 4 |
+| kut-1 | recovery | DEFEAT | 10 | 71 | 11 | 11 |
+| kut-2 | direct | DEFEAT | 10 | 51 | 12 | 6 |
+| kut-2 | support | DEFEAT | 10 | 54 | 17 | 10 |
+| kut-2 | recovery | DEFEAT | 10 | 54 | 9 | 10 |
+
+The kut-1 support policy now succeeds; remaining contacts do not invalidate KUTF success when both objectives are secured. Compared with revision 11, changes arise from corrected activity/capture behavior and consequent seeded draw order, not combat probability changes. Historical exports and prior output directories are preserved. New records: `output/keep-up-the-fire-integration-r12-v11/`.
+
+Browser checks on isolated `127.0.0.1:4182` passed: KUTF setup/start, 25-formation roster, formation inspection, command arithmetic, Escape dismissal, narrow DOM bounds (no page overflow), guard-remainder selection, capture review, and reload/strict resume after capture. No captured console errors. Viewport override was reset, the test tab closed, and the agent's test server stopped; the user's localhost mission was untouched. Screenshot capture timed out. These interaction checks do not certify visual appearance or replace a full human mission, including CCP evacuation and final scoring.
+
+See [KUTF readiness audit](KUTF_READINESS_AUDIT.md) for completed corrections, remaining acceptance and campaign boundaries. Rules 12; KUTF content 11; course content 4. Older executable records reject strictly.
+
+
 ## September 28 — revision 11 validation
 
 Full regression suite: **309 tests passed across 38 files**. Final UI-focused checks: 7 passed. Production build passed. Both KUTF seeds completed all three scripted policies and reconstructed their full state, RNG and history exactly from exported operations. These are scripted checks, not human playthroughs or balance judgments.
