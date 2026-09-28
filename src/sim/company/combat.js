@@ -63,7 +63,7 @@ const sourceRecord=(s,source)=>{
 export function prepareCombat(s) {
   prepareSpecialTargets(s);
   const resolutions=[];
-  for(const u of values(s.units).filter(live)) {
+  for(const u of values(s.units).filter(live).sort((a,b)=>s.locations[b.location].row-s.locations[a.location].row||s.locations[a.location].col-s.locations[b.location].col||a.id.localeCompare(b.id))) {
     const exposure=combatExposure(s,u);if(!exposure)continue;
     const id=`combat_t${s.turn}_${u.id}`;
     const resolution={id,target_id:u.id,target_name:u.name,target_location:u.location,target_faction:u.faction,target_visible:!!visible(s,u),
@@ -164,7 +164,7 @@ export function resolveContacts(s,contactId=null) {
 }
 function fallBack(s,u) {
   const from=s.locations[u.location];
-  if(!friendly(u)&&(s.boundaries?(from.row>=s.boundaries.rows||from.col<1||from.col>s.boundaries.columns):from.row===Math.max(...values(s.locations).map(l=>l.row)))){u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW',`${u.name} withdrew from the battlefield.`,{actor:u.id},!visible(s,u));return;}
+  if(!friendly(u)&&(s.boundaries?(from.row>=s.boundaries.rows||from.col<1||from.col>s.boundaries.columns):from.row===Math.max(...values(s.locations).map(l=>l.row)))){u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW',`${u.name} withdrew from the battlefield.`,{actor:u.id,location:u.location,faction:u.faction},!visible(s,u));return;}
   const possible=adjacent(s,u.location).filter(l=>(friendly(u)?l.row<from.row:l.row>from.row)&&!occupants(s,l.id).some(v=>v.faction!==u.faction));
   if(!possible.length)return;
   possible.sort((a,b)=>Number(hasFire(s,a.id))-Number(hasFire(s,b.id))||b.protection-a.protection);
@@ -192,7 +192,7 @@ export function enemyActivity(s) {
       processed.add(u.id);
       if(specialActivity(s,u,fallBack)){refresh(s);continue;}
       refresh(s);
-      const same=occupants(s,u.location).some(friendly),under=hasFire(s,u.location),covered=!!u.cover;
+      const same=occupants(s,u.location).some(friendly),under=hasFire(s,u.location,{includeInactiveMines:false}),covered=!!u.cover;
       const roll=n=>randomNumber(s,n,`${u.name}: activity`,!visible(s,u));
       let action='NONE';
       if(u.pinned) {
@@ -213,7 +213,7 @@ export function enemyActivity(s) {
       else if(incoming(s,u).some(f=>f.origin!==u.fire)){
         do{
           action=['NONE','ATTACK','SHIFT','SHIFT'][roll(4)-1];
-          if(action==='SHIFT'&&s.mission_rules?.specialEnemies&&['Bunker','Pillbox'].includes(coverOf(s,u)?.type))emit(s,'ENEMY_ACTIVITY_REDRAW','Fortification firing arc cannot shift; redraw enemy activity.',{actor:u.id},!visible(s,u));
+          if(action==='SHIFT'&&s.mission_rules?.specialEnemies&&['Bunker','Pillbox'].includes(coverOf(s,u)?.type))emit(s,'ENEMY_ACTIVITY_REDRAW','Fortification firing arc cannot shift; redraw enemy activity.',{actor:u.id,location:u.location,faction:u.faction},!visible(s,u));
           else break;
         }while(true);
       }
@@ -250,7 +250,7 @@ export function capture(s) {
       if(!guard.steps.length)guard.removed='GUARD';
       for(const u of victims){
         if(s.objectives&&side==='enemy')spot(s,u);
-        u.removed='CAPTURED';emit(s,'UNIT_CAPTURED',`${u.name} captured; one opposing step assigned as guard.`,{actor:u.id,...(s.objectives?{faction:u.faction,location:l.id,step_ids:u.steps.map(step=>step.id)}:{})},!visible(s,u));
+        u.removed='CAPTURED';emit(s,'UNIT_CAPTURED',`${u.name} captured; one opposing step assigned as guard.`,{actor:u.id,faction:u.faction,location:l.id,...(s.objectives?{step_ids:u.steps.map(step=>step.id)}:{})},!visible(s,u));
       }
     }
     if(s.objectives){

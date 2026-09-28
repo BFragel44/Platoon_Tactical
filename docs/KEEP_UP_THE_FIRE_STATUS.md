@@ -1,6 +1,30 @@
 # Keep Up the Fire implementation status
 
-## Current release: playable human-acceptance build (content 11)
+## Current assessment — rules revision 11 (September 28)
+
+The tracker-comparison milestone is implemented: activity/recovery, attack-specific NCM, grenade command penalties, overloaded setup, command arithmetic and a read-only company roster. KUTF remains playable for validation, **not certified rules-complete**. Existing human playthroughs are acknowledged. See [current readiness audit](KUTF_READINESS_AUDIT.md) for concrete enemy activity/casualty-capture blockers and the proposed mission/roster modularization boundary. 309 regression tests and the production build pass; six final-code KUTF scripted runs terminate and strictly replay. Browser visual verification remains open. See [validation results](COMPANY_PLAYTEST_RESULTS.md). This section supersedes historical readiness claims below. Normandy remains gated; no campaign persistence is claimed.
+
+
+## KUTF Notes 2: compact combat presentation
+
+Combat artwork has been removed from the normal screen in favor of compact faction/type counter icons; unidentified sources use a neutral question mark. All NCM modifiers, including zero-value conditions, remain visible beside the receiving formation. Probability bars and result controls retain existing styling. The combat panel stays hidden while a segment-result dialog is open; continuing from pinned recovery opens combat without an additional simulation operation. Equipment setup now has a live allocation sidebar with shared supply, platoon restrictions and unit carrying space.
+
+Presentation-only: rules revision 10 and mission content versions are unchanged. Regression suite and production build pass. Browser visual verification remains outstanding because browser automation was unavailable; no visual acceptance is claimed.
+
+## September 26: clear orders, fire and segment results
+
+Rules revision **10**, KUTF content **11**, Company Assault content **4**. KUTF remains enabled for human acceptance. Completed this increment: card-based automatic engagement priorities with seeded ties; spatial combat ordering; safe queue counts; free-unload/readiness separation; backpack inventory; accurate XO reconstitution status; recorded segment dialogs and recovery; contact controls on the triggering card; clearer continuing-fire/friendly-fire explanations.
+
+The submitted first KUTF replay remains unchanged: revision 9, 557 operations, seed `company-1`, defeat on turn 10, 27 points, 1,436 visible events. Before changes it reconstructed exactly against its AAR. Under revision 10 strict loading rejects it. Explicit diagnostic comparison first rejects operation 152 (a no-longer-current combat target), reports 403 rejected operations, and ends ACTIVE at turn 3. That partial comparison is **not** a corrected playthrough or an outcome comparison; subsequent old commands are out of sequence.
+
+Focused and full regression checks pass. Two new complete scripted runs reproduce full state, RNG and events: `kut-1/support`: defeat T10, 86 orders, 12 casualty steps, 4 contacts remaining; `kut-2/recovery`: defeat T10, 54 orders, 9 casualty steps, 10 contacts remaining. Their revision-9 counterparts had 86/11/4 and 84/13/7 respectively. These differences reflect corrected ordering/targeting, not probability or balance changes.
+
+**Acceptance gap:** browser-control initialization failed before connecting, including after a reset. Desktop/narrow visual checks, keyboard behavior, and actual browser reload of the new dialogs could not be completed. Automated save/replay checks pass; they do not replace those checks. Please retain human acceptance as open for backpack inspection/unloading, modal dismissal/reopening, contact progression, spatial combat, XO status and readable fire explanations.
+
+Reproducible checks: `npm test -- --pool=threads`, `npm run build`, `node scripts/keepUpTheFirePlaytest.js kut-1 support`, `node scripts/keepUpTheFirePlaytest.js kut-2 recovery`. Diagnostic comparison: `node scripts/compareCompanyReplay.js reference/playtest_replays/company-company-1-replay_KEEPUPFIRE1.json output/kutf-revision10/baseline-comparison.json`. Records are under `output/keep-up-the-fire-integration-r10-v11/` and `output/kutf-revision10/`.
+
+
+## September 25 release record: playable human-acceptance build (content 11)
 
 Keep Up the Fire is enabled for the user to perform the complete human playthrough. This is a validation release, not final rules-fidelity acceptance. Rules revision 9 and Company Assault content 4 are unchanged. Older Keep Up the Fire content replays fail strict version checks; historical exports remain intact. Normandy remains gated.
 

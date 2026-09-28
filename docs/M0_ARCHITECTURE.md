@@ -1,6 +1,20 @@
 # Company Assault architecture
 
-## Current standalone validation update — September 25, 2026
+## Revision 11 readiness boundary
+
+`companyOverview.js` renders command arithmetic and a friendly roster from sanitized projections; it owns no simulation state. `combatExposure` compares attack-specific modifiers before selecting fire and supplies separately labelled NCM components. `hasFire` includes inactive mines for card-level activity/recovery, with an explicit exclusion for enemy hierarchy “under fire”. Rules version 11 rejects older executable records; content versions remain unchanged.
+
+The proposed campaign roster, deployment snapshot and idempotent debrief boundaries are documented in [KUTF readiness audit](KUTF_READINESS_AUDIT.md). These are planned interfaces, not implemented campaign persistence.
+
+
+## Current update: KUTF clarity (revision 10)
+
+Engagement card priorities use a pre-acquisition snapshot of existing projected fire. Combat preparation orders all targets by row descending, column ascending and ID, freezes the entire batch, then retains existing individual resolution operations. The player projection adds tactical readiness, inventory descriptions, HQ transition descriptions and visible-only combat position.
+
+`segmentResults.js` builds inventory and segment-review markup from safe projections/events. The UI holds only review/inventory IDs in autosaved presentation data; native modal dialogs prevent background interaction and Continue/Escape returns focus. Segment-history reopening cannot resolve events again. Contact controls are embedded in the active map card and reuse the existing header progression handler. Public simulation entry points are unchanged.
+
+
+## Prior standalone validation update — September 25, 2026
 
 Keep Up the Fire content 11 starts through validated setup confirmation. Public createMission records setup for strict replay. Contact placement probes possible upper-story elevation without mutation, then verifies actual cover and LOS in the atomic package trial. Failed expanded positions retain terrain without tentative covers.
 

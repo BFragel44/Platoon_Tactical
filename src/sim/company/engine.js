@@ -29,7 +29,7 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 9;
+export const RULES_VERSION = 11;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 function phaseDescription(s){
   if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(s.phase))return s.turn===1?'No higher-HQ event check on turn 1.':'Draw for a higher-HQ event; resolve this turn’s mission table and any command obligations.';
@@ -48,7 +48,7 @@ export function previewMissionSetup(definition,seed,setup={}) {
   const view=getPlayerView(s);
   return {mission_id:definition.id,mission_version:definition.version,seed:String(seed),setup:structuredClone(setup),
     playable:definition.readiness?.playable!==false,assumptions:structuredClone(definition.readiness?.assumptions??[]),missing:structuredClone(definition.readiness?.missing??[]),
-    locations:view.locations,units:view.units.map(({id,name,kind,platoon,location,steps,experience,assets})=>({id,name,kind,platoon,location,steps,experience,assets})),objectives:view.objectives};
+    locations:view.locations,units:view.units.map(({id,name,kind,platoon,location,steps,experience,assets,radios})=>({id,name,kind,platoon,location,steps,experience,assets,radios})),objectives:view.objectives};
 }
 function initializeMission(definition,seed,setup={}) {
   const scenario=materializeScenario(definition,seed,setup);
@@ -96,6 +96,7 @@ function startImpulse(s,id,activation=false) {
     const card=draw(s,1,`${u.name}: ${activation?'activation':'initiative'}`)[0];
     cardId=card.id;base=activation?card.activated:card.initiative;
     const pressure=incoming(s,u).map(f=>f.value);
+    if(s.markers.some(m=>m.location===u.location&&m.type==='GRENADE'&&(m.target===u.id||u.cover&&m.cover===u.cover)))pressure.push(-3);
     if(s.fire.some(f=>f.target===u.location&&s.units[f.source]?.vof==='S!'&&!s.units[f.source].pinned))pressure.push(-3);
     if(s.support.some(f=>f.status==='ACTIVE'&&f.location===u.location))pressure.push(-3);
     const worst=pressure.length?Math.min(...pressure):null;
@@ -173,7 +174,7 @@ export function advancePhase(state) {
   if(s.impulse){finishImpulse(s);if(eligibleHQs(s).length)return result(state,s);}
   if(eligibleHQs(s).length)return {state,events:[],reason:'Select each eligible HQ and complete its impulse before advancing.'};
   const phase=s.phase;
-  if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(phase))higherEvent(s,phase==='FRIENDLY_EVENTS'?'friendly':'enemy');
+  if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(phase)){if(s.turn===1)emit(s,'PHASE_SKIPPED','No higher HQ event check on turn one.');else higherEvent(s,phase==='FRIENDLY_EVENTS'?'friendly':'enemy');}
   else if(['FRIENDLY_EVENTS','DEFENSIVE_EVENTS','DEFENSIVE_ACTIVITY','ENEMY_EVENTS','AT_COMBAT'].includes(phase))emit(s,'PHASE_SKIPPED',phaseInfo(phase)[2]);
   if(phase==='BN_ACTIVATION') {
     if(!s.bn_blocked&&live(s.units.co)&&s.units.co.cohesion==='GOOD'&&(s.mission_rules.communications==='simplified'?!s.units.co.pinned:s.units.co.radios.includes('BN'))){s.activated.push('co');emit(s,'HQ_ACTIVATED',s.mission_rules.communications==='simplified'?'Off-map Battalion HQ activated Company HQ using mission communications.':'Off-map Battalion HQ activated Company HQ over the BN radio net.',{hq:'co'});}
@@ -197,7 +198,7 @@ export function advancePhase(state) {
       return result(state,s);
     }
   }
-  if(phase==='PINNED_RECOVERY')for(const u of values(s.units).filter(u=>live(u)&&u.pinned&&combatModifier(s,u)===null)){u.pinned=false;emit(s,'AUTOMATIC_RECOVERY',`${u.name} is free of fire and unpins.`,{actor:u.id},!visible(s,u));}
+  if(phase==='PINNED_RECOVERY')for(const u of values(s.units).filter(u=>live(u)&&u.pinned&&!hasFire(s,u.location))){u.pinned=false;emit(s,'AUTOMATIC_RECOVERY',`${u.name} is free of fire and unpins.`,{actor:u.id,location:u.location,faction:u.faction},!visible(s,u));}
   if(phase==='COMBAT_EFFECTS'&&s.segment_progress.status!=='reviewing') {
     let index=s.segment_progress.index;
     if(s.pending_combat[index]?.status==='RESOLVED')index++;
@@ -224,6 +225,7 @@ export function advancePhase(state) {
     return result(state,s);
   }
   if(phase!=='COMBAT_EFFECTS')refresh(s);
+  if(['FRIENDLY_EVENTS','ENEMY_EVENTS','PINNED_RECOVERY','CAPTURE','RETREAT'].includes(phase))emit(s,'SEGMENT_COMPLETED',phaseInfo(phase)[1],{label:phaseInfo(phase)[1]});
   s.phase=PHASES[PHASES.findIndex(p=>p[0]===phase)+1][0];enter(s);return result(state,s);
 }
 export function endTurn(state) {
@@ -257,9 +259,17 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     attempted:[...new Set(u.used.filter(k=>k.startsWith(`${s.impulse?.id}:`)).map(k=>k.slice(s.impulse.id.length+1)))],
     personnel:u.steps.flatMap(v=>v.personnel),incoming:incoming(s,u).map(f=>({origin:f.origin,value:f.value,source:visible(s,s.units[f.source])?f.source:null})),
     combat:(()=>{const c=combatModifier(s,u);return c?{ncm:c.ncm,total:c.total,parts:structuredClone(c.parts),modifiers:structuredClone(c.modifiers)}:null;})(),options:live(u)?commandOptions(s,u,issuerId):[]}));
+  const visibleHistory=getVisibleEvents(s);
+  for(const u of units) {
+    u.tactical_ready=u.options.some(o=>o.available&&!(o.cost===0&&['DROP_LOAD','DROP_CASUALTY'].includes(o.type)));
+    u.inventory={equipment:Object.entries(u.assets).filter(([,n])=>n>0).map(([key,quantity])=>({key,label:key.replaceAll('_',' '),quantity})),radios:[...u.radios],casualties:s.casualties.filter(c=>c.carrier===u.id&&!c.evacuated).map(c=>({id:c.id,label:`${c.origin_name??'Friendly formation'} casualty step`}))};
+    const transition=visibleHistory.findLast(e=>e.type==='HQ_RECONSTITUTED'&&e.donor===u.id);
+    u.transition_description=u.removed==='RECONSTITUTED'?(transition?`Reconstituted ${transition.restored_name??s.units[transition.actor]?.name??'HQ'}`:'Used in reconstitution'):u.removed==='GUARD'?'Assigned as prisoner guard':u.removed==='CAPTURED'?'Captured':u.removed==='WITHDRAWN'?'Withdrawn':null;
+  }
   const knownEnemy=Object.keys(s.knowledge.spotted).filter(id=>s.units[id]).map(id=>observeRecord(s.units[id]));
   const pending=s.phase==='COMBAT_EFFECTS'?s.pending_combat?.[s.segment_progress?.index]:null;
   const combat_resolution=pending?.target_visible?{id:pending.id,status:pending.status,target_id:pending.target_id,target_name:pending.target_name,
+    visible_position:s.pending_combat.filter(r=>r.target_visible).findIndex(r=>r.id===pending.id)+1,
     target_location:pending.target_location,target_faction:pending.target_faction,target_experience:pending.target_experience,target_kind:pending.target_kind,
     target_steps:pending.target_steps,target_cohesion:pending.target_cohesion,target_pinned:pending.target_pinned,ncm:pending.ncm,total:pending.total,
     parts:structuredClone(pending.parts),modifiers:structuredClone(pending.modifiers),probabilities:structuredClone(pending.probabilities),
@@ -267,7 +277,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     strongest:pending.strongest?{...structuredClone(pending.strongest),source_id:pending.strongest.known?pending.strongest.source_id:null}:null,
     sources:pending.sources.map(source=>({...structuredClone(source),source_id:source.known?source.source_id:null}))}:null;
   const segment_progress=s.phase==='COMBAT_EFFECTS'&&s.segment_progress?{phase:s.segment_progress.phase,status:s.segment_progress.status,
-    events_after:s.segment_progress.events_after,index:s.segment_progress.index,total:s.segment_progress.total,
+    events_after:s.segment_progress.events_after,
     visible_total:s.pending_combat.filter(r=>r.target_visible).length,visible_resolved:s.pending_combat.filter(r=>r.target_visible&&r.status==='RESOLVED').length}:structuredClone(s.segment_progress);
   const contactEvents=s.phase==='CONTACTS'&&s.segment_progress?getVisibleEvents(s,'friendly',s.segment_progress.events_after):[];
   const contact_review=s.phase==='CONTACTS'?{location:s.segment_progress?.contact??nextContact(s)?.location??null,next_location:nextContact(s)?.location??null,resolved:!!s.segment_progress,events:contactEvents}:null;

@@ -173,7 +173,7 @@ export function enemyCeaseFire(s) {
   }
   refresh(s);
 }
-export function sniperTargetCard(s,u,targets) {
+export function sniperTargetCard(s,u,targets,priorityState=s) {
   const cards=[...new Set(targets.map(t=>t.location))];
   const opposing=id=>occupants(s,id).filter(t=>t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]));
   const command=id=>opposing(id).some(t=>['HQ','STAFF','LEADER'].includes(t.kind)&&t.cohesion==='GOOD');
@@ -183,13 +183,28 @@ export function sniperTargetCard(s,u,targets) {
     const nearest=Math.min(...commanders.map(id=>distance(s.locations[u.location],s.locations[id])));
     best=commanders.filter(id=>distance(s.locations[u.location],s.locations[id])===nearest);
   }else{
-    const strength=id=>Math.min(99,...opposing(id).filter(t=>t.fire).map(t=>basicValue(t,distance(s.locations[id],s.locations[t.fire]))??99));
+    const strength=id=>Math.min(99,...opposing(id).map(t=>priorityState.units[t.id]).filter(t=>t.fire).map(t=>basicValue(t,distance(s.locations[id],s.locations[t.fire]))??99));
     const strongest=Math.min(...cards.map(strength));
     const candidates=cards.filter(id=>strength(id)===strongest);
     const steps=id=>opposing(id).reduce((n,t)=>n+t.steps.length,0);
     const most=Math.max(...candidates.map(steps));best=candidates.filter(id=>steps(id)===most);
   }
   return best.length>1?pick(s,best,'Sniper engagement tie',!visible(s,u)):best[0];
+}
+// Rank eligible terrain cards against one frozen set of existing fire contributions.
+export function automaticTargetCard(s,u,targets,projectedFire=s.fire) {
+  let cards=[...new Set(targets.map(t=>t.location))].sort();
+  if(!cards.length)return null;
+  if(friendly(u)) {
+    const nearest=Math.min(...cards.map(id=>distance(s.locations[u.location],s.locations[id])));
+    cards=cards.filter(id=>distance(s.locations[u.location],s.locations[id])===nearest);
+    const strength=id=>Math.min(99,...projectedFire.filter(f=>f.origin===id&&s.units[f.source]?.faction!==u.faction).map(f=>f.value));
+    const strongest=Math.min(...cards.map(strength));cards=cards.filter(id=>strength(id)===strongest);
+  } else {
+    const steps=id=>occupants(s,id).filter(t=>t.faction!==u.faction).reduce((n,t)=>n+t.steps.length,0);
+    const most=Math.max(...cards.map(steps));cards=cards.filter(id=>steps(id)===most);
+  }
+  return cards.length===1?cards[0]:pick(s,cards,'Automatic engagement tie',!visible(s,u));
 }
 export function refresh(s) {
   const old = new Set(s.fire.map(f => `${f.source}:${f.target}:${f.value}`));
@@ -207,6 +222,9 @@ export function refresh(s) {
     if(u.fire&&!canFire(s,u,u.fire))u.fire=null;
     if(u.fire)established.set(`${u.faction}:${u.location}`,u.fire);
   }
+  const selectionSnapshot={units:structuredClone(s.units)};
+  const indirectUnits=values(s.units).filter(u=>live(u)&&u.indirect&&!u.exposed&&u.steps.length>=2&&u.cohesion==='GOOD'&&!u.pinned&&u.indirect!==u.location&&!['Building','Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type)&&s.locations[u.location].terrain!=='woods');
+  const projectedFire=values(s.units).filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)&&!indirectUnits.includes(u)).map(u=>({source:u.id,origin:u.location,value:basicValue(u,distance(s.locations[u.location],s.locations[u.fire]))})).filter(f=>f.value!==null).concat(indirectUnits.map(u=>({source:u.id,origin:u.location,value:-3})));
   for (const u of values(s.units).filter(live)) {
     if (occupants(s,u.location).some(t=>t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]))&&canFire(s,u,u.location))u.fire=u.location;
     const key=`${u.faction}:${u.location}`,joined=established.get(key);
@@ -215,10 +233,7 @@ export function refresh(s) {
       const targets = values(s.units).filter(t => live(t) && t.faction !== u.faction &&
         (!friendly(u) || s.knowledge.spotted[t.id]) && canFire(s,u,t.location) && fireDestination(s,u,t.location)===t.location &&
         (!friendly(u) || !occupants(s,t.location).some(v=>friendly(v)) || t.location === u.location));
-      targets.sort((a,b) => friendly(u)
-        ? distance(s.locations[u.location],s.locations[a.location])-distance(s.locations[u.location],s.locations[b.location]) || (basicValue(a)??9)-(basicValue(b)??9) || a.id.localeCompare(b.id)
-        : occupants(s,b.location).filter(friendly).reduce((n,v)=>n+v.steps.length,0)-occupants(s,a.location).filter(friendly).reduce((n,v)=>n+v.steps.length,0) || a.id.localeCompare(b.id));
-      if (targets.length)u.fire=fireDestination(s,u,u.mission_weapon&&vofOf(u)==='S!'?sniperTargetCard(s,u,targets):targets[0].location);
+      if (targets.length)u.fire=fireDestination(s,u,u.mission_weapon&&vofOf(u)==='S!'?sniperTargetCard(s,u,targets,selectionSnapshot):automaticTargetCard(s,u,targets,projectedFire));
     }
     rememberDirection(s,u);u.fire_effect=u.fire;
     if(u.fire)established.set(key,u.fire);
@@ -228,7 +243,7 @@ export function refresh(s) {
     direction:structuredClone(u.fire_direction),
     reason:target!==u.fire?'GRAZING_FIRE':screen(s,u.location)?'BLOCKED_AT_SOURCE':screen(s,u.fire)?'BLOCKED_BY_SMOKE':u.fire_direction?.anchor!==u.fire?'INTERCEPTED_OR_FOLLOWING':occupants(s,u.fire).some(t=>t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]))?'ENGAGED':'CONTINUING_AT_CLEARED_POSITION',
   })));
-  for (const u of values(s.units).filter(u=>live(u)&&u.indirect&&!u.exposed&&u.steps.length>=2&&u.cohesion==='GOOD'&&!u.pinned&&u.indirect!==u.location&&!['Building','Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type)&&s.locations[u.location].terrain!=='woods')) {
+  for (const u of indirectUnits) {
     s.fire = s.fire.filter(f=>f.source!==u.id);
     s.fire.push({source:u.id,origin:u.location,target:u.indirect,value:-3,indirect:true});
   }
@@ -254,7 +269,7 @@ export function refresh(s) {
   for(const u of values(s.units).filter(u=>!friendly(u)&&s.knowledge.spotted[u.id])) s.knowledge.spotted[u.id]=observeRecord(u);
   const under = values(s.locations).filter(l=>occupants(s,l.id).length && hasFire(s,l.id));
   s.activity = under.length >= 2 ? (under.some(l=>new Set(occupants(s,l.id).map(u=>u.faction)).size>1) ? 'HEAVILY_ENGAGED' : 'ENGAGED')
-    : under.length || Object.keys(s.knowledge.spotted).some(id=>live(s.units[id])) ? 'CONTACT' : 'NO_CONTACT';
+    : values(s.locations).some(l=>hasFire(s,l.id)) || temporaryMortarFire(s).length || Object.keys(s.knowledge.spotted).some(id=>live(s.units[id])) ? 'CONTACT' : 'NO_CONTACT';
 }
 export const observeRecord = u => ({id:u.id,name:u.name,kind:u.kind,location:u.location,cohesion:u.cohesion,pinned:u.pinned,exposed:u.exposed,steps:u.steps.length,cover:u.cover,removed:u.removed});
 export function spot(s,u) {
@@ -269,7 +284,7 @@ export function spot(s,u) {
   }
 }
 export const spottingLocations = s => Object.keys(s.knowledge.suspected).filter(id=>occupants(s,id).some(u=>!friendly(u)&&!s.knowledge.spotted[u.id]));
-export function hasFire(s,id) { return s.fire.some(f=>f.target===id) || s.support.some(f=>f.status==='ACTIVE'&&f.location===id) || s.markers.some(m=>m.location===id&&['GRENADE','GRENADE_MISS'].includes(m.type)); }
+export function hasFire(s,id,{includeInactiveMines=true}={}) { return includeInactiveMines&&!!s.locations[id]?.mines || s.fire.some(f=>f.target===id) || s.support.some(f=>f.status==='ACTIVE'&&f.location===id) || s.markers.some(m=>m.location===id&&['GRENADE','GRENADE_MISS','MINES','SNIPER'].includes(m.type)); }
 export function incoming(s,u) { return s.fire.filter(f=>f.target===u.location && (f.origin !== u.location || s.units[f.source].faction !== u.faction)); }
 export function combatExposure(s,u) {
   const terrain=s.locations[u.location], cover=coverOf(s,u), fire=incoming(s,u);
@@ -283,23 +298,23 @@ export function combatExposure(s,u) {
   const smoke=Math.max(terrain.smoke ? terrain.smoke_value??2 : 0,indirect.some(f=>f.ammo==='WP')?1:0);
   const combined=s.mission_rules?.grenade?grenades.filter(m=>m.type==='GRENADE'):[];
   const effects=combined.length>1?[...grenades.filter(m=>m.type!=='GRENADE'),{type:'GRENADE',location:u.location,value:combined.reduce((n,m)=>n+m.value,0),label:'Combined grenade effects'}]:grenades;
-  const candidates=[...fire.map(f=>({kind:f.indirect?'ON_MAP_INDIRECT':'BASIC_FIRE',source_id:f.source,origin:f.origin,value:f.value+smoke+(f.indirect?terrain.burst:0),vof:f.value,blast:f.indirect})),
-    ...indirect.map(f=>({kind:'OFF_MAP_SUPPORT',source_id:null,origin:f.location,value:f.value+terrain.burst,vof:f.value,blast:true,label:f.agency?`Incoming ${f.agency.includes('mortar')?'mortar':'artillery'} ${f.ammo??'HE'}`:f.value===-3?'Incoming mortar fire':'Incoming artillery'})),
-    ...effects.map(m=>({kind:m.type,source_id:m.source??null,origin:s.units[m.source]?.location??m.location,value:m.value,vof:m.value,blast:true,...(m.label?{label:m.label}:{}),...(m.weapon?{label:m.weapon==='WP'?'WP grenade effect':'On-map mortar grenade effect'}:{})}))];
+  const candidates=[...fire.map(f=>({kind:f.indirect?'ON_MAP_INDIRECT':'BASIC_FIRE',source_id:f.source,origin:f.origin,value:f.value+smoke+(f.indirect?terrain.burst:0),vof:f.value,smoke,burst:f.indirect?terrain.burst:0,blast:false})),
+    ...indirect.map(f=>({kind:'OFF_MAP_SUPPORT',source_id:null,origin:f.location,value:f.value+terrain.burst,vof:f.value,smoke:0,burst:terrain.burst,blast:true,label:f.agency?`Incoming ${f.agency.includes('mortar')?'mortar':'artillery'} ${f.ammo??'HE'}`:f.value===-3?'Incoming mortar fire':'Incoming artillery'})),
+    ...effects.map(m=>({kind:m.type,source_id:m.source??null,origin:s.units[m.source]?.location??m.location,value:m.value+(m.type==='SNIPER'?smoke:0),vof:m.value,smoke:m.type==='SNIPER'?smoke:0,burst:0,blast:m.type==='GRENADE',...(m.label?{label:m.label}:{}),...(m.weapon?{label:m.weapon==='WP'?'WP grenade effect':'On-map mortar grenade effect'}:{})}))];
   if(miss&&!fire.length&&!indirect.length&&!grenades.length) candidates.push({value:0+smoke,blast:false});
-  candidates.sort((a,b)=>a.value-b.value);
+  const stack=cover ? occupants(s,u.location).filter(t=>t.cover===cover.id).reduce((n,t)=>n+t.steps.length,0) : 0;
+  for(const c of candidates){c.overcrowding=c.blast?-Math.max(0,stack-3):0;c.value+=c.overcrowding;}
   candidates.sort((a,b)=>a.value-b.value||String(a.source_id??a.kind).localeCompare(String(b.source_id??b.kind)));
   const strongest=candidates[0];
   const critical=targeted.some(m=>m.critical);
-  const stack=cover ? occupants(s,u.location).filter(t=>t.cover===cover.id).reduce((n,t)=>n+t.steps.length,0) : 0;
   const terrainValue=terrain.open_protection !== undefined && fire.every(f=> {
     const source=s.locations[f.origin];return f.indirect||f.origin===u.location||white(terrain,source.row-terrain.row,source.col-terrain.col);
   }) ? terrain.open_protection : terrain.protection;
-  const parts={ fire:strongest.value,terrain:terrainValue,cover:critical?0:cover?.value??0,
+  const parts={ fire:strongest.vof??0,smoke:strongest.smoke??smoke,burst:strongest.burst??0,terrain:terrainValue,cover:critical?0:cover?.value??0,
     pinned:u.pinned?1:0,exposed:u.exposed?-2:0,crossfire:cross,concentrated:-targeted.filter(m=>m.type==='CONCENTRATE').reduce((n,m)=>n+(m.value??1),0),
-    grenade_miss:miss?-1:0,overcrowding:strongest.blast?-Math.max(0,stack-3):0 };
+    grenade_miss:miss?-1:0,overcrowding:strongest.overcrowding };
   const total=Object.values(parts).reduce((a,b)=>a+b,0);
-  const labels={fire:'Strongest applicable fire',terrain:terrain.name,cover:cover?.type??'Occupied cover',pinned:'Pinned protection',exposed:'Exposure',crossfire:'Crossfire',concentrated:'Concentrated fire',grenade_miss:'Grenade miss',overcrowding:'Crowded cover'};
+  const labels={fire:'Selected fire VOF',smoke:'Applicable smoke protection',burst:'Applicable terrain burst',terrain:terrain.name,cover:cover?.type??'Occupied cover',pinned:'Pinned protection',exposed:'Exposure',crossfire:'Crossfire',concentrated:'Concentrated fire',grenade_miss:'Grenade miss',overcrowding:'Crowded cover'};
   const modifiers=Object.entries(parts).map(([source,value])=>({source:source.toUpperCase(),label:labels[source],value}));
   return {ncm:Math.max(-4,Math.min(6,total)),total,parts,modifiers,sources:candidates,strongest};
 }

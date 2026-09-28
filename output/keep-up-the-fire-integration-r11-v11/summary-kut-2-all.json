@@ -1,0 +1,29 @@
+[
+  {
+    "seed": "kut-2",
+    "policy": "direct",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 71,
+    "casualty_steps": 12,
+    "contacts_remaining": 5
+  },
+  {
+    "seed": "kut-2",
+    "policy": "support",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 55,
+    "casualty_steps": 17,
+    "contacts_remaining": 10
+  },
+  {
+    "seed": "kut-2",
+    "policy": "recovery",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 54,
+    "casualty_steps": 9,
+    "contacts_remaining": 10
+  }
+]

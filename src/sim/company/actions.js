@@ -187,7 +187,7 @@ export function move(s,u,target,infiltrate=false) {
   u.exposed=!(success||(s.locations[from].staging&&s.locations[target].staging)||(fortification(old)&&fortification(cover)));
   for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.location=target;c.transported=true;}
   if(s.mission_rules?.specialEnemies)checkMines(s,u);
-  emit(s,'UNIT_MOVED',`${u.name} ${success?'infiltrated':'moved'} to ${s.locations[target].name}${u.exposed?'; exposed until cleanup':''}.`,{actor:u.id,from,target,exposed:u.exposed},!visible(s,u));
+  emit(s,'UNIT_MOVED',`${u.name} ${success?'infiltrated':'moved'} to ${s.locations[target].name}${u.exposed?'; exposed until cleanup':''}.`,{actor:u.id,from,target,exposed:u.exposed,faction:u.faction},!visible(s,u));
 }
 export function invalidateTargets(s,u) {
   for(const m of s.markers.filter(m=>m.target===u.id||u.cover&&m.cover===u.cover)) {
@@ -318,7 +318,7 @@ export function execute(s,c) {
     t.steps=[u.steps.pop()];t.location=u.location;t.cover=u.cover;t.removed=null;t.cohesion='GOOD';t.experience='Green';t.original_experience='Green';t.saved=0;t.radios=[];t.pinned=false;
     if(!u.steps.length)u.removed='RECONSTITUTED';
     else if(u.kind==='SQUAD'&&u.steps.length===1){splitTeam(s,u,'F',u.steps.pop());u.removed='RECONSTITUTED';}
-    emit(s,'HQ_RECONSTITUTED',`${t.name} restored at Green experience; recover a radio to restore its net.`,{actor:t.id,donor:u.id});
+    emit(s,'HQ_RECONSTITUTED',`${t.name} restored at Green experience; recover a radio to restore its net.`,{actor:t.id,donor:u.id,location:t.location,donor_name:u.name,restored_name:t.name});
   }
   else if(type==='PICKUP_RADIO'){const a=s.assets.find(a=>a.id===c.target_id);if(a.type==='RADIO')u.radios.push(a.net);else u.assets[a.key]=(u.assets[a.key]??0)+a.quantity;s.assets=s.assets.filter(v=>v.id!==a.id);u.exposed=true;}
   else if(type==='PICKUP_CASUALTY'){

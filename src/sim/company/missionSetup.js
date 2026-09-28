@@ -1,6 +1,7 @@
 import {createRng} from '../rng.js';
 import {shuffle} from './core.js';
 import {borders} from './terrain.js';
+export const SETUP_ASSET_LIMITS=Object.freeze({smoke:4,wp:4,rifle_grenade:3});
 export function materializeScenario(definition,seed,setup={}) {
  if(!definition.map){if(Object.keys(setup).length)throw new Error('This authored course has no configurable setup.');return definition;}
  if(Object.keys(setup).some(k=>!['objectives','assignments','positions','assets'].includes(k)))throw new Error('Unknown setup field.');
@@ -27,10 +28,9 @@ export function materializeScenario(definition,seed,setup={}) {
  }
  {
   const distributed=setup.assets??scenario.assets;
-  const totals={smoke:4,wp:4,rifle_grenade:3},actual={smoke:0,wp:0,rifle_grenade:0},rifles={};
+  const totals=SETUP_ASSET_LIMITS,actual={smoke:0,wp:0,rifle_grenade:0},rifles={};
   for(const [id,assets]of Object.entries(distributed)){const u=scenario.units.find(v=>v.id===id);if(!u)throw new Error('Unknown equipment recipient.');for(const [key,n]of Object.entries(assets)){if(!(key in actual)||!Number.isInteger(n)||n<0)throw new Error('Invalid equipment quantity.');actual[key]+=n;if(key==='rifle_grenade'&&n){if(!u.platoon||n!==1||rifles[u.platoon])throw new Error('Assign exactly one rifle grenade per platoon.');rifles[u.platoon]=true;}}}
   if(Object.keys(totals).some(k=>totals[k]!==actual[k]))throw new Error('Distribute all 4 HC, 4 WP and 3 rifle grenades.');
-  for(const u of scenario.units)if(Object.values(distributed[u.id]??{}).reduce((n,v)=>n+v,0)+(u.radios?.length??0)>u.steps*6)throw new Error('A formation is assigned more assets than it can carry.');
   scenario.assets=structuredClone(distributed);
  }
  return scenario;

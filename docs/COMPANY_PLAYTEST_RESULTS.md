@@ -1,6 +1,31 @@
 # Fire paths and continuing fire — 2026-09-22
 
-## Current standalone validation update — September 25, 2026
+## September 28 — revision 11 validation
+
+Full regression suite: **309 tests passed across 38 files**. Final UI-focused checks: 7 passed. Production build passed. Both KUTF seeds completed all three scripted policies and reconstructed their full state, RNG and history exactly from exported operations. These are scripted checks, not human playthroughs or balance judgments.
+
+| Seed | Policy | Outcome / turn | Orders | Friendly casualty steps | Contacts left |
+| --- | --- | --- | ---: | ---: | ---: |
+| kut-1 | direct | DEFEAT / 10 | 124 | 11 | 5 |
+| kut-1 | support | DEFEAT / 10 | 88 | 7 | 3 |
+| kut-1 | recovery | DEFEAT / 10 | 107 | 13 | 0 |
+| kut-2 | direct | DEFEAT / 10 | 71 | 12 | 5 |
+| kut-2 | support | DEFEAT / 10 | 55 | 17 | 10 |
+| kut-2 | recovery | DEFEAT / 10 | 54 | 9 | 10 |
+
+Revision-10 comparable records: kut-1/support changed from 86 orders / 12 casualty steps / 4 contacts to 88 / 7 / 3; kut-2/recovery remains 54 / 9 / 10. Both remain turn-10 defeat. No probability or balance tuning was performed. Zero remaining contacts does not imply victory: KUTF requires securing both objectives.
+
+Artifacts: `output/keep-up-the-fire-integration-r11-v11/`. Historical inputs and revision-10 outputs were preserved. Browser automation failed to initialize; desktop/narrow visual and keyboard sign-off remain open. Read-only readiness fixtures confirmed empty-card casualty capture and isolated-enemy activity gaps; a hidden CCP setup correctly rejects. See [readiness audit](KUTF_READINESS_AUDIT.md) for scope and blockers.
+
+
+## September 26 validation: rules revision 10
+
+KUTF first human baseline: 557 operations, defeat T10, 27 points; revision-9 reconstruction matched the submitted AAR before implementation. Source files remain unchanged. Revision-10 diagnostic comparison rejects 403 operations beginning at 152 and stalls in T3 combat; it is not a new valid playthrough.
+
+Complete revision-10 scripted checks: kut-1/support = defeat T10, 86 orders / 12 casualty steps / 4 PCs; kut-2/recovery = defeat T10, 54 / 9 / 10. Both strictly reconstruct state, RNG and history. Targeted tests cover card priorities, seeded ties, spatial frozen combat, hidden queue protection, free unloading, actual XO reconstitution and safe recorded reviews. Full regressions and build pass. Browser automation failed to initialize; desktop/narrow and human UI acceptance remain open. See KEEP_UP_THE_FIRE_STATUS.md for commands and artifacts.
+
+
+## Prior standalone validation update — September 25, 2026
 
 Keep Up the Fire content 11: focused upper-story/fortification checks and full regression/build pass. Public-mission kut-1/support and kut-2/recovery runs both finish at turn 10 and replay exactly. These are scripted validation, not human acceptance; detailed results and remaining audit are in KEEP_UP_THE_FIRE_STATUS.md.
 

@@ -1,6 +1,18 @@
 # Company Assault event model
 
-## Current standalone validation update — September 25, 2026
+## Revision 11 combat explanations
+
+Prepared/resolved combat modifier lists now include separate SMOKE and BURST entries, with OVERCROWDING applied only to eligible attacks. Selection compares fully adjusted attack candidates from the frozen snapshot. Existing visibility filtering remains mandatory; no hidden source IDs are added to normal projections. Activity and command corrections change simulation results, so strict replay uses rules revision 11. Roster/menu inspection emits no simulation events or random draws.
+
+
+## Current update: recorded segment results (revision 10)
+
+`SEGMENT_COMPLETED` records label, phase and turn after higher-HQ events, capture, retreat or pinned recovery. Skipped checks also emit `PHASE_SKIPPED` and do not open a dialog. `HQ_EVENT` records obligation/expiry text; `HQ_EVENT_FORMATION` records visible changes with formation, faction and location, preserving hidden-event filtering. Recovery, withdrawal and capture events retain locations at occurrence. `HQ_RECONSTITUTED` records donor/restored names and location for an accurate inactive command panel.
+
+Segment history is derived exclusively from `getVisibleEvents`, not current formation locations. Presentation saves hold `reviewId` and `inventoryId`; clearing/reopening them does not invoke a simulation operation. Combat projections expose visible queue position/counts and omit internal total/index values. KUTF contact acknowledgement remains presentation state; resolving contacts remains a recorded `advancePhase` operation.
+
+
+## Prior standalone validation update — September 25, 2026
 
 Content 11 adds hidden CONTACT_POSITION_REJECTED records when the actual building-cover draw cannot support contact placement. A nearer legal position is attempted; no rejected cover leaks into committed terrain. These internal records must not reveal hidden enemy identities or terrain through visible history.
 

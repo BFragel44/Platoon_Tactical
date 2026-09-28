@@ -1,5 +1,15 @@
 # Milestones
 
+## September 28: rules explanations and readiness audit
+
+Implemented the revision-11 tracker-audit corrections, command arithmetic and roster overview. KUTF remains a playable validation build; enemy activity and casualty-capture fidelity prevent declaring it complete. Next: close those confirmed gaps, then modular mission/roster contracts. Normandy and campaign continuity remain gated. Details: [KUTF readiness audit](KUTF_READINESS_AUDIT.md).
+
+
+## September 26 increment: KUTF clarity — implemented, UI acceptance open
+
+Rules revision 10 corrects card-level engagement priorities and orders frozen combat by map position. Inventory, tactical readiness, HQ transitions, segment-result dialogs and on-card contacts are implemented. Full regressions, build and two deterministic mission runs pass. Browser runtime failed to initialize, so visual/keyboard/reload acceptance is explicitly unfinished. Keep Up the Fire remains available for the user's human test; Normandy remains gated.
+
+
 ## Current: Complete Keep Up the Fire — in progress
 
 Keep Up the Fire content 11 is enabled as a **human-acceptance build** with validated setup confirmation, upper-story contact placement and unlimited fortification markers by explicit user agreement. Printed capacities and finite enemy unit counters remain enforced. See [KEEP_UP_THE_FIRE_STATUS.md](KEEP_UP_THE_FIRE_STATUS.md) for checks and unresolved audits. Human acceptance is still open; Normandy remains gated. Rules revision 9 and Company Assault content 4 remain unchanged.

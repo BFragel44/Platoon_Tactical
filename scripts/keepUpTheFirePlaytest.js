@@ -1,5 +1,5 @@
 import { mkdirSync,writeFileSync } from 'node:fs';
-import { createMission,advancePhase,resolveCombat,selectHQ,submitCommand,getPlayerView,exportReplay,replayMission } from '../src/sim/company/engine.js';
+import { RULES_VERSION,createMission,advancePhase,resolveCombat,selectHQ,submitCommand,getPlayerView,exportReplay,replayMission } from '../src/sim/company/engine.js';
 import {keepUpTheFire} from '../src/scenarios/keepUpTheFire.js';
 // Exercise the public mission definition, including its readiness check.
 const companyAssault=keepUpTheFire;
@@ -48,7 +48,7 @@ export function run(seed,policy){
   return {s,record,summary:{seed,policy,outcome:s.status,turn:s.turn,orders:s.events.filter(e=>e.type==='COMMAND_ISSUED').length,
     casualty_steps:s.casualties.filter(c=>c.faction==='friendly').length,contacts_remaining:Object.values(s.contacts).filter(c=>!c.resolved).length}};
 }
-const output=`output/keep-up-the-fire-integration-v${companyAssault.version}`;mkdirSync(output,{recursive:true});
+const output=`output/keep-up-the-fire-integration-r${RULES_VERSION}-v${companyAssault.version}`;mkdirSync(output,{recursive:true});
 const results=[];
 const requestedSeed=process.argv[2],requestedPolicy=process.argv[3];
 if(requestedSeed&&!['kut-1','kut-2'].includes(requestedSeed)||requestedPolicy&&!['direct','support','recovery'].includes(requestedPolicy))throw new Error('Use kut-1 or kut-2 and direct, support or recovery.');

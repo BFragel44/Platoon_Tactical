@@ -1,6 +1,24 @@
 # Company Assault: implemented rules and manual playtest
 
-## Current standalone validation update — September 25, 2026
+## Revision 11 — tracker audit corrections
+
+Activity retains Contact while any VOF/PDF or unactivated mine remains. Automatic pinned recovery requires no VOF on the card, including unactivated mines; enemy activity “under fire” separately excludes inactive mines. Each attack is compared after applicable smoke, burst and crowding, before selecting the strongest; crowding applies only to grenade/Incoming effects in supported systems. Sniper fire receives smoke protection. The NCM explanation separates printed VOF, smoke and burst. Grenade pressure applies the -3 HQ command modifier. Overloaded setup assignments are allowed but prevent movement until unloaded (§5.1.6A).
+
+Rules revision 11, KUTF content 11, Company Assault content 4. Historical executable saves/replays reject strictly. Command arithmetic and Roster are read-only inspection. See [readiness audit](KUTF_READINESS_AUDIT.md) for unresolved KUTF rules gaps; in particular, earlier claims that empty cleared cards cannot yield captured enemy casualties are superseded by §8.15.1. Weighted combat probabilities remain unchanged.
+
+
+## Current update: KUTF clarity (rules revision 10)
+
+Automatic engagement now ranks eligible terrain cards under §6.1.1: friendly units use distance, strongest existing projected opposing VOF, then a seeded random card tie; ordinary enemies use opposing step count, then a seeded random tie. Existing projected fire is frozen before acquisitions so earlier formation acquisitions cannot alter later priority scores. Sniper priorities and fire eligibility remain in force. Continuing friendly fire is not cancelled when enemies leave (§§6.1.1–6.1.2, 6.3.4); enemy cease-fire boundaries remain separate (§8.6.4).
+
+Combat (§3.7.4) freezes all stakes and resolves descending row, ascending column, then formation ID within the card. Both factions share this order. PDF/VOF remains frozen until cleanup. Queue counts expose only visible formations. Weighted probabilities are unchanged.
+
+Green readiness excludes free unloading. Backpack inspection lists carried equipment/radios/casualties and formation status; unloading uses the existing validated operations. Segment-result dialogs cover higher-HQ events, capture, retreat and pinned recovery. Continue/Escape acknowledges presentation only; history can reopen it. A saved open review restores without rerolling. Contacts resolve on the triggering terrain card, in existing evaluation order, with one result acknowledged before the next.
+
+Rules revision 10 rejects revision-9 executable saves and replays; exports remain intact. KUTF content remains 11, Company Assault 4. Unlimited fortification markers remain the explicit agreed assumption. Browser and human acceptance for this increment remain open.
+
+
+## Prior standalone validation update — September 25, 2026
 
 Keep Up the Fire content 11 is available for human acceptance. Fortification marker supply is unlimited by user agreement; printed capacities, arcs and enemy unit limits remain enforced. Sniper/spotter placement considers possible upper-story LOS, then validates the actual cover draw before committing the package. See KEEP_UP_THE_FIRE_STATUS.md for launch instructions and open audits.
 

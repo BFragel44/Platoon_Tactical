@@ -54,18 +54,20 @@ export function higherEvent(s,side){
  if(code==='COMM')s.bn_blocked=true;
  if(['COMM','SITREP'].includes(code))s.command_obligation=3;
  if(code==='NO_MORTAR')s.support_unavailable.push('mortar');if(code==='NO_ARTY')s.support_unavailable.push('artillery');
- if(code==='AMMO')for(const u of units.filter(u=>['MG','LMG','HMG'].includes(u.kind))){u.out_of_ammo=!u.out_of_ammo;if(side==='enemy')u.event_acted=s.turn;}
+ if(code==='AMMO')for(const u of units.filter(u=>['MG','LMG','HMG'].includes(u.kind))){u.out_of_ammo=!u.out_of_ammo;if(side==='enemy')u.event_acted=s.turn;emit(s,'HQ_EVENT_FORMATION',`${u.name}: ${u.out_of_ammo?'Out of ammo; reduced fire capability':'ammunition restored'}.`,{actor:u.id,location:u.location,faction:u.faction,code},!visible(s,u));}
  if(code==='REINFORCE')for(const pc of values(s.contacts).filter(c=>!c.resolved))pc.type='A';
  for(const u of units){
+  const before={pinned:u.pinned,cohesion:u.cohesion,removed:u.removed};
   if(code==='UNPIN'&&u.pinned){u.pinned=false;u.event_acted=s.turn;}
   if(code==='RECOVER'&&['P','L'].includes(u.cohesion)){u.cohesion='F';u.experience='Green';u.event_acted=s.turn;}
   if(code==='BREAK'&&u.cohesion==='P'){u.removed='WITHDRAWN';u.event_acted=s.turn;}
   else if(code==='BREAK'&&u.cohesion==='L'){u.cohesion='P';u.event_acted=s.turn;}
   if(code==='SURRENDER'&&occupants(s,u.location).some(friendly)){spot(s,u);s.prisoners.push({guard:null,prisoners:structuredClone(u.steps)});u.removed='CAPTURED';u.event_acted=s.turn;emit(s,'UNIT_CAPTURED','Enemy formation surrendered without requiring guards.',{actor:u.id,location:u.location,faction:'enemy',step_ids:u.steps.map(step=>step.id)});}
+  if(before.pinned!==u.pinned||before.cohesion!==u.cohesion||before.removed!==u.removed)emit(s,'HQ_EVENT_FORMATION',`${u.name}: ${u.removed==='CAPTURED'?'captured':u.removed?'withdrawn':before.pinned&&!u.pinned?'unpinned':`${before.cohesion} → ${u.cohesion}`}.`,{actor:u.id,location:u.location,faction:u.faction,code},!visible(s,u));
  }
  if(code==='EVAC')s.casualties=s.casualties.filter(c=>occupants(s,c.location).some(friendly));
  const descriptions={COMM:'Communications trouble: no BN activation; first 3 Company HQ commands restore communications.',SITREP:'SITREP: Company HQ must spend its first 3 commands reporting.',ADVANCE:'Advance a unit beyond the leading row this turn for an achievement.',HOLD:'Do not advance beyond the leading row this turn.',AMMO:'Machine-gun ammunition status toggled.',NO_MORTAR:'Battalion mortar support unavailable this turn.',NO_ARTY:'Artillery support unavailable this turn.',REINFORCE:'Remaining B/C contacts upgraded to A.',UNPIN:'Enemy pins removed.',RECOVER:'Enemy Paralyzed/Litter Teams become Fire Teams.',BREAK:'Enemy Paralyzed Teams withdraw; Litter Teams become Paralyzed.',EVAC:'Casualties on cards without U.S. troops evacuated.',SURRENDER:'Enemies sharing U.S. cards surrender.'};
- emit(s,'HQ_EVENT',`${side} HQ: ${descriptions[code]}`,{side,code});refresh(s);
+ emit(s,'HQ_EVENT',`${side} HQ: ${descriptions[code]}`,{side,code,expires:['COMM','SITREP','ADVANCE','HOLD','NO_MORTAR','NO_ARTY'].includes(code)?'End of this turn':null,condition:['COMM','SITREP'].includes(code)?'Spend the first 3 Company HQ commands.':code==='ADVANCE'?`Advance beyond row ${effect.lead} this turn.`:code==='HOLD'?`Stay at or behind row ${effect.lead} through this turn.`:code==='AMMO'?'Status persists until the next ammunition event.':null});refresh(s);
 }
 export function shortRoundDestination(s,u,target,hidden=false){
  const a=s.locations[u.location],b=s.locations[target];
