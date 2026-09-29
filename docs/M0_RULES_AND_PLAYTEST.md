@@ -1,5 +1,13 @@
 # Company Assault: implemented rules and manual playtest
 
+## KUTF Notes 4 — marker and order presentation
+
+Minefields remain in play (§§7.9.1, 8.7.1); cleanup resets the triggered marker to **MINES · Draw 3**, not removal. Entering/moving within checks mines; leaving does not. Triggered units still receive their normal −4 effects and movement restriction. Labelled vector markers replace incorrect Concentrated Fire artwork.
+
+Observed Incoming fire stays displayed on the original target after occupants leave and expires at the next Fire Mission Update (§3.7.1, §7.16.3). The disappearance reported in Notes 4 was projection-only; support timing is unchanged.
+
+Discovered cover has descriptive target names, protection, capacity where authored, and building/upper-story relationships. With a legal platoon movement/infiltration destination selected, green upward indicators show the formations eligible for that order (§4.2.2b/d). No arrow is shown for blocked orders or excluded formations. Previewing consumes no commands/cards. Rules revision remains 13 and mission versions remain 11/4.
+
 ## Revision 13 — spotting, command clarity and PDF selection
 
 Rules sources: third-edition rulebook §§4.1.2–4.1.4 (pp.19–20), §6.3.5 (p.44), §8.1 (p.61), §8.2.4 (p.62), §8.5 (p.65). Notes source: `reference/playtest_replays/Platoon Tactical - Testing Notes KUTF 3.pdf`.

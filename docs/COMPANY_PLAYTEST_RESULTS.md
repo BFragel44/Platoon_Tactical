@@ -1,5 +1,18 @@
 # Fire paths and continuing fire — 2026-09-22
 
+## KUTF Notes 4 — presentation fixes, rules 13 retained
+
+Reviewed `reference/playtest_replays/Platoon Tactical - Testing Notes KUTF 4.pdf` (two pages). The user reports another mostly smooth rules playthrough; no new executable replay accompanied these notes. Screenshot-specific outcomes were not reconstructed. Targeted fixtures reproduced the marker/projection defects.
+
+- Mines: §7.9.1 (p.54) and §8.7.1 (p.67) require a persistent minefield, reset to Draw 3 at cleanup. The engine already preserves it; rendering incorrectly selected Concentrated Fire artwork and omitted the resting marker. Minefields now use labelled vector markers, with triggered −4 versus Draw 3 states. Other unknown special marker types no longer inherit concentrated-fire artwork.
+- Incoming: §7.16.3 and Fire Mission Update segment 3.7.1 keep the active mission on its target until the next update. Friendly departure did not remove simulation support, but could remove it from player projection. Previously reported active Incoming remains projected on an empty card; unobserved pending requests and spotter identities remain concealed. Public LOS explanations use the same known support set.
+- Cover: discovered cover targets, command previews and normal order/history text use descriptive names and protection; duplicate cover types have local display numbers and upper stories identify their parent building. Internal IDs and raw historical events are preserved.
+- Group movement: §4.2.2b/d (p.23). Green upward indicators preview participating formations only after selecting a legal destination, including platoon infiltration. The shared participant calculation accounts for order/communication restrictions and sequential destination stacking. No new movement rules.
+
+Validation: **330 tests / 41 files and production build pass**. Two archived revision-13 direct-policy runs (`kut-1`, `kut-2`) were replayed before and after changes; SHA-256 hashes of complete states, including RNG/history, are identical (`output/kutf4-replay-baseline.json`). Fixtures cover persistent/triggered mines, observed Incoming on empty cards and removal timing, hidden pending support, descriptive covers, exposed/heavy group exclusions and destination capacity.
+
+Browser at isolated 127.0.0.1:4184: seven eligible course formations receive arrows after selecting the destination; no arrows beforehand or after execution. Move-within-card target reads `Cover · +1 protection`. Narrow viewport DOM bounds keep indicators within terrain cards. Screenshot capture timed out, so no completed screenshot-based visual acceptance is claimed. Mine/mortar persistence was validated with fixtures rather than a new full browser mission. User follow-up remains the human acceptance step. Rules 13 / KUTF 11 / course 4; existing saves/replays remain compatible.
+
 ## Revision 13 — Notes KUTF 3 validation (September 28, 2026)
 
 324 tests / 40 files pass; production build passes. Focused checks cover Pending activity without combat effects, mortar spotter penalty, joining a usable earlier PDF when the last one is out of range, nearest-PDF selection, frozen known-source strength, concealed source statistics, public-only spotting preview, eligible contact labels and strict revision-12 rejection. Existing command, seeded targeting, fog-of-war and frozen-combat regressions remain passing.

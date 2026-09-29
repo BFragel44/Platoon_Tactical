@@ -1,5 +1,9 @@
 # Company Assault event model
 
+## KUTF Notes 4 — compatible projection changes
+
+Existing visible INCOMING_FIRE/SUPPORT_ACTIVE reports keep active support visible when the receiving card empties; support lifetime and raw events are unchanged. Hidden pending requests and source IDs stay concealed. Group movement target projections add `moving_unit_ids`, computed by the same pure participant selector used by execution, including destination capacity. UI cover names are derived from projected discovered cover; internal IDs and replay events remain unchanged. Rules version remains 13.
+
 ## Revision 13 projection additions
 
 Public simulation entry points remain unchanged. Prepared combat source records include frozen `steps`, `experience`, `unit_kind` and geometric `range` only when the source was visible at preparation. Unknown source IDs remain stripped by player projection; no concealed statistics are added. Contact review includes friendly-occupied eligible locations for accurate queue labels. Spotting previews use only player projections, emit no events and consume no RNG; confirmation uses ordinary command/history/replay events. Unconfirmed dialogs are intentionally ephemeral across reload.

@@ -65,3 +65,6 @@
 .combat-reveal.compact-result h3,.combat-reveal.compact-result p {margin:0;}
 .spotting-dialog {max-width:min(34rem,calc(100vw - 2rem));}
 .fire-contributors {font-size:.75rem;margin:.3rem 0;}
+
+.platoon-move-preview {display:inline-flex;align-items:center;gap:.25rem;align-self:flex-end;color:#a6f3a0;font-size:.75rem;font-weight:700;margin-left:.4rem;}
+.platoon-move-preview > span {font-size:1.7rem;line-height:1;}

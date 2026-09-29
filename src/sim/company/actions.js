@@ -259,6 +259,13 @@ export function splitTeam(s,u,cohesion,step) {
   if(s.mission_contacts){unit.parent_counter_id=u.counter_id??u.parent_counter_id;unit.counter_id=null;}
   s.units[id]=unit;return unit;
 }
+// Shared by execution and the preview. Account for arrivals in execution order,
+// without moving units, drawing cards, or changing the command state.
+export function platoonMoveGroup(s,u,target,type='PLATOON_MOVE') {
+  const group=occupants(s,u.location).filter(v=>v.platoon===u.platoon&&good(v)&&!movedThisImpulse(s,v)&&communication(s,u,v)&&!movementReason(s,v,target)&&(!type.includes('INFILTRATE')||!infiltrationReason(s,v,target)));
+  let steps=occupants(s,target).filter(v=>v.faction===u.faction).reduce((n,v)=>n+v.steps.length,0);
+  return group.filter(v=>{if(!s.locations[target].staging&&steps+v.steps.length>16)return false;steps+=v.steps.length;return true;});
+}
 export function execute(s,c) {
   const u=s.units[c.unit_id],issuer=s.units[c.issuer_id]??u,type=c.type,t=s.units[c.target_id];
   if(type==='ACTIVATE'){
@@ -266,7 +273,7 @@ export function execute(s,c) {
     emit(s,'HQ_ACTIVATED',`${t.name} activated. Complete Company HQ’s impulse, then select ${t.name} in 3.3.1c to spend its commands.`,{hq:t.id,issuer:u.id});
   }
   else if(['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type)) {
-    const group=type.startsWith('PLATOON_')?occupants(s,u.location).filter(v=>v.platoon===u.platoon&&good(v)&&!movedThisImpulse(s,v)&&communication(s,u,v)&&!movementReason(s,v,c.target_id)&&(!type.includes('INFILTRATE')||!infiltrationReason(s,v,c.target_id))):[u];
+    const group=type.startsWith('PLATOON_')?platoonMoveGroup(s,u,c.target_id,type):[u];
     for(const v of group) {if(movementReason(s,v,c.target_id))continue;move(s,v,c.target_id,type.includes('INFILTRATE'));v.used.push(`${s.impulse.id}:${type.includes('INFILTRATE')?'INFILTRATE':'MOVE'}`);}
   }
   else if(type==='SEEK_COVER'||type==='SEEK_COVER_UPPER')seekCover(s,u,type==='SEEK_COVER_UPPER');
@@ -369,6 +376,7 @@ export function commandOptions(s,u,issuerId) {
     const targets=eligibleTargets(s,u,type);
     const targeted=['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','CALL_MORTAR_WP','CALL_ARTILLERY_WP','RIFLE_GRENADE','INDIRECT','RECONSTITUTE','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
     const checks=((targeted||type==='WP_ATTACK')?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id,contributor_ids:type==='RECONSTITUTE'?[u.id,...occupants(s,u.location).filter(t=>t.id!==u.id&&t.faction===u.faction&&t.cover===u.cover&&!t.pinned&&t.kind==='LAT'&&['A','F'].includes(t.cohesion)).slice(0,Math.max(0,(s.units[target_id]?.max_steps??3)-1)).map(t=>t.id)]:undefined})}));
+    if(['PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type))for(const check of checks)check.moving_unit_ids=check.reason?[]:platoonMoveGroup(s,u,check.id,type).filter(friendly).map(v=>v.id);
     const displayLabel=type==='RECONSTITUTE_HQ'?'Reconstitute eliminated HQ':type==='DEPLOY_FIRE_TEAM'&&['HQ','STAFF'].includes(u.kind)?'Deploy HQ Fire Team':type==='RECOVER'&&u.named&&u.cohesion==='F'?(['HQ','STAFF'].includes(u.kind)?'Restore HQ command side':u.kind==='FO'?'Restore observer side':'Restore weapon side'):label;
     return {type,label:displayLabel,cost:s.mission_rules?.specialEnemies&&['DROP_LOAD','DROP_CASUALTY'].includes(type)?0:costOf(type),targeted:targeted||type==='WP_ATTACK',targets:checks,available:checks.some(c=>!c.reason),reason:checks.find(c=>c.reason)?.reason??'No eligible target.'};
   });

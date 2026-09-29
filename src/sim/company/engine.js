@@ -251,16 +251,18 @@ export function getVisibleEvents(s,faction='friendly',after=0) {
 }
 export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
   if(faction!=='friendly')throw new TypeError('Only the player perspective is available');
+  const visibleHistory=getVisibleEvents(s);
+  // Incoming fire already reported to the player remains known when its card empties.
+  const knownSupport=s.support.filter(f=>s.units[f.source]?.faction==='friendly'||occupants(s,f.location).some(friendly)||s.units[f.source]&&s.knowledge.spotted[f.source]||f.status==='ACTIVE'&&visibleHistory.some(e=>['INCOMING_FIRE','SUPPORT_ACTIVE'].includes(e.type)&&e.location===f.location&&e.value===f.value));
   const units=values(s.units).filter(friendly).map(u=>({...structuredClone(u),steps:u.steps.length,
     activated:s.activated.includes(u.id),impulse_completed:s.completed.includes(u.id),
-    los_explanations:Object.fromEntries(values(s.locations).map(l=>{const trace=explainUnitCard(s,u,l.id);const publicTrace=explainUnitCard({...s,support:s.support.filter(f=>friendly(s.units[f.source]??{})||occupants(s,f.location).some(v=>friendly(v)||s.knowledge.spotted[v.id]))},u,l.id);return [l.id,l.known===false?{visible:false,reason:'Terrain not yet revealed.'}:{visible:trace.visible,reason:trace.visible===publicTrace.visible?publicTrace.reason:'No LOS: battlefield conditions block this view.'}];})),
+    los_explanations:Object.fromEntries(values(s.locations).map(l=>{const trace=explainUnitCard(s,u,l.id);const publicTrace=explainUnitCard({...s,support:knownSupport},u,l.id);return [l.id,l.known===false?{visible:false,reason:'Terrain not yet revealed.'}:{visible:trace.visible,reason:trace.visible===publicTrace.visible?publicTrace.reason:'No LOS: battlefield conditions block this view.'}];})),
     los:values(s.locations).filter(l=>l.known!==false&&seesCard(s,u,l.id)).map(l=>l.id),
     communication:issuerId==='general'?'General initiative':communication(s,s.units[issuerId],u),
     communication_reason:communicationReason(s,s.units[issuerId],u),
     attempted:[...new Set(u.used.filter(k=>k.startsWith(`${s.impulse?.id}:`)).map(k=>k.slice(s.impulse.id.length+1)))],
     personnel:u.steps.flatMap(v=>v.personnel),incoming:incoming(s,u).map(f=>({origin:f.origin,value:f.value,source:visible(s,s.units[f.source])?f.source:null})),
     combat:(()=>{const c=combatModifier(s,u);return c?{ncm:c.ncm,total:c.total,parts:structuredClone(c.parts),modifiers:structuredClone(c.modifiers)}:null;})(),options:live(u)?commandOptions(s,u,issuerId):[]}));
-  const visibleHistory=getVisibleEvents(s);
   for(const u of units) {
     u.tactical_ready=u.options.some(o=>o.available&&!(o.cost===0&&['DROP_LOAD','DROP_CASUALTY'].includes(o.type)));
     u.inventory={equipment:Object.entries(u.assets).filter(([,n])=>n>0).map(([key,quantity])=>({key,label:key.replaceAll('_',' '),quantity})),radios:[...u.radios],casualties:s.casualties.filter(c=>c.carrier===u.id&&!c.evacuated).map(c=>({id:c.id,label:`${c.origin_name??'Friendly formation'} casualty step`}))};
@@ -291,7 +293,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     enemies:knownEnemy,suspected:spottingLocations(s),historical_reports:Object.keys(s.knowledge.suspected),
     fire:[...s.fire,...temporaryMortarFire(s)].filter(f=>friendly(s.units[f.source])||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>({...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:visible(s,s.units[f.source])?f.source:null,friendly:friendly(s.units[f.source])})),
     markers:s.markers.filter(m=>occupants(s,m.location).some(u=>friendly(u)||s.knowledge.spotted[u.id])).map(m=>({type:m.type,location:m.location,value:m.value,critical:!!m.critical,...(m.weapon?{weapon:m.weapon}:{})})),
-    support:s.support.filter(f=>s.units[f.source]?.faction==='friendly'||occupants(s,f.location).some(friendly)||s.units[f.source]&&s.knowledge.spotted[f.source]).map(f=>({location:f.location,status:f.status,value:f.value,...(f.agency?{agency:f.agency.includes('mortar')?'mortar':'artillery',ammo:f.ammo??'HE'}:{})})),
+    support:knownSupport.map(f=>({location:f.location,status:f.status,value:f.value,...(f.agency?{agency:f.agency.includes('mortar')?'mortar':'artillery',ammo:f.ammo??'HE'}:{})})),
     personnel:values(s.personnel),casualties:s.casualties.filter(c=>c.faction==='friendly').map(c=>({...structuredClone(c),label:`${c.origin_name??'Friendly formation'} casualty step`,carrier_name:c.carrier?s.units[c.carrier]?.name:null})),
     assets:s.assets.filter(a=>!a.destroyed&&a.faction==='friendly').map(a=>({...structuredClone(a),label:a.type==='RADIO'?`${a.net} radio`:`${String(a.key??'Equipment').replaceAll('_',' ')}${a.quantity>1?` ×${a.quantity}`:''}`,carrier_name:a.carrier?s.units[a.carrier]?.name:null})),
     deck:{draws:getVisibleEvents(s).filter(e=>e.type==='CARDS_DRAWN').reduce((n,e)=>n+e.card_ids.length,0)},

@@ -1,5 +1,9 @@
 # Keep Up the Fire implementation status
 
+## Notes KUTF 4 — presentation follow-up complete
+
+The latest human playthrough was reported mostly smooth from a rules standpoint. Confirmed mine/Incoming marker display issues, descriptive cover targets and platoon-movement previews are corrected. Rules 13 remains unchanged; existing saves/replays are compatible. 330 tests and production build pass, and two full archived replay state hashes match before/after. See COMPANY_PLAYTEST_RESULTS.md for browser evidence and visual acceptance limitations. Normandy/campaign readiness is not expanded by this UI pass.
+
 ## Current closure — rules revision 13
 
 Notes KUTF 3 corrections are implemented: Pending-marker activity, mortar-spotter spotting modifier, multiple-PDF joining, spotting confirmation, command pool/spending/reserve labels, accurate contact queue labels and compact combat/source information. **324 tests and production build pass.** Six scripted KUTF runs strictly reproduce state, RNG and history; headline outcomes match revision 12. Desktop and narrow spotting interaction checks pass, including Cancel/Escape and one confirmed order; compact HIT/contact labels were inspected in the browser. See the validation record.
