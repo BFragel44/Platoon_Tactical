@@ -3,7 +3,7 @@ import {revealTerrain} from './missionKnowledge.js';
 import {discoveredCover,checkMines,supportRequest} from './missionFeatures.js';
 import { terrainProtection } from './terrain.js';
 import { values, live, good, friendly, visible, expMod, emit, draw, attempt, randomNumber, pick, result } from './core.js';
-import { adjacent, occupants, distance, los, unitLos, seesCard, unitElevation, coverAvailable, communication, chain, coverOf, basicValue, canFire, refresh, spot, hasFire, incoming, movementReason, communicationReason, spottingLocations, vofOf, rangeOf } from './battlefield.js';
+import { adjacent, occupants, distance, los, unitLos, seesCard, unitElevation, coverAvailable, enclosedWeaponCover, communication, chain, coverOf, basicValue, canFire, refresh, spot, hasFire, incoming, movementReason, communicationReason, spottingLocations, vofOf, rangeOf } from './battlefield.js';
 export const ACTIONS = {
   WP_ATTACK:'Attack with WP grenade',
   ACTIVATE:'Activate HQ / staff', MOVE:'Move', PLATOON_MOVE:'Move platoon', INFILTRATE:'Infiltrate', PLATOON_INFILTRATE:'Infiltrate platoon',
@@ -96,7 +96,7 @@ export function orderReason(s,c) {
     const t=s.units[target];
     if(!eligibleTargets(s,u,type).includes(target)||!t) return 'Choose a spotted enemy within weapon range and LOS.';
     if(s.mission_rules?.specialEnemies&&['GRENADE','WP_ATTACK'].includes(type)&&t.location===u.location&&['Bunker','Pillbox'].includes(coverOf(s,u)?.type))return 'Leave the fortification before making a point-blank grenade attack.';
-    if(s.mission_rules?.specialEnemies&&['GRENADE','RIFLE_GRENADE'].includes(type)&&(['AT','MORTAR'].includes(u.kind)&&u.cohesion==='GOOD'||type==='RIFLE_GRENADE')&&['Light Building','Strong Building','Upper Story','Church Tower','Bunker','Pillbox'].includes(coverOf(s,u)?.type))return 'This weapon cannot fire from building or fortification cover.';
+    if(s.mission_rules?.specialEnemies&&['GRENADE','RIFLE_GRENADE'].includes(type)&&(['AT','MORTAR'].includes(u.kind)&&u.cohesion==='GOOD'||type==='RIFLE_GRENADE')&&enclosedWeaponCover(coverOf(s,u)))return 'This weapon cannot fire from building or fortification cover.';
     if(s.mission_rules?.specialEnemies&&type==='GRENADE'&&u.kind==='MORTAR'&&u.cohesion==='GOOD'&&(u.exposed||t.location===u.location||s.locations[u.location].terrain==='woods'))return 'Mortar teams cannot fire exposed, from woods, or at point blank.';
     if(type==='CONCENTRATE'&&(!u.fire||u.fire!==t.location||!['S','A','A/S','H'].includes(vofOf(u)))) return 'Concentrated fire must follow an existing direction of basic fire.';
     if(['GRENADE','RIFLE_GRENADE'].includes(type)&&t.location!==u.location&&occupants(s,u.location).some(v=>v.faction===u.faction&&(v.fire||v.temporary_pdf?.target)&&(v.fire??v.temporary_pdf.target)!==t.location)) return 'Ranged grenades must follow the existing direction of fire.';
@@ -122,8 +122,8 @@ export function orderReason(s,c) {
     if(!good(u)||!['co',agency==='MTR'?'mtrfo':'artyfo'].includes(u.id)||!u.radios.includes(u.id==='co'?'BN':agency)) return 'This observer needs its working fire-direction radio and good order.';
     if(!s.locations[target]||!seesCard(s,u,target)||!targetsAt(s,u,target).length) return 'Call for fire requires a spotted enemy position in the observer’s LOS.';
   }
-  if(type==='INDIRECT'&&(!good(u)||u.kind!=='MORTAR'||u.steps.length<2||u.exposed||c.target_id===u.location||['Building','Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type)||s.locations[u.location].terrain==='woods'||
-    !s.locations[target]||!issuer||!seesCard(s,issuer,target)||distance(s.locations[u.location],s.locations[target])>u.range||!targetsAt(s,u,target).length)) return 'Need an unexposed two-step mortar outside woods, in communication with an HQ that sees the spotted target.';
+  if(type==='INDIRECT'&&(!good(u)||u.kind!=='MORTAR'||u.steps.length<2||u.exposed||c.target_id===u.location||enclosedWeaponCover(coverOf(s,u))||s.locations[u.location].terrain==='woods'||
+    !s.locations[target]||!issuer||!seesCard(s,issuer,target)||distance(s.locations[u.location],s.locations[target])>u.range||!targetsAt(s,u,target).length)) return 'Need an unexposed two-step mortar outside woods and enclosed cover, in communication with an HQ that sees the spotted target.';
   if(type==='RIFLE_GRENADE'&&(!good(u)||!u.assets.rifle_grenade))return 'No rifle-grenade asset on this good-order unit.';
   if(type==='WP_ATTACK'&&!u.assets.wp)return 'No WP grenade asset remains on this formation.';
   if(u.mine_hit&&['MOVE','INFILTRATE','SEEK_COVER','ENTER_COVER','INFILTRATE_WITHIN'].includes(type))return 'Mines prevent further movement this turn.';
@@ -224,7 +224,7 @@ export function grenade(s,u,t,response=false,wp=false) {
   if(mortar){u.temporary_pdf={origin:u.location,target:t.location};emit(s,'MORTAR_PDF_PLACED','Mortar direct lay establishes a temporary firing direction; it counts for crossfire even if the attack misses.',{actor:visible(s,u)?u.id:null,origin:u.location,target:t.location},!visible(s,u)&&!visible(s,t));}
   const targets=t.cover?occupants(s,t.location).filter(v=>v.cover===t.cover&&v.faction===t.faction):[t];
   const successes=attempt(s,u,2,'grenade',`${visible(s,u)?u.name:'Unidentified unit'}: grenade attack`,!visible(s,u)&&!friendly(t));
-  if(successes) s.markers.push({type:'GRENADE',source:u.id,location:t.location,target:t.cover?null:t.id,cover:t.cover,critical:successes>1,
+  if(successes) s.markers.push({type:'GRENADE',source:u.id,origin:u.location,location:t.location,target:t.cover?null:t.id,cover:t.cover,critical:successes>1,
     value:(wp?-4:s.mission_rules?.grenade??(friendly(u)?-4:-3))*(successes>1&&!t.cover?2:1),...(wp?{weapon:'WP'}:mortar?{weapon:'MORTAR'}:{})});
   else if(!s.markers.some(m=>m.type==='GRENADE_MISS'&&m.location===t.location))s.markers.push({type:'GRENADE_MISS',location:t.location});
   if(wp){const l=s.locations[t.location];l.smoke_value=Math.max(l.smoke?(l.smoke_value??2):0,1);l.smoke=true;emit(s,'WP_DEPLOYED','WP grenade deployed; screening applies whether the attack succeeds or misses.',{location:t.location},!visible(s,u)&&!visible(s,t));}

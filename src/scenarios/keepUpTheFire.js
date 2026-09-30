@@ -15,8 +15,8 @@ add('artyfo','Artillery Observer','FO',null,1,null,0,{agency_role:'artyfo',radio
 add('mtrfo','Mortar Observer','FO',null,1,null,0,{agency_role:'mtrfo',radios:['MTR']});
 const force=(kind,cover=null)=>({kind,cover});
 export const keepUpTheFire={
- id:'keep_up_the_fire',name:'Keep Up the Fire',ruleset:'company-v1',version:11,turn_limit:10,
- readiness:{playable:true,stage:'human_acceptance',missing:[],assumptions:['Fortification markers are unlimited; printed step capacities and enemy unit counters remain limited.']},
+ id:'keep_up_the_fire',name:'Keep Up the Fire',ruleset:'company-v1',version:12,turn_limit:10,
+ readiness:{playable:true,stage:'standalone_validated',missing:[],assumptions:['Fortification markers are unlimited; printed step capacities and enemy unit counters remain limited.']},
  briefing:'Human-acceptance build. Fortification markers are unlimited; printed capacities and enemy unit limits apply. Secure the Primary and Secondary Objectives on row 4 by turn 10. Achievement points also reward cleared positions, prisoners and casualty evacuation. This standalone mission uses simplified communications and event-driven ammunition; there are no vehicles or pyrotechnic signals.',
  map:{columns:4,rows:4,hidden:true,deck:normandyTerrain},locations:[],units,contacts:[],
  rules:{fortificationSupply:'unlimited_markers',contactExpansion:true,communications:'simplified',events:true,grenade:-4,contactOrder:true,coverTable:true,specialEnemies:true,signals:false,ammo:'events'},

@@ -17,9 +17,11 @@ const draft={...keepUpTheFire,readiness:{playable:true}};
 const fresh=()=>createMission(draft,'keep-1');
 const stack=(s,ids)=>{s.deck.order=[...ids,...s.deck.order.filter(id=>!ids.includes(id))];};
 describe('Mission foundation and development gates',()=>{
- it('enables standalone acceptance while keeping unsupported Normandy unavailable',()=>{
+ it('enables the validated standalone while keeping unsupported Normandy unavailable',()=>{
   expect(createMission(keepUpTheFire,'x').scenario_id).toBe(keepUpTheFire.id);
   expect(playableMissionById('keep_up_the_fire')).toBe(keepUpTheFire);
+  expect(keepUpTheFire.readiness.stage).toBe('standalone_validated');
+  expect(missionCatalog.find(m=>m.id==='normandy_1').unavailable).not.toContain('human acceptance');
   expect(()=>playableMissionById('normandy_1')).toThrow('unavailable');
   expect(playableMissionById(companyAssault.id)).toBe(companyAssault);
   expect(missionCatalog.find(m=>m.id==='normandy_1').scenario).toBeUndefined();
@@ -36,8 +38,8 @@ describe('Mission foundation and development gates',()=>{
   expect(normandyTerrain).toHaveLength(55);expect(new Set(normandyTerrain.map(c=>c.id)).size).toBe(55);
   const south=normandyTerrain.find(c=>c.id==='normandy_2_1_6');
   expect(south.borders.S).toBe('white');expect(south.borders.N).toBe('dark');
-  expect(normandyTerrain.find(c=>c.id==='normandy_1_1_7').open_protection).toBeUndefined();
-  expect(normandyTerrain.find(c=>c.id==='normandy_2_2_4').cover_limit).toBe(1);
+  expect(normandyTerrain.find(c=>c.id==='normandy_1_1_7').open_protection).toBe(1);
+  expect(normandyTerrain.find(c=>c.id==='normandy_2_2_4').cover_limit).toBe(2);
  });
  it('repeats seeded setup without mutating its definition or another mission',()=>{
   const before=structuredClone(keepUpTheFire),course=createMission(companyAssault,'company-1'),record=structuredClone(course);
@@ -50,7 +52,7 @@ describe('Mission foundation and development gates',()=>{
   let s=createMission(draft,'keep-1',setup);s=endTurn(s).state;s=abortMission(s).state;
   expect(exportReplay(s).setup).toEqual(setup);expect(replayMission(draft,exportReplay(s))).toEqual(s);
   expect(resumeCheckpoint(draft,checkpoint(s,{combatStage:'result'}))).toEqual({state:s,presentation:{combatStage:'result'}});
-  expect(getAfterActionReport(s)).toMatchObject({scenario:keepUpTheFire.id,scenario_version:11,rules_version:13,setup});
+  expect(getAfterActionReport(s)).toMatchObject({scenario:keepUpTheFire.id,scenario_version:12,rules_version:14,setup});
  });
  it('rejects unknown setup data and invalid tactical controls or attachments',()=>{
   for(const setup of [{positions:{ghost:'r0c1'}},{objectives:{primary:'r4c3'}},{objectives:{attack:'r2c1'}},{assignments:{mg1:{platoon:0}}},{positions:{co:'r1c1'}},{assets:{co:{smoke:999}}}])expect(()=>materializeScenario(keepUpTheFire,'x',setup)).toThrow();

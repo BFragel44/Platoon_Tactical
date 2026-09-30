@@ -1,5 +1,21 @@
 # Fire paths and continuing fire — 2026-09-22
 
+## Terrain / cover audit — rules 14, KUTF 12
+
+See [TERRAIN_COVER_AUDIT.md](TERRAIN_COVER_AUDIT.md) for rule findings, visual validation and six complete deterministic scripted checks. All six summary results match revision 13; no probability tuning.
+
+## Battlefield UI overhaul — completed
+
+See [UI_OVERHAUL_VALIDATION.md](UI_OVERHAUL_VALIDATION.md) for the anchored map controls, counter/inventory presentation, recorded segment recaps, browser walkthrough and unchanged KUTF replay hashes. This presentation milestone retains rules 13 / KUTF 11 / Company Assault 4.
+
+## KUTF transition audit — user acceptance recorded
+
+User feedback after Notes KUTF 4: “The playthrough was fun,” following an earlier report of mostly smooth rules. This is human playability evidence and closes the general standalone acceptance gate; it is not a claim that every rare branch was observed. The Notes 4 changes remain verified by their focused fixtures and browser checks.
+
+The final scoped pass reconciled published KUTF pp.4–7, current setup/placement/expansion/support/scoring tests and availability metadata. No additional confirmed KUTF implementation blocker was found. Current checklists are consolidated; old documents are preserved verbatim as KEEP_UP_THE_FIRE_HISTORY.md and KUTF_READINESS_AUDIT_HISTORY.md. Normandy is still gated on its own systems, not on another KUTF playthrough.
+
+Only availability/display metadata and documents change in this transition. Simulation briefing/events, probabilities and versions remain intact. Full suite: 330 tests; production build passes. Both archived direct-policy full-state hashes remain unchanged. No additional human run or browser test is claimed for this metadata-only closure.
+
 ## KUTF Notes 4 — presentation fixes, rules 13 retained
 
 Reviewed `reference/playtest_replays/Platoon Tactical - Testing Notes KUTF 4.pdf` (two pages). The user reports another mostly smooth rules playthrough; no new executable replay accompanied these notes. Screenshot-specific outcomes were not reconstructed. Targeted fixtures reproduced the marker/projection defects.

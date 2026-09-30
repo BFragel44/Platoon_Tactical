@@ -5,6 +5,7 @@ export const distance = (a,b) => Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b
 export const occupants = (s,id) => values(s.units).filter(u => live(u) && u.location === id);
 export const adjacent = (s,id) => values(s.locations).filter(l => l.id !== id && distance(l,s.locations[id]) === 1);
 export const coverOf = (s,u) => s.locations[u.location].covers.find(c => c.id === u.cover);
+export const enclosedWeaponCover = c => ['Building','Light Building','Strong Building','Upper Story','Church Tower','Bunker','Cave','Pillbox'].includes(c?.type);
 export const temporaryMortarFire=s=>values(s.units).filter(u=>u.temporary_pdf).map(u=>({source:u.id,origin:u.temporary_pdf.origin,target:u.temporary_pdf.target,value:null,pdf_only:true,indirect:false,reason:'TEMPORARY_MORTAR_PDF'}));
 export const unitElevation = (s,u) => s.locations[u.location].elevation+(coverOf(s,u)?.elevation??0);
 export function coverAvailable(s,u,c,location=u.location){
@@ -100,7 +101,7 @@ export function canFire(s,u,id) {
   if(u.hold_fire_until_cleanup)return false;
   if(u.mission_weapon&&u.tripod&&u.exposed)return false;
   if (basicValue(u) === null || !seesCard(s,u,id,rangeOf(u))) return false;
-  if (u.cohesion==='GOOD' && u.kind === 'MORTAR' && (u.exposed || u.location===id || ['Building','Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type) || s.locations[u.location].terrain === 'woods')) return false;
+  if (u.cohesion==='GOOD' && u.kind === 'MORTAR' && (u.exposed || u.location===id || enclosedWeaponCover(coverOf(s,u)) || s.locations[u.location].terrain === 'woods')) return false;
   const cover = coverOf(s,u);
   if (['Bunker','Pillbox'].includes(cover?.type)) {
     const a=s.locations[u.location], b=s.locations[id];
@@ -301,14 +302,15 @@ export function combatExposure(s,u) {
   const effects=combined.length>1?[...grenades.filter(m=>m.type!=='GRENADE'),{type:'GRENADE',location:u.location,value:combined.reduce((n,m)=>n+m.value,0),label:'Combined grenade effects'}]:grenades;
   const candidates=[...fire.map(f=>({kind:f.indirect?'ON_MAP_INDIRECT':'BASIC_FIRE',source_id:f.source,origin:f.origin,value:f.value+smoke+(f.indirect?terrain.burst:0),vof:f.value,smoke,burst:f.indirect?terrain.burst:0,blast:false})),
     ...indirect.map(f=>({kind:'OFF_MAP_SUPPORT',source_id:null,origin:f.location,value:f.value+terrain.burst,vof:f.value,smoke:0,burst:terrain.burst,blast:true,label:f.agency?`Incoming ${f.agency.includes('mortar')?'mortar':'artillery'} ${f.ammo??'HE'}`:f.value===-3?'Incoming mortar fire':'Incoming artillery'})),
-    ...effects.map(m=>({kind:m.type,source_id:m.source??null,origin:s.units[m.source]?.location??m.location,value:m.value+(m.type==='SNIPER'?smoke:0),vof:m.value,smoke:m.type==='SNIPER'?smoke:0,burst:0,blast:m.type==='GRENADE',...(m.label?{label:m.label}:{}),...(m.weapon?{label:m.weapon==='WP'?'WP grenade effect':'On-map mortar grenade effect'}:{})}))];
+    ...effects.map(m=>({kind:m.type,source_id:m.source??null,origin:m.origin??s.units[m.source]?.location??m.location,value:m.value+(m.type==='SNIPER'?smoke:0),vof:m.value,smoke:m.type==='SNIPER'?smoke:0,burst:0,blast:m.type==='GRENADE',...(m.label?{label:m.label}:{}),...(m.weapon?{label:m.weapon==='WP'?'WP grenade effect':'On-map mortar grenade effect'}:{})}))];
   if(miss&&!fire.length&&!indirect.length&&!grenades.length) candidates.push({value:0+smoke,blast:false});
   const stack=cover ? occupants(s,u.location).filter(t=>t.cover===cover.id).reduce((n,t)=>n+t.steps.length,0) : 0;
   for(const c of candidates){c.overcrowding=c.blast?-Math.max(0,stack-3):0;c.value+=c.overcrowding;}
   candidates.sort((a,b)=>a.value-b.value||String(a.source_id??a.kind).localeCompare(String(b.source_id??b.kind)));
   const strongest=candidates[0];
   const critical=targeted.some(m=>m.critical);
-  const terrainValue=terrain.open_protection !== undefined && fire.every(f=> {
+  const borderFire=[...fire,...grenades.filter(m=>m.type!=='MINES').map(m=>({origin:m.origin??s.units[m.source]?.location??m.location}))];
+  const terrainValue=terrain.open_protection !== undefined && borderFire.every(f=> {
     const source=s.locations[f.origin];return f.indirect||f.origin===u.location||white(terrain,source.row-terrain.row,source.col-terrain.col);
   }) ? terrain.open_protection : terrain.protection;
   const parts={ fire:strongest.vof??0,smoke:strongest.smoke??smoke,burst:strongest.burst??0,terrain:terrainValue,cover:critical?0:cover?.value??0,

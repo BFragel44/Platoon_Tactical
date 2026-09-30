@@ -15,7 +15,7 @@ try{
  document.querySelector('#outside').click();check('Outside click closes menu',opened().length===0);
  root.querySelector('#menu-settings').click();check('Settings placeholder',opened()[0].textContent.includes('Game settings coming later'));
  document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));
- root.querySelector('.header-result summary').click();check('Full result can expand',root.querySelector('.header-result').open);
+ check('Duplicate header feedback removed',!root.querySelector('.header-result'));
  check('Presentation leaves simulation and RNG unchanged',JSON.stringify(s)===before);
  dispose();root.querySelector('#menu-file').click();document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true}));check('Cleanup removes document listeners',opened().length===1);
  document.querySelector('#results').textContent=results.join('\n');

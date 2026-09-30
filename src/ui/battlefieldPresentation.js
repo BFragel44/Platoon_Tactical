@@ -4,7 +4,7 @@ export function coverLabel(view,id) {
     const cover=l.covers.find(c=>c.id===id);if(!cover)continue;
     const title=c=>{const peers=l.covers.filter(v=>v.type===c.type);return `${c.type}${peers.length>1?' '+(peers.findIndex(v=>v.id===c.id)+1):''}`;};
     const parent=l.covers.find(c=>c.id===cover.parent);
-    return `${title(cover)}${parent?' above '+title(parent):''} · +${cover.value} protection${cover.capacity?' · '+cover.capacity+'-step capacity':''}`;
+    return `C${l.covers.findIndex(c=>c.id===cover.id)+1} · ${title(cover)}${parent?' above '+title(parent):''} · +${cover.value} protection${cover.capacity?' · '+cover.capacity+'-step capacity':''}`;
   }
 }
 export function movingFormationIds(option,target,enabled=true) {

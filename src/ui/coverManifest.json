@@ -1,0 +1,18 @@
+{
+  "notes": "Original supplied sheets displayed as CSS sprites, without altering artwork. Rectangles are x,y,width,height. Match printed protection values; unsupported values use a labelled vector fallback.",
+  "sheets": {
+    "one": {"source":"reference/Counters_Side_1.png","file":"/counters/cover-sheet-1.png","width":948,"height":872},
+    "two": {"source":"reference/Counters_Side_2_and_3.png","file":"/counters/cover-sheet-2.png","width":962,"height":878}
+  },
+  "counters": {
+    "Cover:1":{"sheet":"one","rect":[326,716,75,75]},
+    "Bunker:3":{"sheet":"one","rect":[5,796,74,75]},
+    "Pillbox:4":{"sheet":"one","rect":[86,796,75,75]},
+    "Light Building:2":{"sheet":"one","rect":[166,796,75,75]},
+    "Strong Building:3":{"sheet":"one","rect":[246,796,75,75]},
+    "Upper Story:2":{"sheet":"one","rect":[326,796,75,75]},
+    "Upper Story:3":{"sheet":"two","rect":[405,796,77,76]},
+    "Church Tower:3":{"sheet":"one","rect":[487,796,74,75]},
+    "Church Tower:2":{"sheet":"two","rect":[484,81,76,77]}
+  }
+}

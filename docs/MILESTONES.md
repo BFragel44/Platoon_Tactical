@@ -1,5 +1,9 @@
 # Milestones
 
+## Current milestone — KUTF accepted; campaign foundation next
+
+The user reports repeated smooth, fun KUTF playthroughs. The general standalone playability gate is closed; no confirmed KUTF blocker remains in the scoped audit. Notes 4 fixes are complete. Begin the mission/roster foundation in [Normandy readiness](NORMANDY_READINESS.md), keeping Normandy unavailable until its own dependencies are implemented. Older milestone entries below describe historical acceptance gaps and do not reopen this gate.
+
 ## Notes KUTF 3 — implemented, human acceptance open
 
 Spotting/command clarity and PDF selection are implemented at rules revision 13: Pending activity, spotter penalty, multi-PDF joining, safe spotting confirmation, command limits, contact labels and compact combat consequences. Automated and short browser verification is recorded in COMPANY_PLAYTEST_RESULTS.md. Human acceptance should confirm spotting stakes, actual PDF contributors and readable consequences before calling this milestone accepted. Normandy remains unavailable.

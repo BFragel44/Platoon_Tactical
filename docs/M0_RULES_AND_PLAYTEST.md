@@ -1,5 +1,19 @@
 # Company Assault: implemented rules and manual playtest
 
+## Current authority — standalone accepted, rules 14 / KUTF 12
+
+The user has accepted the standalone play experience through repeated playthroughs and reports that it is fun. See [current KUTF status](KEEP_UP_THE_FIRE_STATUS.md) for the completed checklist and retained adaptations, and [Normandy readiness](NORMANDY_READINESS.md) for the actual next gates. Further general KUTF human acceptance is not a prerequisite for starting campaign engineering. Concrete new bugs remain actionable.
+
+The development-version sections below are historical records. Statements that KUTF is incomplete/gated, or that later-implemented terrain/transport/activity features remain absent, are superseded by the current status. This does not imply full action-menu fidelity or Normandy availability.
+
+## Revision 14 — terrain and occupied cover
+
+See [terrain/cover audit](TERRAIN_COVER_AUDIT.md) for the §§5.2–5.4 review, two printed terrain corrections, targeted-fire border protection and enclosed-cover mortar restrictions. Matching C1/C2 markers link units, cover positions and order targets. KUTF content is now 12; Company Assault remains 4. Historical executable records require their original revision.
+
+## Battlefield view controls
+
+The map now has independent scrolling, anchored Reset LOS / zoom / Find unit controls, saved camera position and inline formation inventory. Reset LOS changes inspection only. Recap and Review combat read recorded results without drawing or resolving again. See [UI overhaul validation](UI_OVERHAUL_VALIDATION.md) for scope and checks. Rules and mission content versions are unchanged.
+
 ## KUTF Notes 4 — marker and order presentation
 
 Minefields remain in play (§§7.9.1, 8.7.1); cleanup resets the triggered marker to **MINES · Draw 3**, not removal. Entering/moving within checks mines; leaving does not. Triggered units still receive their normal −4 effects and movement restriction. Labelled vector markers replace incorrect Concentrated Fire artwork.

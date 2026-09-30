@@ -24,7 +24,7 @@ it('keeps observed Incoming fire on an emptied card until fire-mission update, w
 });
 it('uses descriptive, distinct discovered-cover labels and conceals unknown covers',()=>{
  const s=fresh();s.locations.r1c1.covers=[{id:'cover_7',type:'Strong Building',value:3,known:true},{id:'cover_8',type:'Upper Story',value:3,parent:'cover_7',known:true},{id:'secret_cover',type:'Pillbox',value:4,known:false}];
- const v=getPlayerView(s);expect(coverLabel(v,'cover_7')).toBe('Strong Building · +3 protection');expect(coverLabel(v,'cover_8')).toContain('Upper Story above Strong Building');expect(coverLabel(v,'secret_cover')).toBeUndefined();expect(tacticalText(v,'Moved to cover_7.')).toBe('Moved to Strong Building · +3 protection.');
+ const v=getPlayerView(s);expect(coverLabel(v,'cover_7')).toBe('C1 · Strong Building · +3 protection');expect(coverLabel(v,'cover_8')).toContain('Upper Story above Strong Building');expect(coverLabel(v,'secret_cover')).toBeUndefined();expect(tacticalText(v,'Moved to cover_7.')).toBe('Moved to C1 · Strong Building · +3 protection.');
 });
 it.each(['PLATOON_MOVE','PLATOON_INFILTRATE'])('previews the exact %s participants without mutation',type=>{
  const s=fresh();s.phase='SUBORDINATE_ACTIVATION';s.impulse={hq:'hq1',id:'preview',commands:6,spent:0};s.units.s12.exposed=true;s.units.mg1.tripod=true;

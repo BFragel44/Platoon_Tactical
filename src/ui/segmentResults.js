@@ -1,6 +1,14 @@
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const meaningful=new Set(['HQ_EVENT','HQ_EVENT_NONE','HQ_EVENT_FORMATION','AUTOMATIC_RECOVERY','UNIT_CAPTURED','ENEMY_CASUALTY_CAPTURED','UNIT_MOVED','UNIT_WITHDREW','ASSETS_DROPPED']);
 
+// Recaps consume the already-filtered historical stream, never current hidden state.
+export function previousSegment(events,phases) {
+  const entries=events.filter(e=>e.type==='PHASE_ENTERED');
+  const end=entries.at(-1),start=entries.at(-2);
+  if(!start||!end)return null;
+  return {id:`recap:${start.id}`,turn:start.turn,phase:start.phase,label:phases.find(p=>p[0]===start.phase)?.[1]??start.phase,events:events.filter(e=>e.sequence>start.sequence&&e.sequence<end.sequence&&!['DECK_SHUFFLED','COMMAND_RESOLVED'].includes(e.type))};
+}
+
 // Input is exclusively getVisibleEvents output. Retain locations from that time.
 export function segmentReviews(events) {
   return events.filter(e=>e.type==='SEGMENT_COMPLETED').flatMap(end=>{
