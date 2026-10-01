@@ -257,3 +257,13 @@ Keep Up the Fire content v8 adds an explicit upper-story seek-cover choice (§5.
 Keep Up the Fire content v9 corrects contact placement (§§8.4.3–8.4.4): bunker/pillbox positions may share U.S.-occupied cards if they can fire toward the triggering card; building substitution is followed by firing-legality revalidation. Opening enemy fire removes intervening PCs at its elevation without a contact evaluation. Ordinary off-map placement expansion (§8.4.5) remains missing and blocks standalone release; the published mission does not waive this rule.
 
 Content v10 implements ordinary contact map expansion (§8.4.5), superseding the v9 missing-feature note above. Maximum-distance placement can draw beyond the original 4×4 map, using the remaining seeded terrain deck and resolving hill stacks. Newly drawn cards persist after rejected package attempts and receive no PCs. Friendly units remain inside the original boundaries; enemy fallback retains the original edge. Feasibility checks do not mutate terrain or history. Final placement/visual acceptance is still open.
+
+
+### Symmetric combat presentation
+
+Actual reciprocal fire may be reviewed in matching German/US panels, with incoming probabilities outside and stored results beneath each receiving formation. Adjacent reciprocal queue items can resolve together through the original ordered operations; unrelated items retain their frozen order. LOS alone never generates a reciprocal roll. Unspotted enemy stakes and outcomes remain hidden. The compact fixed overlay does not move the map or inventory. See UI_OVERHAUL_VALIDATION.md for verification; rules/content versions are unchanged.
+
+
+### KUTF achievement display
+
+Open Achievements beside the phase heading for the 12 mission-specific tasks, published rates, live points and total (KUTF mission booklet p. 4). Asterisks mark provisional position-based points; these are assessed at mission end and may change before then. The display previews existing scoring without issuing orders, drawing cards, changing RNG or adding events. Final totals match the AAR; rules and content versions are unchanged.
