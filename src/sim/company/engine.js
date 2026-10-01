@@ -1,3 +1,4 @@
+import {achievementTally} from './achievementTally.js';
 import {contactQueue} from './missionContacts.js';
 import {materializeScenario} from './missionSetup.js';
 import {revealTerrain,terrainProjection} from './missionKnowledge.js';
@@ -271,7 +272,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
   }
   const knownEnemy=Object.keys(s.knowledge.spotted).filter(id=>s.units[id]).map(id=>observeRecord(s.units[id]));
   const pending=s.phase==='COMBAT_EFFECTS'?s.pending_combat?.[s.segment_progress?.index]:null;
-  const combat_resolution=pending?.target_visible?{id:pending.id,status:pending.status,target_id:pending.target_id,target_name:pending.target_name,
+  const projectCombat=pending=>pending?.target_visible?{id:pending.id,status:pending.status,target_id:pending.target_id,target_name:pending.target_name,
     visible_position:s.pending_combat.filter(r=>r.target_visible).findIndex(r=>r.id===pending.id)+1,
     target_location:pending.target_location,target_faction:pending.target_faction,target_experience:pending.target_experience,target_kind:pending.target_kind,
     target_steps:pending.target_steps,target_cohesion:pending.target_cohesion,target_pinned:pending.target_pinned,ncm:pending.ncm,total:pending.total,
@@ -279,16 +280,18 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     hit_probabilities:structuredClone(pending.hit_probabilities),result:pending.result,hit_effect:pending.hit_effect,after:structuredClone(pending.after),casualty_steps:pending.casualty_steps,
     strongest:pending.strongest?{...structuredClone(pending.strongest),source_id:pending.strongest.known?pending.strongest.source_id:null}:null,
     sources:pending.sources.map(source=>({...structuredClone(source),source_id:source.known?source.source_id:null}))}:null;
+  const combat_resolution=projectCombat(pending);
+  const combat_resolutions=s.phase==='COMBAT_EFFECTS'?s.pending_combat.filter(r=>r.target_visible).map(projectCombat):[];
   const segment_progress=s.phase==='COMBAT_EFFECTS'&&s.segment_progress?{phase:s.segment_progress.phase,status:s.segment_progress.status,
     events_after:s.segment_progress.events_after,
     visible_total:s.pending_combat.filter(r=>r.target_visible).length,visible_resolved:s.pending_combat.filter(r=>r.target_visible&&r.status==='RESOLVED').length}:structuredClone(s.segment_progress);
   const contactEvents=s.phase==='CONTACTS'&&s.segment_progress?getVisibleEvents(s,'friendly',s.segment_progress.events_after):[];
   const contact_review=s.phase==='CONTACTS'?{eligible_locations:eligibleContacts(s).map(c=>c.location),location:s.segment_progress?.contact??nextContact(s)?.location??null,next_location:nextContact(s)?.location??null,resolved:!!s.segment_progress,events:contactEvents}:null;
-  return {id:s.id,scenario_id:s.scenario_id,status:s.status,seed:s.seed,turn:s.turn,turn_limit:s.turn_limit,phase:s.phase,phase_label:phaseInfo(s.phase)[1],phase_description:phaseDescription(s),combat_resolution,contact_review,
+  return {id:s.id,scenario_id:s.scenario_id,status:s.status,seed:s.seed,turn:s.turn,turn_limit:s.turn_limit,phase:s.phase,phase_label:phaseInfo(s.phase)[1],phase_description:phaseDescription(s),combat_resolution,combat_resolutions,contact_review,
     historical_losses:getVisibleEvents(s).filter(e=>e.type==='FORMATION_LOST'),
     segment_progress,briefing:s.briefing,activity:s.activity,impulse:structuredClone(s.impulse),eligible_hqs:eligibleHQs(s),units,
     locations:values(s.locations).map(terrainProjection),
-    mission_name:s.mission_name,objectives:s.objectives?Object.fromEntries(['primary','secondary','attack','ccp'].map(k=>[k,{location:s.objectives[k],...secureStatus(s,s.objectives[k])}])):null,achievements:structuredClone(s.achievements),
+    mission_name:s.mission_name,objectives:s.objectives?Object.fromEntries(['primary','secondary','attack','ccp'].map(k=>[k,{location:s.objectives[k],...secureStatus(s,s.objectives[k])}])):null,achievements:structuredClone(s.achievements),achievement_tally:achievementTally(s),
     contacts:values(s.contacts).filter(c=>!c.returning||s.knowledge.suspected[c.location]).map(c=>({id:c.id,location:c.location,type:c.type,resolved:c.resolved})),
     enemies:knownEnemy,suspected:spottingLocations(s),historical_reports:Object.keys(s.knowledge.suspected),
     fire:[...s.fire,...temporaryMortarFire(s)].filter(f=>friendly(s.units[f.source])||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>({...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:visible(s,s.units[f.source])?f.source:null,friendly:friendly(s.units[f.source])})),

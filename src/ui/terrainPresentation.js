@@ -16,8 +16,8 @@ export function formationCover(l,u){
  if(!c)return `<span class="unit-cover terrain-only">Terrain only · level ${l.elevation}</span>`;
  return `<span class="unit-cover">${icon(c)}<span><b>${position(l,c)} · ${esc(c.type)}</b><small>Cover ${signed(c.value)} · level ${l.elevation+(c.elevation??0)}${u.exposed?' · still exposed':''}</small></span></span>`;
 }
-export function terrainInformation(l){
- if(l.known===false)return '<p class="terrain-meta">Terrain not yet revealed.</p>';
+function fullTerrainInformation(l){
+ if(l.known===false)return ''; 
  if(l.staging)return '<p class="terrain-meta">Safe staging / casualty evacuation</p>';
  const hills=l.hills?.length??Math.max(0,l.elevation-1);
  const covers=visibleCovers(l),used=covers.filter(c=>!c.parent&&(c.discovered===true||c.discovered===undefined&&c.type==='Cover')).length;
@@ -40,6 +40,23 @@ export function terrainInformation(l){
 export function coverPositions(l){
  if(l.known===false||l.staging)return '';
  const covers=visibleCovers(l);
- if(!covers.length)return '<p class="cover-empty">No additional cover discovered.</p>';
+ if(!covers.length)return ''; 
  return `<div class="cover-positions" aria-label="Known cover positions">${covers.map(c=>`<div class="cover-position">${icon(c)}<span><b>${position(l,c)} · ${esc(c.type)} ${signed(c.value)}</b><small>Level ${l.elevation+(c.elevation??0)} · ${c.capacity?`${c.capacity}-step capacity`:'no step limit'}${c.parent?` · above ${position(l,covers.find(p=>p.id===c.parent)??c)}`:''}${c.arc?` · fires ${esc(({ '1,0':'N','-1,0':'S','0,1':'E','0,-1':'W','1,1':'NE','1,-1':'NW','-1,1':'SE','-1,-1':'SW'})[c.arc.join(',')]??c.arc.join(','))} only; no point-blank fire`:''}</small></span></div>`).join('')}<small class="cover-rule-note">Cover adds to terrain protection. Seeking cover does not remove exposure.</small></div>`;
+}
+
+export function terrainInformation(l,explanation=''){
+ if(l.known===false)return '';
+ if(l.staging)return '<p class="terrain-meta">Safe staging / casualty evacuation</p>';
+ const used=visibleCovers(l).filter(c=>!c.parent&&(c.discovered===true||c.discovered===undefined&&c.type==='Cover')).length;
+ return `<section class="terrain-quick" aria-label="Terrain information"><span title="Base draw allowance, before experience modifiers."><b>Seek cover</b> ${l.cover_draw} draws</span><span title="Upper stories and fortifications do not use discovery slots."><b>Discovered</b> ${used}/${l.cover_limit}</span><span><b>Cover type</b> ${l.building?'Building / rubble':'Basic +1'}</span></section><div class="terrain-features">${l.multi_story?'<span title="Upper stories add one elevation level.">Multi-story</span>':''}${l.tower?'<span title="Church tower: one step; one level higher.">Tower</span>':''}${l.smoke?`<span>Smoke ${signed(l.smoke_value??2)}</span>`:''}</div><details class="terrain-inspector"><summary>Terrain details</summary>${fullTerrainInformation(l)}${explanation?`<p class="los-explanation">${esc(explanation)}</p>`:''}</details>`;
+}
+export function terrainFooter(l){
+ if(l.known===false||l.staging)return '';
+ const vehicle=({Slow:'SLOW',No:'NO',slow:'SLOW',no:'NO'})[l.trafficability];
+ return `<footer class="terrain-footer"><span title="Applies to Incoming and on-map mortar indirect fire.">Burst ${signed(l.burst??0)}</span>${vehicle?`<b title="Vehicle trafficability reference; vehicles remain deferred.">${vehicle}</b>`:''}</footer>`;
+}
+export function hillStack(l){
+ if(l.known===false||l.staging)return '';
+ const count=l.hills?.length??Math.max(0,l.elevation-1);
+ return count?`<div class="hill-stack" aria-label="${count} hill overlays; total elevation ${l.elevation}">${Array.from({length:count},(_,i)=>`<div class="hill-strip"><b>Hill +1</b><span aria-hidden="true"></span><small>Level ${i+2}</small></div>`).join('')}</div>`:'';
 }

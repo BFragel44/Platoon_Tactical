@@ -11,8 +11,19 @@
 @media(max-width:650px){.command-preview{overflow-wrap:anywhere}.support-art{min-height:140px}.contact-review{padding:.65rem}}
 
 /* Independent inset LOS layer: tactical highlights never replace terrain borders. */
-.terrain-los-border{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:1;overflow:visible}
-.los-edge{fill:none;stroke-width:6;stroke-linejoin:round}.los-edge.white{stroke:#f4f1df}.los-edge.dark{stroke:#087451}
+/* Fixed-pixel frame: only straight edge lengths grow; corners never scale into text. */
+.terrain-los-border{position:absolute;inset:4px;pointer-events:none;z-index:1;--los-corner:12px;--los-width:6px}
+.los-edge{position:absolute;display:block;border:0 solid currentColor}
+.los-edge.white{color:#f4f1df}.los-edge.dark{color:#087451}
+.los-edge[data-direction="N"],.los-edge[data-direction="S"]{left:var(--los-corner);right:var(--los-corner);height:var(--los-width);background:currentColor}
+.los-edge[data-direction="N"]{top:0}.los-edge[data-direction="S"]{bottom:0}
+.los-edge[data-direction="E"],.los-edge[data-direction="W"]{top:var(--los-corner);bottom:var(--los-corner);width:var(--los-width);background:currentColor}
+.los-edge[data-direction="E"]{right:0}.los-edge[data-direction="W"]{left:0}
+.los-edge[data-direction="NE"],.los-edge[data-direction="SE"],.los-edge[data-direction="SW"],.los-edge[data-direction="NW"]{width:var(--los-corner);height:var(--los-corner)}
+.los-edge[data-direction="NE"]{top:0;right:0;border-top-width:var(--los-width);border-right-width:var(--los-width)}
+.los-edge[data-direction="SE"]{bottom:0;right:0;border-bottom-width:var(--los-width);border-right-width:var(--los-width)}
+.los-edge[data-direction="SW"]{bottom:0;left:0;border-bottom-width:var(--los-width);border-left-width:var(--los-width)}
+.los-edge[data-direction="NW"]{top:0;left:0;border-top-width:var(--los-width);border-left-width:var(--los-width)}
 .terrain-card:not(.staging){padding:16px;border:1px solid #9cab91;border-radius:0}
 .terrain-card.incoming{box-shadow:0 0 0 2px #b88955}.terrain-card.combat-focus{outline-offset:3px}
 .los-explanation{font-size:10px;line-height:1.4;color:#cbd4be;margin:6px 0}

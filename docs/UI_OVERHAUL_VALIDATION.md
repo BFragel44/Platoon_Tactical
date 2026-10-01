@@ -41,3 +41,48 @@ Validation: 338 tests and production build pass. Edge checks confirm zero map in
 
 Removed the communication and attempted-action paragraphs from the orders pane, omitted the idle no-incoming-fire message, and moved Recovery/other non-order feedback into Debug. Actual incoming-fire warnings remain compact; order rejection reasons and inventory remain visible. Reduced field, counter, preview and inventory spacing. Browser-checked Company HQ with a BN radio and targeted order: pane height 564 CSS pixels versus 811 for the map at the tested desktop size, so the pane no longer extends the workspace below the map. Screenshot: output/ui-compact-orders.png. Gameplay unchanged.
 
+
+
+## Compact combat overlay — 2026-09-30
+
+User confirmed the terrain/cover visual playtest. Combat now uses a fixed, compact overlay below the measured command header, with desktop space reserved for the inventory/orders column. It no longer takes a row in page flow. Completed combat history is retained in Debug; the header still reopens the current resolution.
+
+The production renderer is extracted to `combatScreen.js`. Source context, receiving formation, all frozen NCM terms (including zeros and unclamped totals when relevant), exact MISS/PIN/HIT stakes, expandable conditional hit effects and stored consequences are retained. Reciprocal fire remains a separate receiving formation, not a second probability roll inferred from the attacker. Hidden-source information remains restricted. The controls and save/reveal behavior are unchanged.
+
+Validation: 344 tests / 44 files pass; production build passes. Browser fixture `test/combatOverlay.browser.html` uses the real engine and production renderer. Map and inventory top stayed at 150 CSS pixels before/after closing; Resolve showed HIT and its resulting formations. At a 390-pixel viewport override (433 CSS pixels at browser zoom), overlay client/scroll widths both measured 398 pixels and the sticky action footer remained within the viewport. Desktop screenshot: `output/compact-combat-overlay.png`.
+
+Presentation only: rules 14 / KUTF 12 / Company Assault 4 unchanged. No simulation, probability or replay-format changes. User assessment of the new combat layout remains open.
+
+
+## Symmetric combat review — 2026-09-30
+
+Matching German/US formation panels now show incoming-fire stakes on the outer edges, actual fire-direction arrows between them, all frozen NCM modifiers, and stored consequences beneath each receiving formation. A reciprocal panel requires actual mutual fire relationships; LOS alone does not authorize a second resolution. Unspotted sources show unknown stakes and no hidden consequences. Support effects remain explicitly labelled.
+
+Adjacent visible reciprocal items can use Resolve both formations. This invokes the existing resolve/advance/resolve operations in their original seeded order and saves each accepted operation. An intervening visible formation prevents batching; its queue position is preserved. No rules, probabilities, replay format or content versions change (rules 14 / KUTF 12 / Company Assault 4).
+
+Validation: 347 tests / 45 files and production build pass. Focused checks verify exact equivalence with the original ordered operations, no skipping of unrelated formations, deterministic repeated execution and hidden-source safety. Production-renderer browser fixtures verify two results beneath matching panels, close/reopen retention, one-sided unknown stakes, and narrow layout without internal horizontal overflow (client/scroll widths 382/382 CSS pixels). The fixed overlay leaves battlefield and inventory in place. Screenshot: output/symmetric-combat-overlay.png. Human layout preference remains for the next playtest.
+
+
+## Compact terrain cards — 2026-10-01
+
+Terrain faces now show Seek cover, Discovered and Cover type beneath the title; compact multi-story/tower/smoke badges; occupied cover and formations; and a bottom footer with Burst plus SLOW/NO vehicle references. One separate Hill +1 strip per hill overlay shows cumulative levels below the card, outside its LOS border. Selection/LOS dimming remains associated with the whole terrain stack.
+
+Removed redundant unrevealed-terrain and empty-cover messages. Full elevation, protection, directional C&C, LOS/border explanation and vehicle restrictions remain in a keyboard-accessible Terrain details inspector. Selected-unit LOS explanations move into that inspector. Terrain data, combat rules, versions, saves and probabilities remain unchanged.
+
+Validation: 349 tests / 45 files and production build pass. Production-renderer browser fixture verifies hidden terrain reveals no facts, two hill strips show levels 2/3, footer labels match trafficability, cover associations remain visible, and Enter opens/closes the full inspector. Desktop cards have equal client/scroll widths (509/509); narrow cards measure 218/218 CSS pixels with page width 416 inside a 433-pixel viewport. Screenshot capture timed out in the browser; visual screenshot validation is not claimed. Human layout feedback remains open.
+
+
+### LOS border resizing correction — 2026-10-01
+
+Replaced the proportionally stretched SVG frame with eight independently coloured CSS edge/corner segments using the same authored border data. The frame has a fixed 4-pixel inset, 6-pixel thickness and 12-pixel corners; only the straight edge lengths change as cards grow. Header/footer text stays inside the reserved card padding. Accessibility descriptions, fog of war and PDF/highlight layers are preserved.
+
+349 tests and production build pass. Production browser fixture with 15 additional formations per card verifies 1358–1568 CSS-pixel card heights, unchanged 12-pixel corners and approximately 6-pixel header/footer clearance. Screenshot: output/fixed-los-borders.png. Presentation only; no rule/data/version changes.
+
+
+## KUTF live achievement tally — 2026-10-01
+
+A KUTF-only Achievements button sits left of the current phase at desktop widths and wraps beside/above the phase on narrow screens. The existing header overlay system shows all 12 published tasks, award rates, points gained and a running total. Escape returns focus to the button; outside click dismisses; only one header menu opens at a time.
+
+The tally previews existing mission scoring on isolated bookkeeping, preserving state/history/RNG and existing AAR scoring. Position-based points (objectives, other cleared contact cards, bunkers/pillboxes) are explicitly provisional while ACTIVE and finalized at mission end. Live event achievements update from historical scoring evidence without duplicate step credit. Company Assault has no KUTF button. Rules/content versions unchanged.
+
+Validation: 351 tests / 46 files pass; production build passes. Focused tests prove projection purity, repeated-step deduplication, 12 task rows, final-score agreement and course gating. Browser fixture test/achievements.browser.html uses production projections/header/styles without touching local saves. Desktop popup and Escape/focus verified. At 390-pixel width the popup spans x=8..382 and page width remains 390 (no horizontal overflow). Screenshot output/kutf-achievements.png.

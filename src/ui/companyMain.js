@@ -1,4 +1,6 @@
-import {terrainInformation,coverPositions,formationCover} from './terrainPresentation.js';
+import {resolveDisplayedExchange} from './combatExchange.js';
+import {combatScreen} from './combatScreen.js';
+import {terrainInformation,terrainFooter,hillStack,coverPositions,formationCover} from './terrainPresentation.js';
 import {coverLabel,movingFormationIds,tacticalText} from './battlefieldPresentation.js';
 import {openSpottingMenu} from './spottingMenu.js';
 import {segmentReviews,segmentResultMarkup,previousSegment} from './segmentResults.js';
@@ -10,14 +12,14 @@ import {movementFireWarning,markerSummary,finalFireMessage} from './firePresenta
 import '../style.css';
 import './company.css';
 import './workspace.css';
+import './combatOverlay.css';
 import {normalizeCamera,mapControls,bindMapViewport,mapPoint} from './mapViewport.js';
 import {formationCounter,inlineInventory,formationLabel} from './unitDetails.js';
 import { createMission, submitCommand, advancePhase, resolveCombat, abortMission, endTurn, getPlayerView, getVisibleEvents, getAfterActionReport, selectHQ, exportReplay } from '../sim/index.js';
 import { companyAssault } from '../scenarios/companyAssault.js';
-import { resultingFormationText } from './combatPlayback.js';
 import {readRecovery,saveRecovery,resumeCheckpoint,checkpoint,SAVE_KEY} from './localRecovery.js';
 import {fireMarkers,pdfDirections,pdfPaths,fireExplanation} from './fireMarkers.js';
-import {selectedOrder,completeCombatStage,supportContext} from './orderPresentation.js';
+import {selectedOrder,completeCombatStage} from './orderPresentation.js';
 import { PHASES } from '../sim/company/engine.js';
 
 const app=document.querySelector('#app');
@@ -46,25 +48,6 @@ let feedback='Advance through the opening segments to Company HQ’s activation 
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 const stateText=u=>`${u.steps} step${u.steps===1?'':'s'} · ${u.pinned?'PINNED · ':''}${({GOOD:u.pinned?'Original side':['HQ','STAFF'].includes(u.kind)?'Command side · no basic fire':u.kind==='FO'?'Observer side · no basic fire':'Good order',P:'Paralyzed',L:'Litter team',F:['HQ','STAFF'].includes(u.kind)?'Named Fire Team · command side unavailable':u.kind==='FO'?'Named Fire Team · observer capability unavailable':'Fire team',A:'Assault team'})[u.cohesion]??u.cohesion}${u.exposed?' · Exposed':''}`;
 const active=u=>u.steps&&!u.removed;
-const pct=n=>`${Math.round(n*100)}%`;
-function combatScreen(c,v,name){
-  const source=c.strongest;
-  const sourceUnit=source?.known?{kind:source.unit_kind}:null;
-  const counter=(kind,side,label)=>`<span class="combat-counter ${side==='friendly'?'friendly':side==='enemy'?'enemy':'unknown'}" role="img" aria-label="${esc(label)}">${esc(({SQUAD:'INF',LAT:'TEAM',STAFF:'HQ',MORTAR:'MTR',FO:'OBS'})[kind]??kind??'?')}</span>`;
-  const modifiers=c.modifiers;
-  const extras=c.sources.filter(s=>s.known&&!(s.source_id===source?.source_id&&s.kind===source?.kind&&s.origin===source?.origin)).map(s=>s.label);
-  const effect=c.status==='RESOLVED'&&c.result==='HIT';
-  const support=supportContext(source);
-  return `<section class="combat-resolution" aria-label="Combat resolution"><header><div class="eyebrow">COMBAT RESOLUTION · INCOMING FIRE AGAINST ${esc(c.target_name)}</div><h2>${esc(name(c.target_location))}</h2><p>Stakes were frozen before any result. Fire remains active after resolution.</p></header>
-    <div class="combat-split"><article class="combat-side attacker"><div class="combat-unit-head">${counter(support?'SUP':sourceUnit?.kind??'?',source?.known?source.faction:null,source?.label??'Unidentified source')}<div><small>ATTACK CONTEXT</small><h3>${esc(source?.label??'Combat effect')}</h3><p>${esc(source?.origin?name(source.origin):name(c.target_location))}</p></div><span class="combat-state">${esc(support?'SUPPORT EFFECT':source?.known?'ACTIVE FIRE':'UNSPOTTED')}</span></div>
-      <dl class="combat-context"><div><dt>Effect</dt><dd>${source?.vof>=0?'+':''}${source?.vof??'—'} VOF</dd></div><div><dt>Firing mode</dt><dd>${esc(support?'Support effect':source?.kind==='ON_MAP_INDIRECT'?'Indirect fire':'Direct fire')}</dd></div>${source?.known?`<div><dt>Range to card</dt><dd>${source.range===0?'Same card':source.range+' card(s)'}</dd></div><div><dt>Source at preparation</dt><dd>${source.steps} step(s) · ${esc(source.experience)}</dd></div>`:''}${extras.length?`<div><dt>Other visible sources</dt><dd>${esc(extras.join(', '))}</dd></div>`:''}</dl></article>
-    <article class="combat-side defender"><div class="combat-unit-head">${counter(c.target_kind,c.target_faction,c.target_name)}<div><small>RECEIVING FORMATION</small><h3>${esc(c.target_name)}</h3><p>${c.target_steps} step${c.target_steps===1?'':'s'} · ${esc(c.target_experience)}</p></div><span class="combat-state ${c.target_pinned?'danger':''}">${esc(c.target_pinned?'PINNED':c.target_cohesion==='GOOD'?'EFFECTIVE':c.target_cohesion)}</span></div>
-      <div class="modifier-card"><h4>NCM MODIFIERS · RECEIVING FIRE</h4>${modifiers.map(m=>`<p class="${m.value===0?'modifier-zero':''}"><span>${esc(m.label)}</span><b>${m.value>=0?'+':''}${m.value}</b></p>`).join('')}<p class="ncm-total"><span>NCM${c.total!==c.ncm?` · raw ${c.total>=0?'+':''}${c.total}, bounded`:''}</span><b>${c.ncm>=0?'+':''}${c.ncm}</b></p></div></article></div>
-    <div class="probability-panel"><h3>INCOMING FIRE RESULT · NCM ${c.ncm>=0?'+':''}${c.ncm}</h3><div class="probability-bars">${['MISS','PIN','HIT'].map(result=>`<div class="probability ${result.toLowerCase()}"><b>${result}</b><strong>${pct(c.probabilities.probabilities[result])}</strong><span><i style="width:${pct(c.probabilities.probabilities[result])}"></i></span><small>${c.probabilities.counts[result]} / ${c.probabilities.total} deck outcomes</small></div>`).join('')}</div>
-      <details><summary>If HIT · ${esc(c.target_experience)} hit-effect stakes</summary><div class="hit-grid">${Object.entries(c.hit_probabilities.probabilities).map(([key,value])=>`<span><b>${esc(key)}</b> ${pct(value)}</span>`).join('')}</div></details></div>
-    ${combatStage==='result'&&c.result?`<div class="combat-reveal compact-result ${c.result.toLowerCase()}"><h3>${esc(c.result)}${effect?` · ${esc(c.hit_effect)}`:''}</h3><p>${effect?esc(resultingFormationText(c)):c.result==='MISS'?'No hit; any pin is removed.':'The receiving formation is pinned.'}${effect&&c.casualty_steps?` · ${c.casualty_steps} casualty step(s).`:''}</p></div>`:''}
-    <footer>${c.status==='PENDING'?'<button id="combat-resolve" class="primary">Resolve</button>':'<button id="combat-next" class="primary">Next combat →</button>'}<button id="combat-close">Close to tactical map</button></footer></section>`;
-}
 function download(name,value){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([typeof value==='string'?value:JSON.stringify(value,null,2)],{type:'application/json'}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
 function drawFirePaths(view){
   const layer=app.querySelector('.map-layer'),svg=app.querySelector('#fire-overlay');if(!layer||!svg)return;
@@ -115,13 +98,13 @@ function render(){
     ${storageError||recovery.error?`<p class="storage-warning" role="alert">${esc(storageError||recovery.error)}</p>`:''}
     ${recoveryPending?'<p class="recovery-prompt">A saved mission is available. Resume it, restore its turn start, or start a new mission.</p>':''}
     ${progress&&progress.phase!=='CONTACTS'?`<details class="segment-review"><summary>Combat results · ${esc(v.phase_label)} · ${progress.visible_resolved??0}/${progress.visible_total??0} visible</summary>${reviewEvents.length?reviewEvents.map(e=>`<p>${esc(tacticalText(v,e.text))}</p>`).join(''):'<p>No resolved combat effects yet.</p>'}${progress.phase==='COMBAT_EFFECTS'&&combat?'<button id="reopen-combat">Open current combat</button>':''}<p>Next: ${esc(PHASES[(phaseIndex+1)%PHASES.length][1])}</p></details>`:''}
-    ${combat&&combatOpen&&!review?`<p class="combat-queue">${esc(name(combat.target_location))} · Receiving formation ${combat.visible_position} of ${progress?.visible_total??1} visible · source and target highlighted below</p>${combatScreen(combat,v,name)}`:''}
+    ${combat&&combatOpen&&!review?combatScreen(combat,v,name,combatStage):''}
     <div class="company-workspace"><section class="battlefield-column" aria-label="Battlefield">
     ${selectedPath?`<p class="selected-fire-path" role="status">PDF trace: ${esc(selectedPath.label)} Path: ${selectedPath.cards.map(name).map(esc).join(' → ')}. ${esc(v.fire.filter(f=>`${f.origin}|${f.target}|${f.friendly?'friendly':f.source?'enemy':'unknown'}`===selectedPdf).map(f=>fireExplanation(v,f)).join(' '))}</p>`:''}
     <div class="battlefield-stage"><div class="map-viewport" tabindex="0" aria-label="Scrollable battlefield"><div class="map-canvas"><div class="map-layer"><svg id="fire-overlay" aria-hidden="true"></svg><div class="company-map" style="${v.locations.some(l=>l.outside_boundary)?`grid-template-columns:repeat(${Math.max(...v.locations.map(l=>l.col))-Math.min(...v.locations.map(l=>l.col))+1},minmax(0,1fr))`:''}">${[...v.locations].sort((a,b)=>b.row-a.row||a.col-b.col).map(l=>{
       const own=v.units.filter(u=>active(u)&&u.location===l.id),enemy=v.enemies.filter(u=>!u.removed&&u.steps&&u.location===l.id),pc=v.contacts.find(c=>c.location===l.id&&!c.resolved),fire=v.fire.filter(f=>f.target===l.id),support=v.support.filter(f=>f.location===l.id);
-      return `<article data-location="${l.id}" style="${v.locations.some(t=>t.outside_boundary)?`grid-column:${l.col-Math.min(...v.locations.map(t=>t.col))+1};grid-row:${Math.max(...v.locations.map(t=>t.row))-l.row+1}`:''}" class="terrain-card ${!selected||l.id===unit.location||unit.los.includes(l.id)?'in-los':'outside-los'} ${combatFocus.has(l.id)||contactLocations.has(l.id)?'combat-focus':''} ${combat?.target_location===l.id?'combat-target':''} ${selectedPath?.cards.includes(l.id)?'selected-pdf-card':''} ${l.staging?'staging':''} ${fire.length||support.length?'incoming':''}">${terrainBorders(l)}<div class="terrain-header"><h3>${esc(l.name)}</h3>${l.staging||l.known===false?'':`<span class="protection">+${l.protection}</span>`}</div>
-      ${terrainInformation(l)}${coverPositions(l)}${selected&&l.known!==false?`<p class="los-explanation">${esc(unit.los_explanations[l.id].reason)}</p>`:''}
+      return `<div class="terrain-stack ${!selected||l.id===unit.location||unit.los.includes(l.id)?'':'stack-outside-los'}" style="${v.locations.some(t=>t.outside_boundary)?`grid-column:${l.col-Math.min(...v.locations.map(t=>t.col))+1};grid-row:${Math.max(...v.locations.map(t=>t.row))-l.row+1}`:''}" ><article data-location="${l.id}" class="terrain-card ${!selected||l.id===unit.location||unit.los.includes(l.id)?'in-los':'outside-los'} ${combatFocus.has(l.id)||contactLocations.has(l.id)?'combat-focus':''} ${combat?.target_location===l.id?'combat-target':''} ${selectedPath?.cards.includes(l.id)?'selected-pdf-card':''} ${l.staging?'staging':''} ${fire.length||support.length?'incoming':''}">${terrainBorders(l)}<div class="terrain-header"><h3>${esc(l.name)}</h3>${l.staging||l.known===false?'':`<span class="protection">+${l.protection}</span>`}</div>
+      ${terrainInformation(l,selected&&l.known!==false?unit.los_explanations[l.id].reason:'')}${coverPositions(l)}
       ${Object.entries(v.objectives??{}).filter(([,o])=>o.location===l.id).map(([key,o])=>`<span class="contact-badge">${esc(key.toUpperCase())}${o.secured?' · secured':o.cleared?' · cleared':''}</span>`).join('')}${pc?`<span class="contact-badge">? Potential contact ${pc.type}</span>`:''}${l.smoke?'<span class="contact-badge">Screening smoke</span>':''}
       ${contact?.location===l.id?`<section class="card-contact" aria-label="Contact resolution"><h4>${contact.resolved?'Contact result':'Evaluate potential contact'}</h4>${contact.events.map(e=>`<p>${esc(tacticalText(v,e.text))}</p>`).join('')}<button data-contact-progress ${locked?'disabled':''}>${esc(advanceLabel)}</button></section>`:contact&&pc?`<small>${contact.eligible_locations.includes(l.id)?'Queued this segment · alphabetical order; random within a letter.':'Awaiting friendly occupation.'}</small>`:''}
       <div class="fire-markers">${fireMarkers(v,l).map(m=>`<details class="counter-marker"><summary title="${esc(m.label)}">${markerSummary(m)}</summary><p>${esc(m.detail)}</p></details>`).join('')}</div>
@@ -134,7 +117,7 @@ function render(){
       ${v.suspected.includes(l.id)&&!enemy.length?'<p class="suspected">Current unspotted position</p>':v.historical_reports.includes(l.id)&&!enemy.length?'<p class="historical">Historical firing report · not a current spotting target</p>':''}
       ${fire.length?`<p class="fire-label">Fire affecting card: ${fire.map(f=>`${f.friendly?'Friendly':f.source?'Enemy':'Unidentified'} from ${esc(name(f.origin))}${!([...(f.friendly?v.enemies:v.units)].some(u=>u.location===l.id&&u.steps&&!u.removed))?' · no known opposing recipient':''}`).join('; ')}. Same-card fire affects opposing formations only.</p>`:''}
       ${support.map(f=>`<p class="fire-label">${f.status==='PENDING'?'Pending':'Active'} indirect fire (${f.value})</p>`).join('')}
-      </article>`;
+      ${terrainFooter(l)}</article>${hillStack(l)}</div>`;
     }).join('')}</div></div></div></div>${mapControls()}</div><details class="map-reference"><summary>Map key · LOS, fire and status markers</summary><p class="map-legend">LOS borders: white permits tracing through; dark green blocks tracing through at the same elevation. Adjacent cards remain visible unless smoke or other restrictions apply. Hills may overlook lower borders. Selected formation LOS: bright cards. Select an edge PDF badge to emphasize its path through terrain cards: green friendly · red enemy · amber unidentified. VOF counters mark affected cards; same-card fire has no outward PDF. Inspect counters for effects. PIN and EXPOSED badges belong to formations.</p></details>
     <details class="panel fire-report"><summary>Fire details and continuing fire</summary><p>Friendly formations do not automatically open fire into a card containing both friendly and enemy units. Established fire can continue after the enemy leaves or is captured. Cease/Shift Fire changes it; new eligible targets may trigger automatic fire again.</p>${v.fire.length?v.fire.map(f=>`<p>${esc(fireExplanation(v,f))} ${f.pdf_only?'No basic VOF':f.value===2?'Pinned fire +2':f.value===0?'Small arms 0':f.value===-1?'Automatic −1':'Heavy −3'}${f.origin!==f.target&&!f.indirect?` <button type="button" data-pdf-path="${esc(`${f.origin}|${f.target}|${f.friendly?'friendly':f.source?'enemy':'unknown'}`)}">Trace path</button>`:''}</p>`).join(''):'<p>No automatic fire established. Units will open fire when a valid spotted target is in range.</p>'}</details>
     <details class="panel history"><summary>Tactical record · previous results</summary><ol>${meaningful.slice(-45).reverse().map(e=>`<li><span class="event-turn">T${e.turn}</span><span>${esc(tacticalText(v,e.text))}</span></li>`).join('')}</ol></details></section>
@@ -163,7 +146,7 @@ function render(){
   for(const [destination,selectors] of [
     ['#panel-mission',['#casualty-evacuation','#turn-summary','#abort']],
     ['#panel-roster',['#named-personnel']],
-    ['#debug-content',['#order-eligibility','.map-reference','.fire-report','.history','.segment-history','#diagnostic-details']]
+    ['#debug-content',['#order-eligibility','.map-reference','.fire-report','.history','.segment-history','.segment-review','#diagnostic-details']]
   ])for(const selector of selectors){const element=app.querySelector(selector);if(element)app.querySelector(destination).append(element);}
   if(feedbackKind!=='Last order')app.querySelector('#debug-content').append(app.querySelector('.order-feedback'));
   const ordersPanel=app.querySelector('.company-orders');ordersPanel.scrollTop=ordersScroll;ordersPanel.onscroll=()=>{ordersScroll=ordersPanel.scrollTop;clearTimeout(ordersSaveTimer);ordersSaveTimer=setTimeout(()=>{persist();if(storageError&&!app.querySelector('.storage-warning'))render();},250);};
@@ -185,7 +168,7 @@ function render(){
   }
   app.querySelectorAll('[data-hq]').forEach(b=>b.onclick=()=>{const before=mission;const r=selectHQ(mission,b.dataset.hq);mission=r.state;selected=b.dataset.hq;ordersScroll=0;feedbackKind='HQ selection';feedback=r.events.at(-1)?.text??r.reason;if(mission!==before)persist(before);render();});
   app.querySelectorAll('[data-unit]').forEach(b=>b.onclick=()=>{selected=b.dataset.unit;ordersScroll=0;persist();render();});
-  const resolveButton=app.querySelector('#combat-resolve');if(resolveButton)resolveButton.onclick=()=>{const before=mission,r=resolveCombat(mission,combat.id);mission=r.state;combatStage='result';feedbackKind='Combat result';feedback=r.reason??`Combat resolved: ${getPlayerView(mission).combat_resolution?.result}.`;if(mission!==before)persist(before);render();};
+  const resolveButton=app.querySelector('#combat-resolve');if(resolveButton)resolveButton.onclick=()=>{const before=mission,r=resolveDisplayedExchange(mission,(previous,next)=>{mission=next;persist(previous);});mission=r.state;combatStage='result';feedbackKind='Combat result';feedback=r.reason??`Combat resolved: ${getPlayerView(mission).combat_resolution?.result}.`;if(mission!==before)persist(before);render();};
 
   const nextCombat=app.querySelector('#combat-next');if(nextCombat)nextCombat.onclick=()=>{const before=mission,r=advancePhase(mission);mission=r.state;combatId=null;combatStage='pre';combatOpen=true;feedbackKind='Combat review';feedback=r.reason??'Proceeding to the next frozen combat exposure.';if(mission!==before)persist(before);render();};
   const closeCombat=app.querySelector('#combat-close');if(closeCombat)closeCombat.onclick=()=>{combatOpen=false;persist();render();};

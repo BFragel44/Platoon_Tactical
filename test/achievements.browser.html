@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>KUTF achievement UI check</title></head><body><main id="fixture"></main><p>Production header fixture. No saved game is read or written.</p><script type="module">
+import '../src/style.css';import '../src/ui/company.css';import '../src/ui/workspace.css';
+import {commandHeader,bindCommandHeader} from '../src/ui/commandHeader.js';
+import {createMission,getPlayerView} from '../src/sim/company/engine.js';import {keepUpTheFire} from '../src/scenarios/keepUpTheFire.js';
+const s=createMission(keepUpTheFire,'achievement-ui'),root=document.querySelector('#fixture');
+s.events.push({id:'capture_test',type:'UNIT_CAPTURED',faction:'enemy',step_ids:['step1'],turn:1});
+root.innerHTML=commandHeader({v:getPlayerView(s),name:id=>id,seed:s.seed,recovery:{},locked:false,advanceLabel:'Resolve segment',phaseIndex:0});bindCommandHeader(root);
+</script></body></html>

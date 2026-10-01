@@ -4,7 +4,7 @@ import {companyAssault} from '../src/scenarios/companyAssault.js';
 import {createMission,exportReplay,replayMission} from '../src/sim/company/engine.js';
 import {combatExposure,canFire} from '../src/sim/company/battlefield.js';
 import {orderReason} from '../src/sim/company/actions.js';
-import {terrainInformation,formationCover,coverPositions} from '../src/ui/terrainPresentation.js';
+import {terrainInformation,terrainFooter,hillStack,formationCover,coverPositions} from '../src/ui/terrainPresentation.js';
 import {terrainProjection} from '../src/sim/company/missionKnowledge.js';
 import manifest from '../src/ui/coverManifest.json';
 const fresh=()=>createMission(companyAssault,'terrain-cover');
@@ -50,7 +50,7 @@ describe('Terrain and cover audit',()=>{
   expect(formationCover(l,{cover:'u',exposed:true})).toContain('C2 · Upper Story');expect(formationCover(l,{cover:'u'})).toContain('level 3');
   expect(formationCover(l,{})).toContain('Terrain only');expect(coverPositions(l)).not.toContain('Bunker');
   const hidden=terrainProjection({...l,known:false,row:3,col:2});
-  expect(terrainInformation(hidden)).toBe('<p class="terrain-meta">Terrain not yet revealed.</p>');expect(coverPositions(hidden)).toBe('');
+  expect(terrainInformation(hidden)).toBe('');expect(coverPositions(hidden)).toBe('');
   expect(formationCover(hidden,{cover:'u'})).toBe('');
  });
  it('keeps artwork reproducible and presentation pure, and rejects revision 13',()=>{
@@ -61,5 +61,24 @@ describe('Terrain and cover audit',()=>{
   const s=fresh(),before=structuredClone(s);for(const l of Object.values(s.locations)){terrainInformation(l);coverPositions(l);}expect(s).toEqual(before);
   const replay=exportReplay(s);expect(replayMission(companyAssault,replay)).toEqual(s);
   expect(()=>replayMission(companyAssault,{...replay,rules_version:13})).toThrow('version mismatch');
+ });
+});
+
+describe('Compact terrain presentation',()=>{
+ it('keeps full facts in the inspector and places footer/hill information separately without mutation',()=>{
+  const l={known:true,elevation:3,hills:['a','b'],protection:2,open_protection:1,cover_draw:4,cover_limit:2,trafficability:'Slow',burst:-1,borders:{N:'white',S:'dark'},covers:[]},before=structuredClone(l);
+  const html=terrainInformation(l,'Blocked by Woods');
+  expect(html.indexOf('Seek cover')).toBeLessThan(html.indexOf('Terrain details'));
+  expect(html).toContain('Blocked by Woods');expect(html).toContain('dark / +1 white');expect(html).toContain('White N');
+  expect(terrainFooter(l)).toContain('Burst -1');expect(terrainFooter(l)).toContain('SLOW');
+  expect(hillStack(l).match(/Hill \+1/g)).toHaveLength(2);expect(hillStack(l)).toContain('total elevation 3');
+  expect(coverPositions(l)).toBe('');expect(l).toEqual(before);
+ });
+ it('does not reveal terrain facts, footers or hills on hidden or staging cards',()=>{
+  for(const known of [false,true]){
+   const l={known,staging:true,elevation:4,hills:['hidden'],trafficability:'No',covers:[]};
+   expect(terrainFooter(l)).toBe('');expect(hillStack(l)).toBe('');
+   if(!known)expect(terrainInformation(l)).toBe('');
+  }
  });
 });
