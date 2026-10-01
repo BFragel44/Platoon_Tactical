@@ -59,3 +59,20 @@
 .achievement-table{width:100%;border-collapse:collapse;font-size:12px;line-height:1.4}.achievement-table th,.achievement-table td{padding:7px 9px;border:1px solid #64745e;text-align:left}.achievement-table thead,.achievement-table tfoot{background:#344535;color:#e4d49d}.achievement-table tbody tr:nth-child(even){background:#25362a}.achievement-table td:last-child{text-align:right;font-weight:700}.achievement-table-wrap{overflow-x:auto}
 @media(max-width:1100px){.compact-status:has(.achievement-button){grid-template-columns:220px minmax(200px,1fr) 135px}.header-phase:has(.achievement-button){margin-left:0}.achievement-button{position:static;transform:none;margin-bottom:5px}}
 @media(max-width:750px){.compact-status:has(.achievement-button){grid-template-columns:minmax(0,1fr) auto}.achievement-table th,.achievement-table td{padding:5px;font-size:11px}}
+
+/* Readable, code-native mission counters; objective status is independent of contact resolution. */
+.terrain-mission-markers{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin:12px 0;position:relative;z-index:2}
+.potential-contact-counter{width:88px;min-height:88px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;border:5px solid #7984c4;background:#394680;box-shadow:0 2px 5px #0005;color:#f8edb0;text-align:center;line-height:1.15;padding:5px}
+.potential-contact-counter span{font-size:14px;font-weight:700}.potential-contact-counter strong{font-size:30px;color:#fff;margin-top:3px}
+.contact-marker-space{display:none}.objective-counters{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.objective-marker{width:96px;flex-shrink:0;text-align:center;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#f1df9f;min-height:96px}
+.objective-face{position:relative;display:flex;flex-direction:column;justify-content:center;align-items:center;width:78px;min-height:78px;background:#bfa65a;border:3px solid #e1c779;color:#15231b;z-index:1;padding:3px}
+.objective-face span{font-size:14px;font-weight:700}.objective-face strong{font-size:25px;line-height:1.2}
+.objective-marker.primary::before,.objective-marker.secondary::before{content:'';position:absolute;width:70px;height:70px;top:13px;background:#8f793e;transform:rotate(45deg)}
+.objective-marker.secondary::before{background:#737f77}.objective-marker.secondary .objective-face{background:#afb9a8;border-color:#819184}
+.objective-marker.attack .objective-face{background:#17231d;border:3px solid #c97668;color:#f1aaa0}.objective-marker.attack strong{font-size:17px;letter-spacing:.03em}
+.objective-marker.ccp .objective-face{background:#29413a;border-color:#88ad94;color:#d7e7d4}
+.objective-marker small{font-size:11px;margin-top:3px;background:#17271e;padding:2px 5px;border:1px solid #667c60;z-index:1}
+@media(min-width:751px){.terrain-mission-markers:has(.objective-marker){justify-content:space-around}}
+
+.objective-marker.primary{background:none;border:0;padding:0;box-shadow:none}

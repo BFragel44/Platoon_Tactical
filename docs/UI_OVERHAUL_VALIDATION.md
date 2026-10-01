@@ -86,3 +86,10 @@ A KUTF-only Achievements button sits left of the current phase at desktop widths
 The tally previews existing mission scoring on isolated bookkeeping, preserving state/history/RNG and existing AAR scoring. Position-based points (objectives, other cleared contact cards, bunkers/pillboxes) are explicitly provisional while ACTIVE and finalized at mission end. Live event achievements update from historical scoring evidence without duplicate step credit. Company Assault has no KUTF button. Rules/content versions unchanged.
 
 Validation: 351 tests / 46 files pass; production build passes. Focused tests prove projection purity, repeated-step deduplication, 12 task rows, final-score agreement and course gating. Browser fixture test/achievements.browser.html uses production projections/header/styles without touching local saves. Desktop popup and Escape/focus verified. At 390-pixel width the popup spans x=8..382 and page width remains 390 (no horizontal overflow). Screenshot output/kutf-achievements.png.
+
+
+## Readable contact and objective counters — 2026-10-01
+
+Potential contacts now use 88-pixel counters with 14-pixel labels and 30-pixel A/B/C/? letters. Primary and Secondary objectives use diamond-backed labelled counters; Attack and CCP have distinct rectangular styling. Objective Cleared/Secured status remains visible and independent of whether a contact is still present. Marker groups occupy their own wrapping row, keeping terrain and formations unobstructed. Vector/CSS construction reproduces the supplied draft using established palette/typography without new bitmap dependencies. All existing mission information and unknown-terrain safeguards remain intact; rules and versions unchanged.
+
+351 tests and production build pass. Production fixture test/terrainMarkers.browser.html covers unrevealed/revealed terrain, A/B/C/? contacts, Primary/Secondary/Attack/CCP and Secured status without touching saves. Narrow browser check: all counters remain 88 pixels wide, cards have matching client/scroll widths (349/349), and the page fits the 390-pixel viewport. Desktop screenshot: output/readable-mission-counters.png.
