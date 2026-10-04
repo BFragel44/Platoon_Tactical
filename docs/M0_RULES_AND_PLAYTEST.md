@@ -1,5 +1,7 @@
 # Company Assault: implemented rules and manual playtest
 
+Normandy 1 is under development and remains unavailable for normal play. The separate campaign roster, authored setup preview, finite support/ammunition groundwork, and replayed reattempt are tracked in [Normandy readiness](NORMANDY_READINESS.md). KUTF's accepted standalone behavior remains the active playable mission.
+
 ## Current authority — standalone accepted, rules 14 / KUTF 12
 
 The user has accepted the standalone play experience through repeated playthroughs and reports that it is fun. See [current KUTF status](KEEP_UP_THE_FIRE_STATUS.md) for the completed checklist and retained adaptations, and [Normandy readiness](NORMANDY_READINESS.md) for the actual next gates. Further general KUTF human acceptance is not a prerequisite for starting campaign engineering. Concrete new bugs remain actionable.
@@ -196,7 +198,7 @@ Potential contacts resolve one occupied card per progression operation. Each res
 
 Every accepted command, HQ choice and segment operation is autosaved as a strict replay, with presentation progress and a separate start-of-turn checkpoint. Reload offers Resume latest, Restore turn start and Start new mission. Writes replace the local bundle atomically; failed writes leave the prior save intact. Corrupt or incompatible saves remain exportable and are never silently migrated.
 
-Exports include `rules_version: 3` and scenario `version: 3`. Strict replay rejects older versions and any rejected operation. Preserve historical exports unchanged. `node scripts/compareCompanyReplay.js` generates an explicitly diagnostic comparison under `output/company-playtests/historical-comparison.json`; subsequent operations can diverge after an earlier rule change. It is not a replacement human playthrough.
+The historical exports discussed in this section include `rules_version: 3` and scenario `version: 3`. Current candidate rules use version 17. Strict replay rejects older versions and any rejected operation. Preserve historical exports unchanged. `node scripts/compareCompanyReplay.js` generates an explicitly diagnostic comparison under `output/company-playtests/historical-comparison.json`; subsequent operations can diverge after an earlier rule change. It is not a replacement human playthrough.
 
 ### Source-to-fix checklist
 
@@ -267,3 +269,13 @@ Actual reciprocal fire may be reviewed in matching German/US panels, with incomi
 ### KUTF achievement display
 
 Open Achievements beside the phase heading for the 12 mission-specific tasks, published rates, live points and total (KUTF mission booklet p. 4). Asterisks mark provisional position-based points; these are assessed at mission end and may change before then. The display previews existing scoring without issuing orders, drawing cards, changing RNG or adding events. Final totals match the AAR; rules and content versions are unchanged.
+
+### Normandy development candidate — rules 17 / content 3
+
+The standalone Trévières candidate is available with `?normandyDev=1`; normal selection remains disabled. Its separate roster store freezes stable people/steps/formations into deployment snapshots and applies terminal debriefs once at the expected revision, preserving unresolved casualty dispositions. Historical KUTF companies are not converted. Connected progression and vehicles remain deferred.
+
+Normandy uses tracked ammunition and finite artillery, explicit command roles, its own building-cover and enemy activity tables, timed Offensive Assault counterattacks, radios/optional phones, runners and eight assigned signals. Reattempt preparation retains discovered terrain, contacts, mines, spotting and one-time location awards while exposing local reconstitution, promotion, skills, cover, phone-line and phase-line choices. Each attempt has its own immutable starting record; strict replay includes the complete transition. Skills validate printed costs and shared front/back counter inventory, consume once, and still draw for critical hits/jams.
+
+Visually checked Normandy breakdown diagrams correct German A Grenadiers at two steps, the two-step 88mm H profile, and US mortar ammunition/weapon inheritance. Weapon jamming, successful concentration expenditure, depletion/resupply, leader-area modifiers, lone mortar recovery, stable-step transfers and reattempt stacking have focused fixtures. Ordinary Normandy General Initiative can spend a skill-granted command beyond six; HQ/staff impulses retain their cap. Course/KUTF exceptions and ammunition policy remain mission-specific.
+
+Current evidence is 58 files / 435 passing tests and a passing production build. Tactical seed `trev-accept-4` fails attempt one and wins attempt two with both objectives held and required rows cleared; the entire terminal state replays exactly. Reproduce with `node scripts/trevieresAcceptanceRun.js trev-accept-4`. Full source fidelity is not certified: automatic grenade-return skill choice/cost timing, HQ-originated General Initiative accounting and remaining reconstitution, placement, communication and restoration edge audits remain open. See [the source checklist and release gates](NORMANDY_READINESS.md). User explicit-phase acceptance is still required before ungating.

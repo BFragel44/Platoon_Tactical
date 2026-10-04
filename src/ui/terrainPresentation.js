@@ -60,3 +60,5 @@ export function hillStack(l){
  const count=l.hills?.length??Math.max(0,l.elevation-1);
  return count?`<div class="hill-stack" aria-label="${count} hill overlays; total elevation ${l.elevation}">${Array.from({length:count},(_,i)=>`<div class="hill-strip"><b>Hill +1</b><span aria-hidden="true"></span><small>Level ${i+2}</small></div>`).join('')}</div>`:'';
 }
+
+export {icon as coverIcon};

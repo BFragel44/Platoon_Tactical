@@ -1,15 +1,21 @@
 import {values,live,friendly,visible,good,emit,draw,randomNumber,pick,dropLoad} from './core.js';
+import {resolveNormandyEvent} from './normandyEvents.js';
 import {occupants,los,distance,spot,refresh,coverOf} from './battlefield.js';
 
 export function discoveredCover(s,l,known=true,enemy=false) {
- let type='Cover',value=1;
- if(s.mission_rules?.coverTable&&l.building){
+ let type='Cover',value=1,upper=false;
+ if(s.mission_rules?.coverTable==='normandy'&&l.building){
+  const roll=randomNumber(s,8,`${l.name}: Normandy building cover`,!known);
+  const table={village:[[3,0],[3,0],[3,0],[3,1],[2,0],[2,1],[1,0],[1,0]],farm:[[3,0],[3,1],[2,0],[2,1],[1,0],[1,0],[1,0],[1,0]],cemetery:[[3,0],[2,0],[2,0],[1,0],[1,0],[1,0],[1,0],[1,0]],church:[[3,0],[3,0],[3,0],[3,0],[3,1],[3,1],[1,0],[1,0]]};
+  [value,upper]=table[l.terrain][roll-1];
+  type=value===3?'Strong Building':value===2?'Light Building':'Cover';
+ }else if(s.mission_rules?.coverTable&&l.building){
   const roll=randomNumber(s,4,`${l.name}: building cover`,!known);
   value=({village:[3,3,2,1],farm:[3,2,1,1],church:[3,3,3,1],cemetery:[3,2,1,1]})[l.terrain][roll-1];
   type=value===3?'Strong Building':value===2?'Light Building':'Cover';
  }
  const c={id:`cover_${s.next_id++}`,type,value,known,discovered:!enemy};l.covers.push(c);
- if(value>1&&(l.multi_story||l.tower))l.covers.push({id:`cover_${s.next_id++}`,type:l.tower?'Church Tower':'Upper Story',value,known,parent:c.id,elevation:1,capacity:l.tower?1:null});
+ if(value>1&&(s.mission_rules?.coverTable==='normandy'?upper:(l.multi_story||l.tower)))l.covers.push({id:`cover_${s.next_id++}`,type:l.tower?'Church Tower':'Upper Story',value,known,parent:c.id,elevation:1,capacity:l.tower?1:null});
  return c;
 }
 export function checkMines(s,u){
@@ -25,15 +31,18 @@ export function scoreMission(s,{final=false}={}){
  for(const e of s.hq_events.filter(e=>e.side==='friendly'&&e.turn===s.turn)){
   if(s.phase==='CLEANUP'){
    const advanced=s.events.some(v=>v.turn===s.turn&&v.type==='UNIT_MOVED'&&s.units[v.actor]?.faction==='friendly'&&s.locations[v.target]?.row>e.lead);
-   if(e.code==='ADVANCE'&&e.lead<(s.boundaries?.rows??Math.max(...values(s.locations).map(l=>l.row))))e.completed=advanced;
+  if(['ADVANCE','ADVANCE_PC'].includes(e.code)&&e.lead<(s.boundaries?.rows??Math.max(...values(s.locations).map(l=>l.row))))e.completed=advanced;
    if(e.code==='HOLD')e.completed=!advanced;
   }
-  if(e.completed)add(`event_${e.turn}_${e.code}`,1,'Higher HQ obligation completed');
+  if(e.completed)add(s.mission_rules?.reattempts?`event_${s.attempt_number??1}_${e.turn}_${e.code}`:`event_${e.turn}_${e.code}`,1,'Higher HQ obligation completed');
  }
  if(final){
   for(const [key,points]of [['primary',5],['secondary',4],['attack',3]])if(secureStatus(s,s.objectives[key]).secured)add(key,points,`${key} objective secured`);
   const positions=['primary','secondary','attack'].map(key=>s.objectives[key]);
-  for(const pc of values(s.contacts))if(!positions.includes(pc.location)&&pc.resolved&&secureStatus(s,pc.location).cleared)add(`clear_${pc.id}`,pc.type==='A'?2:1,`${s.locations[pc.location].name} cleared`);
+  for(const pc of values(s.contacts))if(!positions.includes(pc.location)&&pc.resolved&&secureStatus(s,pc.location).cleared){
+   const original=s.mission_rules?.reattempts?s.contacts[`pc_${pc.location}`]??pc:pc;
+   add(s.mission_rules?.reattempts?`clear_${pc.location}`:`clear_${pc.id}`,original.type==='A'?2:1,`${s.locations[pc.location].name} cleared`);
+  }
  }
  for(const e of s.events){
   if(e.type==='CASUALTY_EVACUATED')add(`evac_${e.step_id}`,1,'Friendly casualty evacuated');
@@ -45,7 +54,8 @@ export function scoreMission(s,{final=false}={}){
 }
 const FRIENDLY=[['COMM','COMM','COMM','ADVANCE','ADVANCE','ADVANCE','HOLD','NO_MORTAR','NO_MORTAR','NO_ARTY'],['SITREP','SITREP','COMM','ADVANCE','ADVANCE','HOLD','AMMO','NO_MORTAR','NO_ARTY','NO_ARTY'],['SITREP','SITREP','COMM','ADVANCE','HOLD','AMMO','AMMO','AMMO','NO_MORTAR','NO_ARTY']];
 const ENEMY=[['REINFORCE','UNPIN','UNPIN','UNPIN','UNPIN','UNPIN','RECOVER','RECOVER','RECOVER','BREAK'],['EVAC','EVAC','REINFORCE','REINFORCE','UNPIN','UNPIN','RECOVER','AMMO','AMMO','BREAK'],['EVAC','EVAC','REINFORCE','REINFORCE','UNPIN','RECOVER','AMMO','AMMO','BREAK','SURRENDER']];
-export function higherEvent(s,side){
+export function higherEvent(s,side,choice){
+ if(s.mission_rules?.events==='normandy')return resolveNormandyEvent(s,side,choice);
  if(!s.mission_rules?.events||s.turn===1)return;
  if(!draw(s,1,`${side} higher HQ event check`)[0].hq){emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event.`);return;}
  const table=(side==='friendly'?FRIENDLY:ENEMY)[s.turn<5?0:s.turn<8?1:2],code=table[randomNumber(s,10,`${side} higher HQ event`)-1];
@@ -76,9 +86,12 @@ export function shortRoundDestination(s,u,target,hidden=false){
 }
 export function supportRequest(s,u,agencyId,ammo,target){
  const agency=s.support_agencies[agencyId],base=agency.draws[u.agency_role??u.id],registered=s.registered_targets[agencyId]===target?1:0;
- const batch=draw(s,Math.max(1,base+registered+({Green:-1,Line:0,Veteran:1}[u.experience])),`${u.name}: ${agency.name} ${ammo}`);
+  if(s.support_inventory?.[agencyId]?.[ammo]===0)throw new Error(`${agency.name} has no ${ammo} missions remaining.`);
+ const extra=s.active_skill?.actor===u.id&&s.active_skill.extra&&!s.active_skill.applied;
+ const batch=draw(s,Math.max(1,base+registered+({Green:-1,Line:0,Veteran:1}[u.experience]))+(extra?1:0),`${u.name}: ${agency.name} ${ammo}`);
+ if(extra)s.active_skill.applied=true;
  let destination=target;const short=batch.some(c=>c.short),success=short||batch.some(c=>c.burst);
  if(short)destination=shortRoundDestination(s,u,target);
- if(success){s.support.push({id:`support_${s.next_id++}`,location:destination,status:'PENDING',value:agency[ammo],source:u.id,agency:agencyId,ammo});s.registered_targets[agencyId]=destination;}
+ if(success){s.support.push({id:`support_${s.next_id++}`,location:destination,status:'PENDING',value:agency[ammo],source:u.id,agency:agencyId,ammo});s.registered_targets[agencyId]=destination;if(s.support_inventory?.[agencyId]?.[ammo]!==undefined)s.support_inventory[agencyId][ammo]--;}
  emit(s,'SUPPORT_REQUEST',`${agency.name} ${ammo}: ${success?`${short?'short round; ':''}pending at ${s.locations[destination].name}`:'request failed'}.`,{actor:u.id,location:destination,success,agency:agencyId,ammo});
 }

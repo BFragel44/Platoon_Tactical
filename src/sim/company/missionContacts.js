@@ -1,7 +1,8 @@
 import {expandContactRay} from './missionExpansion.js';
-import {values,live,friendly,emit,draw,pick,randomNumber} from './core.js';
+import {values,live,friendly,emit,draw,pick,randomNumber,attempt} from './core.js';
 import {occupants,los,distance,refresh,spot,basicFireTargets,overheadAllowed,unitLos} from './battlefield.js';
 import {checkMines,discoveredCover} from './missionFeatures.js';
+import {grenade} from './actions.js';
 
 export function contactQueue(s,contacts){
  const ordered=[];
@@ -12,6 +13,18 @@ export function contactQueue(s,contacts){
  return ordered;
 }
 export function availableCounters(s,kind){return s.mission_contacts.counters.filter(c=>c.kind===kind&&!values(s.units).some(u=>live(u)&&u.counter_id===c.id));}
+function packageVariants(p){
+ const {alternatives,optional,...rest}=p,core={...rest,units:p.units??[]};
+ if(p.alternatives)return p.alternatives.map(option=>({...core,...option,units:option.units??[]}));
+ if(p.optional)return [core,{...core,units:[...core.units,...p.optional.units]}];
+ return [core];
+}
+function chosenVariant(s,p){
+ if(p.alternatives)return {...p,...p.alternatives[randomNumber(s,p.alternatives.length,'Enemy package variant',true)-1]};
+ if(p.optional){const include=p.optional.if_available? p.optional.units.every(spec=>availableCounters(s,spec.kind).length>0):randomNumber(s,2,'Enemy package optional force',true)===1;
+  return {...p,units:[...(p.units??[]),...(include?p.optional.units:[])]};}
+ return p;
+}
 function along(s,from,to,id){
  const a=s.locations[from],b=s.locations[to],l=s.locations[id];
  const n=distance(a,l),d=distance(a,b);
@@ -35,6 +48,7 @@ function canPlaceFire(s,profile,location,target,coverType=null,actualCover=undef
  const blockers=values(s.units).filter(t=>live(t)&&t.location!==target&&along(s,location,target,t.location));
  if(blockers.some(t=>!friendly(t)&&!overheadAllowed(s,u,target,t.location)))return false;
  if(blockers.some(t=>friendly(t)&&!overheadAllowed(s,u,target,t.location)&&!profile.tripod))return false;
+ if(profile.kind==='MORTAR'&&profile.vof==='G')return location!==target&&s.locations[location].terrain!=='woods'&&placementLos(s,profile,location,target,profile.range,false,coverType,actualCover);
  return basicFireTargets(s,u,target).includes(target);
 }
 function placementLos(s,profile,location,target,range,observed,coverType,actualCover){
@@ -54,9 +68,12 @@ export function contactPlacements(s,pc,profile,used=[],range=profile.range,noFir
 }
 // Pure feasibility search: checking exhaustion must not spend cards or create enemies.
 export function packageAvailable(s,pc,p,allocated=[]){
- if(p.mines)return !s.locations[pc.location].mines;
- if(allocated.length===p.units.length)return true;
+ if(!allocated.length&&(p.alternatives||p.optional))return packageVariants(p).some(v=>packageAvailable(s,pc,v,allocated));
+ if(p.mines&&s.locations[pc.location].mines)return false;
+ if(!allocated.length&&p.point_blank_chance&&p.units?.length===1&&availableCounters(s,p.units[0].kind).length&&occupants(s,pc.location).some(friendly))return true;
+ if(allocated.length===(p.units?.length??0))return true;
  const spec=p.units[allocated.length],noFire=!!p.no_fire||spec.kind==='SPOTTER';
+ if(spec.same_as_previous){const last=allocated.at(-1);return !!last&&availableCounters(s,spec.kind).some(profile=>!allocated.some(a=>a.profile===profile.id))&&packageAvailable(s,pc,p,[...allocated,{profile:availableCounters(s,spec.kind)[0].id,location:last.location}]);}
  for(const profile of availableCounters(s,spec.kind).filter(c=>!allocated.some(a=>a.profile===c.id))){
   for(const dc of [-1,0,1]){
    const probe=structuredClone(s);expandContactRay(probe,probe.locations[pc.location],dc,noFire?3:profile.range);
@@ -69,14 +86,27 @@ export function packageAvailable(s,pc,p,allocated=[]){
  }
  return false;
 }
-function placePackage(s,pc,p){
- if(p.mines){if(s.locations[pc.location].mines)return false;s.locations[pc.location].mines=true;emit(s,'MINEFIELD_FOUND',`Mines discovered at ${s.locations[pc.location].name}.`,{location:pc.location});for(const u of occupants(s,pc.location))checkMines(s,u);return true;}
+export function placePackage(s,pc,p){
+ p=chosenVariant(s,p);
+ if(p.close_chance)p={...p,close_range:randomNumber(s,10,'Enemy close-range placement',true)<=2};
+ if(p.point_blank_chance)p={...p,point_blank:randomNumber(s,10,'Enemy point-blank placement',true)<=2};
+ if(p.mines){if(s.locations[pc.location].mines)return false;s.locations[pc.location].mines=true;emit(s,'MINEFIELD_FOUND',`Mines discovered at ${s.locations[pc.location].name}.`,{location:pc.location});for(const u of occupants(s,pc.location))checkMines(s,u);}
+ if(p.incoming_options){const incoming=pick(s,p.incoming_options,'Enemy incoming agency',true);p={...p,incoming:incoming.value,incoming_agency:incoming.agency};}
  const used=[];
- for(const spec of p.units){
+ for(const spec of p.units??[]){
   const pool=availableCounters(s,spec.kind);if(!pool.length)return false;
-  const profile=pick(s,pool,'Enemy counter selection',true),noFire=!!p.no_fire||spec.kind==='SPOTTER',range=noFire?3:profile.range;
+  const profile=pick(s,pool,'Enemy counter selection',true),noFire=!!p.no_fire||spec.kind==='SPOTTER',range=p.close_range?1:noFire?3:profile.range;
   const origin=s.locations[pc.location],directions=origin.col===1?[-1,0,0,1,1]:origin.col===4?[-1,-1,0,0,1]:[-1,0,1];
   const rejected=new Set(),actualCovers=new Map();let location,cover;
+  if(p.point_blank){
+   location=origin;
+   cover=origin.covers.find(c=>c.type==='Foxholes'&&c.enemy_original);
+   if(!cover){cover={id:`fort_${s.next_id++}`,type:'Foxholes',value:1,known:false,enemy_original:true,capacity:null};origin.covers.push(cover);}
+  }
+  if(spec.same_as_previous){location=s.locations[used.at(-1)];if(!location)return false;
+   cover=spec.cover==='Trench'?location.covers.find(c=>c.type==='Trench'):{id:`fort_${s.next_id++}`,type:spec.cover,value:spec.cover==='Bunker'?3:1,known:false,enemy_original:true,capacity:spec.cover==='Bunker'?3:null};
+   if(!cover)return false;if(!location.covers.includes(cover))location.covers.push(cover);
+   if(spec.cover==='Bunker')cover.arc=[Math.sign(origin.row-location.row),Math.sign(origin.col-location.col)];}
   const candidates=state=>contactPlacements(state,pc,profile,used,range,noFire,!!p.no_fire,spec.cover,actualCovers).filter(l=>!rejected.has(l.id));
   while(!location){
    if(![-1,0,1].some(direction=>{const probe=structuredClone(s);expandContactRay(probe,origin,direction,range);return candidates(probe).some(l=>Math.sign(l.col-origin.col)===direction);}))return false;
@@ -103,13 +133,15 @@ function placePackage(s,pc,p){
    }
   }
   const l=location;used.push(l.id);
-  const id=`enemy_${s.next_id++}`,u={...structuredClone(profile),id,counter_id:profile.id,contact_type:pc.type,max_steps:profile.steps,platoon:null,faction:'enemy',location:l.id,cohesion:'GOOD',experience:'Line',original_experience:'Line',
+  const id=`enemy_${s.next_id++}`,u={...structuredClone(profile),id,counter_id:profile.id,contact_type:pc.type,max_steps:profile.steps,platoon:null,faction:'enemy',location:l.id,cohesion:'GOOD',experience:'Line',original_experience:'Line',ammo:spec.ammo!==undefined?{[profile.kind==='MORTAR'?'MTR':profile.kind==='FLAK88'?'GUN':'MG']:spec.ammo}:structuredClone(profile.ammo??{}),spotter_agency:p.incoming_agency??'enemy_mortar',missions_remaining:profile.missions??null,calls_made:0,
    steps:Array.from({length:profile.steps},(_,i)=>({id:`${id}_step${i+1}`,personnel:[]})),named:profile.kind!=='SQUAD',pinned:false,exposed:!!p.exposed,cover:cover?.id??null,
    fire:p.no_fire||profile.kind==='SPOTTER'?null:pc.location,hold_fire_until_cleanup:!!p.no_fire,indirect:null,radios:[],assets:{},used:[],saved:0,removed:null,mission_weapon:true,placed_turn:s.turn};
-  s.units[id]=u;
+  u.initial_resources={radios:[],assets:{},ammo:structuredClone(u.ammo??{}),missions:profile.missions??null};s.units[id]=u;
+  if(profile.kind==='MORTAR'&&profile.vof==='G'&&!p.no_fire){const target=occupants(s,pc.location).find(friendly);if(target)grenade(s,u,target);}
+  if(p.infiltration){const success=attempt(s,u,2,'infiltrate',`${u.name}: patrol placement`,true)>0;u.exposed=!success;if(success){const candidate=l.covers.filter(c=>!c.parent&&!occupants(s,l.id).some(v=>v.id!==u.id&&v.cover===c.id&&v.faction==='friendly')).sort((a,b)=>b.value-a.value)[0];u.cover=candidate?.id??u.cover;}}
   if(p.spotted)spot(s,u);
   if(!p.no_fire&&profile.kind!=='SPOTTER'){s.knowledge.suspected[l.id]=true;emit(s,'CONTACT_FIRE',`Fire from ${l.name}; ${p.spotted?'enemy identified':'source not yet spotted'}.`,{location:l.id,target:pc.location});}
-  if(p.incoming){s.support.push({id:`support_${s.next_id++}`,source:id,agency:'enemy_mortar',ammo:'HE',location:pc.location,status:'ACTIVE',value:p.incoming});s.registered_targets.enemy_mortar=pc.location;emit(s,'INCOMING_FIRE',`Incoming mortar fire at ${s.locations[pc.location].name}.`,{location:pc.location,value:p.incoming});}
+  if(p.incoming){const agency=p.incoming_agency??'enemy_mortar';s.support.push({id:`support_${s.next_id++}`,source:id,agency,ammo:'HE',location:pc.location,status:'ACTIVE',value:p.incoming});s.registered_targets[agency]=pc.location;if(u.missions_remaining!==null)u.missions_remaining--;u.calls_made++;emit(s,'INCOMING_FIRE',`Incoming fire at ${s.locations[pc.location].name}.`,{location:pc.location,value:p.incoming,agency});}
  }
  refresh(s);return true;
 }
@@ -121,7 +153,7 @@ export function resolveMissionContact(s,pc){
  emit(s,'CONTACT_EVALUATED',`${s.locations[pc.location].name}: ${contact?'enemy activity detected':'no contact'}.`,{location:pc.location,contact});
  if(!contact)return;
  // Placement is atomic: an unavailable multi-card package creates no partial force.
- const table=s.mission_contacts.tables[pc.type];
+ const table=pc.counterattack&&pc.type==='A'?s.mission_rules.counterattack_table:s.mission_contacts.tables[pc.type];
  if(![...new Set(table)].some(number=>packageAvailable(s,pc,s.mission_contacts.packages[number]))){
   emit(s,'CONTACT_EXHAUSTED','Contact evaluation complete; no legal enemy package can be placed.',{location:pc.location});return;
  }

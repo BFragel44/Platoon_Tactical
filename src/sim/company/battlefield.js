@@ -1,4 +1,7 @@
 import {transportReason} from './core.js';
+import {commandHub,canCommandCompany,isCompanyCommander} from './commandRoles.js';
+import {ammoLoadReason} from './ammunition.js';
+import {phoneConnected} from './phoneNetwork.js';
 import { whiteBorder as white, direction } from './terrain.js';
 import { values, live, good, friendly, visible, emit, pick } from './core.js';
 export const distance = (a,b) => Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col));
@@ -68,9 +71,14 @@ export function communication(s,issuer,u,rally=false) {
   }
   if (issuer.location === u.location && issuer.cover === u.cover && (rally || (!issuer.pinned && !u.pinned))) return 'Visual / verbal';
   if (issuer.cohesion !== 'GOOD' || u.cohesion !== 'GOOD') return null;
+  if(s.mission_rules?.communications==='phones'){
+   const hub=commandHub(s);
+   const ready=v=>live(v)&&v.radios.includes('CO_PHONE')&&live(hub)&&hub.radios.includes('CO_PHONE')&&phoneConnected(s,v.location,hub.location);
+   return ready(issuer)&&ready(u)?'CO field-phone network · intact line':null;
+  }
   // Fire-direction networks connect observers to off-map agencies, not command HQs.
   if (!issuer.radios.includes('CO') || !u.radios.includes('CO')) return null;
-  const hub=s.units.co;
+  const hub=commandHub(s);
   const linked=v=>live(v)&&v.cohesion==='GOOD'&&v.radios.includes('CO')&&!v.cover&&
     live(hub)&&hub.cohesion==='GOOD'&&hub.radios.includes('CO')&&!hub.cover&&communicationLos(s,v.location,hub.location);
   return linked(issuer)&&linked(u) ? 'CO radio via Company HQ · LOS' : null;
@@ -80,26 +88,28 @@ export function communicationReason(s,issuer,u,rally=false) {
   const channel=communication(s,issuer,u,rally);
   if(channel)return channel;
   if(s.mission_rules?.communications==='simplified')return `${issuer.name} must be an unpinned command-side HQ/staff; the recipient must share its card or be another unpinned HQ/staff.`;
+  if(s.mission_rules?.communications==='phones')return `${issuer.name} cannot reach ${u.name}. They need matching-cover voice contact or working CO field phones connected through an intact phone line to Company HQ.`;
   return `${issuer.name} at ${s.locations[issuer.location].name}${issuer.cover?' under cover':''} cannot reach ${u.name} at ${s.locations[u.location].name}${u.cover?' under cover':''}. Same-area voice needs matching cover and unpinned units (rally excepted); CO radios need an uncovered, working Company HQ link. Observer radios only reach fire-support agencies.`;
 }
-export const vofOf = u => u.mission_weapon&&u.cohesion==='A'?'A':u.cohesion==='F'?(u.fire_team_vof??'S'):u.cohesion==='A'?'S':u.vof;
+export const vofOf = u => u.out_of_ammo&&(u.vof||['F','A'].includes(u.cohesion))?'S':u.mission_weapon&&u.cohesion==='A'?'A':u.cohesion==='F'?(u.fire_team_vof??'S'):u.cohesion==='A'?'S':u.vof_by_steps?.[u.steps.length]??u.vof;
 export const rangeOf = u => u.out_of_ammo?1:u.cohesion==='A'?0:u.cohesion==='F'?1:u.range;
 export function chain(issuer,u,type) {
   if (issuer.id === u.id || ['SHIFT_FIRE','CEASE_FIRE'].includes(type)) return true;
-  if (issuer.id === 'co' || issuer.kind === 'STAFF') return u.id !== 'co';
+  if(issuer.command_role==='higher_hq')return true;
+  if (canCommandCompany(issuer)) return !isCompanyCommander(u);
   return issuer.kind === 'HQ' && (issuer.platoon === u.platoon || u.kind === 'LAT');
 }
 export function basicValue(u,range=1) {
   if (!live(u) || ['P','L'].includes(u.cohesion)) return null;
   if (u.cohesion === 'F' || u.cohesion === 'A') return u.pinned ? 2 : vofOf(u)==='A'?-1:0;
-  if (!u.vof || u.vof === 'G') return null;
+  const vof=vofOf(u);if (!vof || vof === 'G') return null;
   if (u.pinned) return 2;
   if(u.out_of_ammo)return 0;
-  return ({S:0,'S!':0,'A+':-1,A:-1,H:-3,'A/S':range===0 ? -1 : 0})[u.vof] ?? null;
+  return ({S:0,'S!':0,'A+':-1,A:-1,H:-3,'A/S':range===0 ? -1 : 0})[vof] ?? null;
 }
 export function canFire(s,u,id) {
   if(u.hold_fire_until_cleanup)return false;
-  if(u.mission_weapon&&u.tripod&&u.exposed)return false;
+  if(u.mission_weapon&&u.tripod&&(!u.tripod_good_only||u.cohesion==='GOOD')&&u.exposed)return false;
   if (basicValue(u) === null || !seesCard(s,u,id,rangeOf(u))) return false;
   if (u.cohesion==='GOOD' && u.kind === 'MORTAR' && (u.exposed || u.location===id || enclosedWeaponCover(coverOf(s,u)) || s.locations[u.location].terrain === 'woods')) return false;
   const cover = coverOf(s,u);
@@ -109,7 +119,7 @@ export function canFire(s,u,id) {
   }
   return true;
 }
-export const grazingCapable=u=>u.mission_weapon&&u.tripod&&!u.out_of_ammo&&['GOOD','F'].includes(u.cohesion);
+export const grazingCapable=u=>u.mission_weapon&&u.tripod&&(!u.tripod_good_only||u.cohesion==='GOOD')&&!u.out_of_ammo&&['GOOD','F'].includes(u.cohesion);
 export function overheadAllowed(s,u,target,intervening){
   if(!u.mission_weapon||u.out_of_ammo||(!grazingCapable(u)&&vofOf(u)!=='H'))return false;
   const from=unitElevation(s,u),to=s.locations[target].elevation,mid=s.locations[intervening].elevation;
@@ -208,6 +218,10 @@ export function automaticTargetCard(s,u,targets,projectedFire=s.fire) {
   return cards.length===1?cards[0]:pick(s,cards,'Automatic engagement tie',!visible(s,u));
 }
 export function refresh(s) {
+  if(s.mission_rules?.enemyActivity==='normandy')for(const u of values(s.units).filter(u=>live(u)&&u.faction==='enemy'&&u.kind==='MORTAR'&&u.steps.length===1&&u.cohesion==='GOOD')){
+   const local=occupants(s,u.location);
+   if(!local.some(v=>v.id!==u.id&&v.faction===u.faction)&&local.some(v=>v.faction!==u.faction&&vofOf(v))){u.cohesion='F';u.experience='Green';u.fire=null;u.indirect=null;delete u.temporary_pdf;emit(s,'COHESION_CHANGED',`${u.name}: lone mortar confronted at point blank; Fire Team side.`,{actor:u.id,from:'GOOD',to:'F'},!visible(s,u));}
+  }
   const old = new Set(s.fire.map(f => `${f.source}:${f.target}:${f.value}`));
   // A spotted unit sharing a card reveals all opposing occupants (8.5).
   for(const u of values(s.units).filter(u=>live(u)&&!friendly(u)&&s.knowledge.spotted[u.id]))spot(s,u);
@@ -324,7 +338,8 @@ export function combatExposure(s,u) {
 export const combatModifier=combatExposure;
 export function movementReason(s,u,target) {
   const to=s.locations[target],from=s.locations[u.location];
-  if(!u.pinned&&u.cohesion!=='P'){const load=transportReason(s,u);if(load)return load;}
+  if(u.mobile===false&&u.cohesion==='GOOD')return 'This gun cannot move on its good-order side.';
+  if(!u.pinned&&u.cohesion!=='P'){const load=transportReason(s,u)??ammoLoadReason(s,u);if(load)return load;}
   if(to?.outside_boundary&&friendly(u))return 'Outside the mission boundaries: only enemy placement may expand the battlefield.';
   if(!to || distance(from,to)!==1) return 'Choose an adjacent terrain card.';
   if(u.mine_hit)return 'Mines prevent further movement this turn.';

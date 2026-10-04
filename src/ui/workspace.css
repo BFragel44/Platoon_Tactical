@@ -76,3 +76,12 @@
 @media(min-width:751px){.terrain-mission-markers:has(.objective-marker){justify-content:space-around}}
 
 .objective-marker.primary{background:none;border:0;padding:0;box-shadow:none}
+
+.formation-groups{display:flex;flex-direction:column;gap:8px;margin:8px 0;min-width:0}
+.compact-unit-grid{display:flex;flex-wrap:wrap;gap:5px;align-items:flex-start}
+.compact-unit{width:92px;min-height:100px;flex:0 0 92px;padding:5px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;border:1px solid #667b6c;border-right:4px solid #647268;border-radius:4px;background:#294438;color:#e5debc;text-align:center;position:relative;cursor:pointer;line-height:1.2}
+.compact-unit-name{font-size:10px;font-weight:600;overflow-wrap:anywhere}.compact-unit small{font-size:9px}.compact-unit>strong{font-size:24px;line-height:1.1;color:#e6c970;margin:auto 0}.compact-unit-status{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;min-height:15px}.compact-unit-status .status-badge{font-size:8px;padding:1px 3px}
+.compact-unit.order-ready{border-right-color:#a6cca2}.compact-unit.selected{border-color:#efce87;box-shadow:inset 3px 0 #efce87;background:#415644}.compact-unit.enemy{background:#46372f;border-color:#a77864;cursor:default}.compact-unit:focus-visible,.occupied-cover header:focus-visible{outline:2px solid #f3d38d;outline-offset:2px}
+.occupied-cover{width:fit-content;max-width:100%;padding:5px;border:2px solid #8aa5a0;background:#214047;border-radius:3px}.occupied-cover>header{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;color:#e5e9d8;margin-bottom:5px}.occupied-cover .compact-unit-grid:empty{display:none}.occupied-cover:has(.compact-unit-grid:empty)>header{margin-bottom:0}
+.unit-hover-details{position:fixed;z-index:1000;pointer-events:none;white-space:pre-line;max-width:min(320px,calc(100vw - 16px));padding:10px 12px;background:#15251e;color:#e7e1c7;border:1px solid #aeb58a;border-radius:4px;box-shadow:0 4px 15px #0009;font-size:12px;line-height:1.5}.unit-hover-details[hidden]{display:none}
+.card-fire-details{font-size:10px;color:#bfc8af;margin:5px 0}.card-fire-details summary{cursor:pointer}.card-fire-details p{margin:5px 0;line-height:1.4}

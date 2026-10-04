@@ -54,8 +54,14 @@ export function randomNumber(s, n, purpose, hidden = false) {
   return draw(s,1,purpose,hidden)[0].random[n-2];
 }
 export function pick(s, items, purpose, hidden=false) { if(items.length>12){const chosen=shuffle(s,items)[0];emit(s,'RANDOM_SELECTION',`${purpose}: seeded selection from ${items.length} candidates.`,{},hidden);return chosen;}return items[randomNumber(s,items.length,purpose,hidden)-1]; }
-export function attempt(s,u, count, icon, purpose, hidden = !visible(s,u)) {
-  return draw(s,Math.max(1,count+expMod(u)),purpose,hidden).filter(c => c[icon] || c.word.toLowerCase() === icon).length;
+export function attempt(s,u, count, icon, purpose, hidden = !visible(s,u),checkCards=null) {
+  const leader=s.mission_rules?.leaderBonus&&u.faction==='enemy'&&values(s.units).some(v=>v.kind==='LEADER'&&v.faction==='enemy'&&live(v)&&!v.pinned&&v.cohesion==='GOOD'&&v.location===u.location&&v.cover===u.cover);
+  const skill=s.active_skill,applies=skill&&!skill.applied&&skill.actor===u.id&&(skill.extra||skill.icon===icon);
+  const batch=draw(s,Math.max(1,count+expMod(u)+(leader?1:0))+(applies&&skill.extra?1:0),purpose,hidden);
+  const successes=batch.filter(c => c[icon] || c.word.toLowerCase() === icon).length;
+  if(checkCards?.(batch)===false){if(applies)skill.applied=true;return 0;}
+  if(applies){skill.applied=true;return skill.extra?successes:Math.max(1,successes);}
+  return successes;
 }
 export function result(before,next,extra={}) { return { state:next, events:next.events.slice(before.events.length), ...extra }; }
 
@@ -72,7 +78,9 @@ export function transportReason(s,u,extraAssets=0) {
 export function dropLoad(s,u,reason='removed') {
  for(const net of u.radios)s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:u.location,cover:u.cover,faction:u.faction});
  for(const [key,quantity] of Object.entries(u.assets))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,location:u.location,cover:u.cover,faction:u.faction});
+ if(s.mission_rules?.ammo==='tracked')for(const [key,quantity] of Object.entries(u.ammo??{}))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'AMMO',key,quantity,location:u.location,cover:u.cover,faction:u.faction});
  for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.carrier=null;c.location=u.location;c.cover=u.cover;}
  u.radios=[];u.assets={};
+ if(s.mission_rules?.ammo==='tracked'){u.ammo={};u.out_of_ammo=true;}
  emit(s,'ASSETS_DROPPED',`${visible(s,u)?u.name:'Enemy formation'}: carried load left at its current position (${reason}).`,{actor:visible(s,u)?u.id:null,location:u.location,reason},!visible(s,u));
 }
