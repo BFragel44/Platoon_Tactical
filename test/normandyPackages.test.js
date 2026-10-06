@@ -1,7 +1,8 @@
+import {cards} from '../src/sim/company/core.js';
 import {describe,it,expect} from 'vitest';
 import {trevieres} from '../src/scenarios/trevieres.js';
 import {createMission} from '../src/sim/company/engine.js';
-import {packageAvailable,placePackage} from '../src/sim/company/missionContacts.js';
+import {packageAvailable,placePackage,contactDirection} from '../src/sim/company/missionContacts.js';
 import {specialActivity} from '../src/sim/company/specialEnemies.js';
 
 const candidate={...trevieres,readiness:{playable:true}};
@@ -11,6 +12,21 @@ const fixture=seed=>{
  return {s,pc:s.contacts.pc_r1c2};
 };
 describe('Normandy package placement fixtures',()=>{
+ for(let number=1;number<=8;number++)it(`uses published direction draw ${number} even on a boundary`,()=>{
+  const {s}=fixture(`direction-${number}`),card=Object.values(cards).find(c=>c.id!==51&&c.random[6]===number);
+  for(const col of [1,2,4]){s.deck.order.unshift(card.id);expect(contactDirection(s,{col})).toBe(number<=4?0:number<=6?-1:1);}
+ });
+ it('can place the strongpoint HMG on either squad card',()=>{
+  const selected=new Set();
+  for(let n=0;n<16;n++){
+   const {s,pc}=fixture(`supporting-position-${n}`),base=s.mission_contacts.packages[6];
+   expect(placePackage(s,pc,{...base,optional:undefined,close_chance:undefined,units:[...base.units,...base.optional.units]})).toBe(true);
+   const squads=Object.values(s.units).filter(u=>u.faction==='enemy'&&u.kind==='SQUAD'),hmg=Object.values(s.units).find(u=>u.faction==='enemy'&&u.kind==='HMG');
+   selected.add(squads.findIndex(u=>u.location===hmg.location));
+  }
+  expect(selected).toEqual(new Set([0,1]));
+ });
+
  for(let number=1;number<=12;number++)it(`places package ${number} with its authored counters`,()=>{
   const {s,pc}=fixture(`pkg-${number}`),p=s.mission_contacts.packages[number];
   expect(packageAvailable(s,pc,p)).toBe(true);

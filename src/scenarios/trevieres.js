@@ -5,7 +5,7 @@ const units=[];
 const add=(id,name,kind,platoon,steps,vof,range,experience,radios=[],extra={})=>units.push({id,name,kind,platoon,steps,vof,range,experience,radios,location:`r0c${platoon??2}`,faction:'friendly',...extra});
 add('co','Company HQ','HQ',null,1,null,0,'Green',['BN','CO'],{command_role:'company_commander',agency_role:'company_commander',capabilities:{activate_subordinates:true,company_orders:true}});
 add('xo','Company Executive Officer','STAFF',null,1,null,0,'Green',['CO'],{command_role:'company_executive',capabilities:{company_orders:true,succession_priority:-1}});
-add('staff','Company First Sergeant','STAFF',null,1,null,0,'Veteran',[],{command_role:'company_staff',capabilities:{company_orders:true,succession_priority:2}});
+add('staff','Company First Sergeant','STAFF',null,1,null,0,'Veteran',[],{command_role:'company_staff',capabilities:{company_orders:true,succession_priority:2,cannot_order_roles:['company_executive']}});
 for(let p=1;p<=3;p++){
  add(`hq${p}`,`${p} Platoon HQ`,'HQ',p,1,null,0,'Green',['CO'],{command_role:'platoon_commander',capabilities:{succession_priority:0}});
  for(let q=1;q<=3;q++)add(`s${p}${q}`,`${q}/${p} Rifle Squad`,'SQUAD',p,3,'S',2,'Line');
@@ -24,7 +24,7 @@ const packages={
  3:{units:[force('SNIPER','Cover')]},
  4:{mines:true,units:[force('HMG','Foxholes',{ammo:8})],spotted:true},
  5:{alternatives:[{units:[force('LMG','Foxholes',{ammo:6})],point_blank_chance:'2/10'},{units:[force('HMG','Foxholes',{ammo:8})],spotted:true}]},
- 6:{units:[force('SQUAD','Trench'),force('SQUAD','Trench')],close_chance:'2/10',optional:{chance:'1/2',units:[force('HMG','Bunker',{ammo:8,same_as_previous:true})]}},
+ 6:{units:[force('SQUAD','Trench'),force('SQUAD','Trench')],close_chance:'2/10',optional:{chance:'1/2',units:[force('HMG','Bunker',{ammo:8,same_as_any:true})]}},
  7:{units:[force('SQUAD','Trench'),force('SQUAD','Trench')],close_chance:'2/10',optional:{if_available:true,units:[force('LEADER','Trench',{same_as_previous:true})]}},
  8:{units:[force('HMG','Pillbox',{ammo:8})]},
  9:{units:[force('MORTAR','Foxholes',{ammo:6})]},
@@ -43,8 +43,15 @@ const enemy_counters=[
  {id:'flak88',kind:'FLAK88',name:'FLAK 36 88mm Gun',steps:2,vof:'H',range:3,ammo:{GUN:6},mobile:false,fire_team_vof:'S'},
 ];
 export const trevieres={
- id:'normandy_1',name:'Normandy 1 — Trévières Offensive',ruleset:'company-v1',version:3,turn_limit:10,
- readiness:{playable:false,stage:'development',missing:['Source-complete package placement and enemy profiles','Runner and pyrotechnic edge cases','Full higher-HQ and communications edge cases','Source-complete §3.9 reconstitution and playtest acceptance']},
+ id:'normandy_1',name:'Normandy 1 — Trévières Offensive',ruleset:'company-v1',version:5,turn_limit:10,
+ readiness:{playable:true,stage:'standalone_validated',missing:[]},
+ special_rules:[
+  'Secure both Row 3 objectives and clear every original card in Rows 1–2 within ten daylight turns.',
+  'Artillery: four HE and one WP missions. Artillery observer draws two cards; Company HQ draws one. No battalion fire missions.',
+  'After first-attempt failure, one reattempt is available under §3.9. No Mission 2 progression is offered.',
+  'Counterattack: place random remaining PC markers on their question side on every US-occupied battlefield card. Staging areas remain outside combat. Reveal overlapping markers and retain the highest letter (A, then B, then C).',
+  'Offensive Assault lasts three turns including the triggering turn; the offensive sequence of play stays unchanged. Counterattack PC A uses packages 2 (2/4), 11 (1/4), or 12 (1/4). Question-side markers are revealed when the contact-evaluation segment begins.',
+ ],
  briefing:'Cross the Aure on foot. Secure both Row 3 objectives and clear Rows 1 and 2 within ten turns. One reattempt is permitted after failure.',
  map:{columns:4,rows:3,hidden:true,deck:normandyTerrain},locations:[],units,contacts:[],
  unit_options:{mortar:{default:'section',section_id:'mortar_section',teams:mortarTeams},command_network:{default:'radio',choices:['radio','phones']}},

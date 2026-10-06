@@ -62,27 +62,32 @@ export function communicationLos(s,from,to) {
   if(a.staging||b.staging)return (a.staging?b:a).row===1&&distance(a,b)===1;
   return los(s,from,to);
 }
-export function communication(s,issuer,u,rally=false) {
-  if (!live(issuer) || !live(u)) return null;
-  if (issuer.id === u.id) return 'Self';
+export function communicationChannels(s,issuer,u,rally=false) {
+  if (!issuer || !u || !live(issuer) || !live(u)) return [];
+  if (issuer.id === u.id) return ['Self'];
   if(s.mission_rules?.communications==='simplified'){
     const hq=v=>['HQ','STAFF'].includes(v.kind)&&v.cohesion==='GOOD'&&!v.pinned;
-    return hq(issuer)&&(hq(u)||issuer.location===u.location)?'Mission communications · unpinned HQ/staff':null;
+    return hq(issuer)&&(hq(u)||issuer.location===u.location)?['Mission communications · unpinned HQ/staff']:[];
   }
-  if (issuer.location === u.location && issuer.cover === u.cover && (rally || (!issuer.pinned && !u.pinned))) return 'Visual / verbal';
-  if (issuer.cohesion !== 'GOOD' || u.cohesion !== 'GOOD') return null;
+  const channels=[];
+  if (issuer.location === u.location && issuer.cover === u.cover && (rally || (!issuer.pinned && !u.pinned))) channels.push('Visual / verbal');
+  if (issuer.cohesion !== 'GOOD' || u.cohesion !== 'GOOD') return channels;
   if(s.mission_rules?.communications==='phones'){
    const hub=commandHub(s);
    const ready=v=>live(v)&&v.radios.includes('CO_PHONE')&&live(hub)&&hub.radios.includes('CO_PHONE')&&phoneConnected(s,v.location,hub.location);
-   return ready(issuer)&&ready(u)?'CO field-phone network · intact line':null;
+   if(ready(issuer)&&ready(u))channels.push('CO field-phone network · intact line');
+   return channels;
   }
   // Fire-direction networks connect observers to off-map agencies, not command HQs.
-  if (!issuer.radios.includes('CO') || !u.radios.includes('CO')) return null;
+  if (!issuer.radios.includes('CO') || !u.radios.includes('CO')) return channels;
   const hub=commandHub(s);
   const linked=v=>live(v)&&v.cohesion==='GOOD'&&v.radios.includes('CO')&&!v.cover&&
     live(hub)&&hub.cohesion==='GOOD'&&hub.radios.includes('CO')&&!hub.cover&&communicationLos(s,v.location,hub.location);
-  return linked(issuer)&&linked(u) ? 'CO radio via Company HQ · LOS' : null;
+  if(linked(issuer)&&linked(u))channels.push('CO radio via Company HQ · LOS');
+  return channels;
 }
+// Keep the historical priority and public return value for command execution.
+export const communication=(s,issuer,u,rally=false)=>communicationChannels(s,issuer,u,rally)[0]??null;
 export function communicationReason(s,issuer,u,rally=false) {
   if(!issuer)return 'No issuing HQ selected.';
   const channel=communication(s,issuer,u,rally);
@@ -96,7 +101,7 @@ export const rangeOf = u => u.out_of_ammo?1:u.cohesion==='A'?0:u.cohesion==='F'?
 export function chain(issuer,u,type) {
   if (issuer.id === u.id || ['SHIFT_FIRE','CEASE_FIRE'].includes(type)) return true;
   if(issuer.command_role==='higher_hq')return true;
-  if (canCommandCompany(issuer)) return !isCompanyCommander(u);
+  if (canCommandCompany(issuer)) return !isCompanyCommander(u)&&u.command_role!=='higher_hq'&&!issuer.capabilities?.cannot_order_roles?.includes(u.command_role);
   return issuer.kind === 'HQ' && (issuer.platoon === u.platoon || u.kind === 'LAT');
 }
 export function basicValue(u,range=1) {

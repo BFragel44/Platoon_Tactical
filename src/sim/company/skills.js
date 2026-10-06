@@ -4,12 +4,12 @@ export const SKILLS={
  PARALYZED_ASSAULT:{label:'Paralyzed to Assault',cost:2,actions:['SKILL_PARALYZED_A']},
  PARALYZED_FIRE:{label:'Paralyzed to Fire',cost:1,actions:['SKILL_PARALYZED_F']},
  SPAWN_TEAM:{label:'Spawn Team',cost:1,actions:['SKILL_SPAWN_A','SKILL_SPAWN_F'],free:true},
- EXTRA_DRAW:{label:'Extra Draw',cost:1,actions:['SPOT','SEEK_COVER','SEEK_COVER_UPPER','CONCENTRATE','INFILTRATE','INFILTRATE_WITHIN','GRENADE','RIFLE_GRENADE','WP_ATTACK','RALLY','RECOVER','RECONSTITUTE','CALL_ARTILLERY','CALL_ARTILLERY_WP'],extra:true},
+ EXTRA_DRAW:{label:'Extra Draw',cost:1,actions:['SKILL_EXTRA_AUTOMATIC','SPOT','SEEK_COVER','SEEK_COVER_UPPER','CONCENTRATE','INFILTRATE','INFILTRATE_WITHIN','GRENADE','RIFLE_GRENADE','WP_ATTACK','RALLY','RECOVER','RECONSTITUTE','CALL_ARTILLERY','CALL_ARTILLERY_WP'],extra:true},
  AUTO_SPOT:{label:'Auto Spot',cost:1,actions:['SPOT'],icon:'spot'},
  AUTO_COVER:{label:'Auto Cover',cost:1,actions:['SEEK_COVER','SEEK_COVER_UPPER'],icon:'cover'},
  AUTO_CONCENTRATE:{label:'Auto Concentrate Fire',cost:1,actions:['CONCENTRATE'],icon:'spot'},
  AUTO_INFILTRATE:{label:'Auto Infiltrate',cost:1,actions:['INFILTRATE','INFILTRATE_WITHIN'],icon:'infiltrate'},
- AUTO_GRENADE:{label:'Auto Grenade',cost:1,actions:['GRENADE'],icon:'grenade'},
+ AUTO_GRENADE:{label:'Auto Grenade',cost:1,actions:['GRENADE','SKILL_GRENADE_RETURN'],icon:'grenade'},
 };
 const counters=[['SPAWN_TEAM','AUTO_COVER'],['SPAWN_TEAM','AUTO_CONCENTRATE'],['SPAWN_TEAM','AUTO_GRENADE'],['GENERAL_INITIATIVE','EXTRA_DRAW'],['SPAWN_TEAM','AUTO_COVER'],['GENERAL_INITIATIVE','EXTRA_DRAW'],['GENERAL_INITIATIVE','EXTRA_DRAW'],['AUTO_INFILTRATE'],['AUTO_INFILTRATE','AUTO_GRENADE'],['PARALYZED_FIRE','AUTO_CONCENTRATE'],['PARALYZED_ASSAULT','AUTO_SPOT'],['PARALYZED_ASSAULT','AUTO_SPOT']];
 export function buySkills(s,purchases,points){
@@ -30,11 +30,11 @@ export function buySkills(s,purchases,points){
   }return false;
  }
  if(!match(0))throw new Error('Skill purchases exceed the printed counter mix.');
- s.skills=purchases.map((p,i)=>({...p,id:`skill_${s.attempt_number+1}_${assigned[i]+1}`,counter:assigned[i]+1,used:false}));
+ s.skills=purchases.map((p,i)=>({...p,id:`skill_${s.attempt_number+1}_${assigned[i]+1}`,counter:assigned[i]+1,used:false}));s.automatic_skills={};
  return points;
 }
 export function skillOptions(s,u,type){
- return (s.skills??[]).filter(p=>!p.used&&SKILLS[p.type].actions.includes(type)).filter(p=>{
+ return (s.skills??[]).filter(p=>!p.used&&SKILLS[p.type].actions.includes(type)&&!Object.entries(s.automatic_skills??{}).some(([id,skill])=>skill===p.id&&id!==u.id)).filter(p=>{
   const holder=s.units[p.holder];
   return holder&&!holder.removed&&holder.steps.length&&(holder.id===u.id||holder.kind==='HQ'&&holder.platoon!==null&&holder.platoon===u.platoon);
  }).map(p=>({...p,label:SKILLS[p.type].label}));

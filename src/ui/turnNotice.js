@@ -1,0 +1,8 @@
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export const signalOrderLabel=order=>({CF:'Cease fire',XPL1:'Cross phase line 1',XPL2:'Cross phase line 2',M2PO:'Move to primary objective',INFAP2PO:'Infiltrate from attack position to primary objective',M2SO:'Move to secondary objective',INFAP2SO:'Infiltrate from attack position to secondary objective',M2S:'Move to signal card'})[order]??'No assigned order';
+// Consume only the player projection, never hidden enemy state.
+export function turnNoticeMarkup(view,name){
+ const objectives=view.objectives?['primary','secondary','attack'].map(key=>`<p><b>${esc(key[0].toUpperCase()+key.slice(1))}:</b> ${esc(name(view.objectives[key].location))} · ${view.objectives[key].secured?'Secured':'Not secured'}</p>`).join(''):`<p>${esc(view.briefing)}</p>`;
+ const casualties=view.casualties.filter(c=>c.faction==='friendly');
+ return `<dialog id="new-turn-notice" class="turn-notice" aria-labelledby="new-turn-title"><h2 id="new-turn-title">Turn ${view.turn} / ${view.turn_limit}</h2>${objectives}<p><b>US casualties:</b> ${casualties.length} casualty step${casualties.length===1?'':'s'} recorded · ${casualties.filter(c=>c.evacuated).length} evacuated.</p><p>Review the battlefield, then continue the sequence of play.</p><button class="primary" autofocus>Continue to battlefield</button></dialog>`;
+}

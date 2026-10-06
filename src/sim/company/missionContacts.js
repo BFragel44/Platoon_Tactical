@@ -4,6 +4,14 @@ import {occupants,los,distance,refresh,spot,basicFireTargets,overheadAllowed,uni
 import {checkMines,discoveredCover} from './missionFeatures.js';
 import {grenade} from './actions.js';
 
+export function contactDirection(s,origin){
+ if(s.mission_rules?.enemyActivity==='normandy'){
+  const number=randomNumber(s,8,'Enemy contact direction',true);
+  return number<=4?0:number<=6?-1:1;
+ }
+ const choices=origin.col===1?[-1,0,0,1,1]:origin.col===4?[-1,-1,0,0,1]:[-1,0,1];
+ return pick(s,choices,'Enemy contact direction',true);
+}
 export function contactQueue(s,contacts){
  const ordered=[];
  for(const type of ['A','B','C','?']){
@@ -73,7 +81,7 @@ export function packageAvailable(s,pc,p,allocated=[]){
  if(!allocated.length&&p.point_blank_chance&&p.units?.length===1&&availableCounters(s,p.units[0].kind).length&&occupants(s,pc.location).some(friendly))return true;
  if(allocated.length===(p.units?.length??0))return true;
  const spec=p.units[allocated.length],noFire=!!p.no_fire||spec.kind==='SPOTTER';
- if(spec.same_as_previous){const last=allocated.at(-1);return !!last&&availableCounters(s,spec.kind).some(profile=>!allocated.some(a=>a.profile===profile.id))&&packageAvailable(s,pc,p,[...allocated,{profile:availableCounters(s,spec.kind)[0].id,location:last.location}]);}
+ if(spec.same_as_previous||spec.same_as_any){const last=allocated.at(-1);return !!last&&availableCounters(s,spec.kind).filter(profile=>!allocated.some(a=>a.profile===profile.id)).some(profile=>packageAvailable(s,pc,p,[...allocated,{profile:profile.id,location:last.location}]));}
  for(const profile of availableCounters(s,spec.kind).filter(c=>!allocated.some(a=>a.profile===c.id))){
   for(const dc of [-1,0,1]){
    const probe=structuredClone(s);expandContactRay(probe,probe.locations[pc.location],dc,noFire?3:profile.range);
@@ -96,21 +104,21 @@ export function placePackage(s,pc,p){
  for(const spec of p.units??[]){
   const pool=availableCounters(s,spec.kind);if(!pool.length)return false;
   const profile=pick(s,pool,'Enemy counter selection',true),noFire=!!p.no_fire||spec.kind==='SPOTTER',range=p.close_range?1:noFire?3:profile.range;
-  const origin=s.locations[pc.location],directions=origin.col===1?[-1,0,0,1,1]:origin.col===4?[-1,-1,0,0,1]:[-1,0,1];
+  const origin=s.locations[pc.location];
   const rejected=new Set(),actualCovers=new Map();let location,cover;
   if(p.point_blank){
    location=origin;
    cover=origin.covers.find(c=>c.type==='Foxholes'&&c.enemy_original);
    if(!cover){cover={id:`fort_${s.next_id++}`,type:'Foxholes',value:1,known:false,enemy_original:true,capacity:null};origin.covers.push(cover);}
   }
-  if(spec.same_as_previous){location=s.locations[used.at(-1)];if(!location)return false;
+  if(spec.same_as_previous||spec.same_as_any){location=s.locations[spec.same_as_any?pick(s,used,'Strongpoint supporting position',true):used.at(-1)];if(!location)return false;
    cover=spec.cover==='Trench'?location.covers.find(c=>c.type==='Trench'):{id:`fort_${s.next_id++}`,type:spec.cover,value:spec.cover==='Bunker'?3:1,known:false,enemy_original:true,capacity:spec.cover==='Bunker'?3:null};
    if(!cover)return false;if(!location.covers.includes(cover))location.covers.push(cover);
    if(spec.cover==='Bunker')cover.arc=[Math.sign(origin.row-location.row),Math.sign(origin.col-location.col)];}
   const candidates=state=>contactPlacements(state,pc,profile,used,range,noFire,!!p.no_fire,spec.cover,actualCovers).filter(l=>!rejected.has(l.id));
   while(!location){
    if(![-1,0,1].some(direction=>{const probe=structuredClone(s);expandContactRay(probe,origin,direction,range);return candidates(probe).some(l=>Math.sign(l.col-origin.col)===direction);}))return false;
-   const dc=pick(s,directions,'Enemy contact direction',true);expandContactRay(s,origin,dc,range);
+   const dc=contactDirection(s,origin);expandContactRay(s,origin,dc,range);
    let ray=candidates(s).filter(l=>Math.sign(l.col-origin.col)===dc);
    if(!ray.length){emit(s,'CONTACT_DIRECTION_REJECTED','Invalid contact direction; redraw direction.',{direction:dc},true);continue;}
    while(ray.length&&!location){

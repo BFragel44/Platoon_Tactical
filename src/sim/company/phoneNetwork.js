@@ -5,6 +5,7 @@ export function phoneConnected(s,from,to){
  const nodes=new Set(values(s.locations).filter(l=>l.staging).map(l=>l.id));
  for(const line of s.phone_lines??[])if(!line.cut)nodes.add(line.location);
  for(const unit of values(s.units).filter(u=>live(u)&&u.radios?.includes('CO_PHONE')))nodes.add(unit.location);
+ for(const asset of s.assets??[])if(asset.type==='RADIO'&&asset.net==='CO_PHONE'&&!asset.destroyed)nodes.add(asset.location);
  if(!nodes.has(from)||!nodes.has(to))return false;
  const queue=[from],seen=new Set(queue);
  while(queue.length){const id=queue.shift(),a=s.locations[id];
@@ -26,8 +27,8 @@ export function damagePhoneLines(s){
   const support=s.support.some(f=>f.status==='ACTIVE'&&f.location===line.location);
   const enemies=values(s.units).some(u=>u.faction==='enemy'&&good(u)&&u.location===line.location);
   const friendlies=values(s.units).some(u=>u.faction==='friendly'&&good(u)&&u.location===line.location);
-  if(!support&&!(enemies&&!friendlies))continue;
-  const denominator=support?2:3,threshold=support?1:2;
-  if(randomNumber(s,denominator,'Phone line damage check',!friendlies)<=threshold){line.cut=true;emit(s,'PHONE_LINE_CUT',`Phone line cut at ${s.locations[line.location].name}.`,{location:line.location,cause:support?'incoming fire':'enemy action'},!friendlies);}
+  const cut=cause=>{line.cut=true;emit(s,'PHONE_LINE_CUT',`Phone line cut at ${s.locations[line.location].name}.`,{location:line.location,cause},!friendlies);};
+  if(support&&randomNumber(s,2,'Phone line incoming damage check',!friendlies)===1)cut('incoming fire');
+  if(!line.cut&&enemies&&!friendlies&&randomNumber(s,3,'Phone line enemy discovery check',true)<=2)cut('enemy action');
  }
 }

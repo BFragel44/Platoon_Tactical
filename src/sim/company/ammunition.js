@@ -16,7 +16,7 @@ export function dropExcessAmmunition(s,u){
  for(const [key,quantity] of Object.entries(u.ammo??{})){
   const maximum=(AMMO_CAPACITY[key]??3)*u.steps.length,excess=Math.max(0,quantity-maximum);
   if(!excess)continue;
-  s.assets.push({id:`asset_${s.next_id++}`,type:'AMMO',key,quantity:excess,location:u.location,cover:u.cover,faction:u.faction});
+  s.assets.push({id:`asset_${s.next_id++}`,type:'AMMO',key,quantity:excess,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
   u.ammo[key]-=excess;
   emit(s,'AMMO_DROPPED',`${visible(s,u)?u.name:'Enemy formation'} left ${excess} excess ${key} ammunition before moving.`,{actor:visible(s,u)?u.id:null,location:u.location,key,quantity:excess},!visible(s,u));
  }
@@ -24,7 +24,7 @@ export function dropExcessAmmunition(s,u){
 export function dropAmmunition(s,u,reason='dropped'){
  if(s.mission_rules?.ammo!=='tracked')return;
  for(const [key,quantity] of Object.entries(u.ammo??{}))if(quantity){
-  s.assets.push({id:`asset_${s.next_id++}`,type:'AMMO',key,quantity,location:u.location,cover:u.cover,faction:u.faction});
+  s.assets.push({id:`asset_${s.next_id++}`,type:'AMMO',key,quantity,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
   u.ammo[key]=0;
   emit(s,'AMMO_DROPPED',`${visible(s,u)?u.name:'Enemy formation'} left ${quantity} ${key} ammunition (${reason}).`,{actor:visible(s,u)?u.id:null,location:u.location,key,quantity},!visible(s,u));
  }
@@ -48,6 +48,15 @@ export function pickUpAmmunition(s,u,asset){
  const quantity=Math.min(asset.quantity,available);
  if(!quantity)throw new Error(`No ${asset.key} ammunition carrying capacity remains.`);
  u.ammo??={};u.ammo[asset.key]=(u.ammo[asset.key]??0)+quantity;
+ if(s.mission_rules?.reattempts){
+  const source=s.units[asset.source_unit];
+  u.initial_resources??={radios:[],assets:{},ammo:{}};
+  if(source?.initial_resources&&source.id!==u.id){
+   const stock=source.initial_resources.ammo,transferred=Math.min(stock[asset.key]??0,quantity);
+   stock[asset.key]=(stock[asset.key]??0)-transferred;
+   u.initial_resources.ammo[asset.key]=(u.initial_resources.ammo[asset.key]??0)+transferred;
+  }else if(!source)u.initial_resources.ammo[asset.key]=Math.max(u.initial_resources.ammo[asset.key]??0,u.ammo[asset.key]);
+ }
  u.out_of_ammo=false;
  asset.quantity-=quantity;if(!asset.quantity)s.assets=s.assets.filter(a=>a.id!==asset.id);
  emit(s,'AMMO_RESUPPLIED',`${u.name} picked up ${quantity} ${asset.key} ammunition.`,{actor:u.id,location:u.location,key:asset.key,quantity});

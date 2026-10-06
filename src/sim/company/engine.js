@@ -1,3 +1,4 @@
+import {commandNetwork} from './commandNetwork.js';
 import {achievementTally} from './achievementTally.js';
 import {recordAttemptStart} from './attemptRecords.js';
 import {SKILLS} from './skills.js';
@@ -6,7 +7,7 @@ import {prepareReattempt} from './reattempt.js';
 import {damagePhoneLines} from './phoneNetwork.js';
 import {deliverRunners} from './runners.js';
 export {prepareReattempt};
-import {companyCommander,isCompanyCommander} from './commandRoles.js';
+import {companyCommander,isCompanyCommander,higherCommander} from './commandRoles.js';
 import {contactQueue} from './missionContacts.js';
 import {materializeScenario} from './missionSetup.js';
 import {revealTerrain,terrainProjection} from './missionKnowledge.js';
@@ -38,7 +39,7 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 17;
+export const RULES_VERSION = 25;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 function phaseDescription(s){
   if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(s.phase))return s.turn===1?'No higher-HQ event check on turn 1.':'Draw for a higher-HQ event; resolve this turn’s mission table and any command obligations.';
@@ -100,6 +101,7 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
   s.mission_contacts=structuredClone(scenario.package_tables?{tables:scenario.package_tables,packages:scenario.packages,draws:scenario.contact_draws,counters:scenario.enemy_counters}:null);
   s.support_agencies=structuredClone(scenario.support_agencies??null);
   s.signal_plan=structuredClone(scenario.signal_plan??null);
+  s.mission_rules_text=structuredClone(scenario.special_rules??[]);
   s.support_inventory=Object.fromEntries(Object.entries(s.support_agencies??{}).map(([id,agency])=>[id,structuredClone(agency.inventory??{})]));
   s.deck=newDeck(s);
   const surnames=['Miller','Davis','Wilson','Taylor','Anderson','Thomas','Moore','Martin','Jackson','Thompson','White','Harris','Clark','Lewis','Robinson','Walker','Hall','Allen','Young','King','Wright','Scott','Green','Baker','Adams','Nelson','Hill','Campbell','Mitchell','Roberts','Carter','Phillips','Evans','Turner','Parker','Collins','Edwards','Stewart','Morris','Rogers','Reed','Cook','Morgan','Bell','Murphy','Bailey','Rivera','Cooper','Richardson','Cox','Howard','Ward','Torres','Peterson','Gray','Ramirez','James','Watson','Brooks','Kelly','Sanders','Price','Bennett','Wood','Barnes','Ross','Henderson','Coleman','Jenkins','Perry','Powell','Long','Patterson','Hughes','Flores','Washington','Butler','Simmons','Foster','Gonzales','Bryant','Alexander','Russell','Griffin','Diaz','Hayes','Myers','Ford','Hamilton','Graham','Sullivan','Wallace','Woods','Cole','West','Jordan','Owens','Reynolds','Fisher','Ellis'];
@@ -145,9 +147,10 @@ function startImpulse(s,id,activation=false) {
     allowance=Math.max(activation?1:0,base+Object.values(modifiers).reduce((a,b)=>a+b,0));
   }
   s.impulse={id:`t${s.turn}_i${++s.impulse_number}`,hq:id,commands:allowance+(u?.saved??0),allowance,spent:0,card_id:cardId,base,modifiers,reserve_used:u?.saved??0};
+  if(id==='general'&&s.mission_rules?.reattempts)s.impulse.hq_limit_only=true;
   if(u)u.saved=0;
   if(isCompanyCommander(u)&&s.command_obligation){const paid=Math.min(s.command_obligation,s.impulse.commands,6);s.command_obligation-=paid;s.impulse.commands-=paid;s.impulse.spent+=paid;emit(s,'HQ_OBLIGATION',`Company HQ spent ${paid} commands on its higher-HQ obligation.`,{paid,remaining:s.command_obligation});if(!s.command_obligation){const event=s.hq_events.findLast(e=>e.turn===s.turn&&['COMM','SITREP'].includes(e.code));if(event)event.completed=true;}}
-  emit(s,'IMPULSE_STARTED',`${u?.name??'General initiative'}: ${s.impulse.commands} commands available; maximum six may be spent.`,{hq:id,allowance,total:s.impulse.commands});
+  emit(s,'IMPULSE_STARTED',`${u?.name??'General initiative'}: ${s.impulse.commands} commands available; ${s.impulse.hq_limit_only?'HQ orders retain their six-command limit':'maximum six may be spent'}.`,{hq:id,allowance,total:s.impulse.commands});
 }
 function finishImpulse(s) {
   const i=s.impulse;if(!i)return;
@@ -160,7 +163,10 @@ function finishImpulse(s) {
 function enter(s) {
   s.segment_progress=null;
   emit(s,'PHASE_ENTERED',phaseInfo(s.phase)[1],{description:phaseDescription(s)});
-  if(s.phase==='CONTACTS'&&s.mission_contacts)s.contact_queue=contactQueue(s,eligibleContacts(s));
+  if(s.phase==='CONTACTS'&&s.mission_contacts){
+    for(const pc of values(s.contacts).filter(pc=>!pc.resolved))pc.revealed=true;
+    s.contact_queue=contactQueue(s,eligibleContacts(s));
+  }
   if(s.phase==='COMBAT_EFFECTS') {
     const start=s.events.length;
     damagePhoneLines(s);
@@ -169,7 +175,7 @@ function enter(s) {
     if(!resolutions.length)emit(s,'COMBAT_REVIEW','No formations are affected by fire. Continue to cleanup.');
   }
   const commander=companyCommander(s);
-  if(s.phase==='BN_ACTIVATION'&&!s.bn_blocked){const visitor=values(s.units).find(u=>u.command_role==='higher_hq'&&live(u)&&good(u));if(visitor)startImpulse(s,visitor.id,true);}
+  if(s.phase==='BN_ACTIVATION'&&!s.bn_blocked){const visitor=higherCommander(s);if(visitor)startImpulse(s,visitor.id,true);}
   if(s.phase==='CO_ACTIVATION'&&s.activated.includes(commander.id)){deliverRunners(s);startImpulse(s,commander.id,true);}
   if(s.phase==='CO_INITIATIVE'&&!s.activated.includes(commander.id)&&live(commander)){deliverRunners(s);startImpulse(s,commander.id);}
   if(s.phase==='GENERAL_INITIATIVE')startImpulse(s,'general');
@@ -225,9 +231,9 @@ export function advancePhase(state,options={}) {
   else if(['FRIENDLY_EVENTS','DEFENSIVE_EVENTS','DEFENSIVE_ACTIVITY','ENEMY_EVENTS','AT_COMBAT'].includes(phase))emit(s,'PHASE_SKIPPED',phaseInfo(phase)[2]);
   if(phase==='BN_ACTIVATION') {
     const commander=companyCommander(s);
-    const visitor=values(s.units).find(u=>u.command_role==='higher_hq'&&live(u));
+    const visitor=higherCommander(s);
     if(visitor&&!s.bn_blocked){emit(s,'BN_HQ_ON_MAP',`${visitor.name} completed the on-map BN impulse.`,{hq:visitor.id});}
-    else if(values(s.units).some(u=>u.command_role==='higher_hq'&&u.removed!=='DEPARTED'&&!live(u))){emit(s,'ACTIVATION_UNAVAILABLE','BN HQ is unavailable after its on-map visitor was lost.');}
+    else if(values(s.units).some(u=>u.command_role==='higher_hq'&&u.removed!=='DEPARTED')){emit(s,'ACTIVATION_UNAVAILABLE','BN HQ is unavailable while its on-map visitor is lost or on the Fire Team side.');}
     else if(!s.bn_blocked&&live(commander)&&commander.cohesion==='GOOD'&&(s.mission_rules.communications==='simplified'?!commander.pinned:commander.radios.includes('BN'))){s.activated.push(commander.id);emit(s,'HQ_ACTIVATED',s.mission_rules.communications==='simplified'?'Off-map Battalion HQ activated Company HQ using mission communications.':'Off-map Battalion HQ activated Company HQ over the BN radio net.',{hq:commander.id});}
     else emit(s,'ACTIVATION_UNAVAILABLE','Company HQ cannot receive BN activation; it must use initiative.');
   }
@@ -331,6 +337,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     combat:(()=>{const c=combatModifier(s,u);return c?{ncm:c.ncm,total:c.total,parts:structuredClone(c.parts),modifiers:structuredClone(c.modifiers)}:null;})(),options:live(u)?commandOptions(s,u,issuerId):[]}));
   for(const u of units) {
     u.skills=(s.skills??[]).filter(p=>p.holder===u.id&&!p.used).map(p=>({id:p.id,label:SKILLS[p.type].label}));
+    u.automatic_skill=s.automatic_skills?.[u.id]?(s.skills.find(p=>p.id===s.automatic_skills[u.id])?.type==='AUTO_GRENADE'?'Auto Grenade assigned to next return attempt':'Extra Draw assigned to next automatic attempt'):null;
     u.tactical_ready=u.options.some(o=>o.available&&!(o.cost===0&&['DROP_LOAD','DROP_CASUALTY'].includes(o.type)));
     u.inventory={equipment:[...Object.entries(u.assets).filter(([,n])=>n>0).map(([key,quantity])=>({key,label:key.replaceAll('_',' '),quantity})),...Object.entries(u.ammo??{}).map(([key,quantity])=>({key,label:`${key} ammunition`,quantity}))],radios:[...u.radios],casualties:s.casualties.filter(c=>c.carrier===u.id&&!c.evacuated).map(c=>({id:c.id,label:`${c.origin_name??'Friendly formation'} casualty step`}))};
     const transition=visibleHistory.findLast(e=>e.type==='HQ_RECONSTITUTED'&&e.donor===u.id);
@@ -357,8 +364,9 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     historical_losses:getVisibleEvents(s).filter(e=>e.type==='FORMATION_LOST'),
     segment_progress,briefing:s.briefing,activity:s.activity,impulse:structuredClone(s.impulse),eligible_hqs:eligibleHQs(s),units,
     locations:values(s.locations).map(terrainProjection),
-    mission_name:s.mission_name,objectives:s.objectives?Object.fromEntries(['primary','secondary','attack','ccp'].map(k=>[k,{location:s.objectives[k],...secureStatus(s,s.objectives[k])}])):null,achievements:structuredClone(s.achievements),achievement_tally:achievementTally(s),
-    contacts:values(s.contacts).filter(c=>!c.returning||s.knowledge.suspected[c.location]).map(c=>({id:c.id,location:c.location,type:c.type,resolved:c.resolved})),
+    command_network:commandNetwork(s),mission_rules_text:structuredClone(s.mission_rules_text??[]),
+    hq_events:structuredClone(s.hq_events??[]).map(({side,code,turn,lead,completed,choice,placements})=>({side,code,turn,lead,completed,choice,placements})),mission_name:s.mission_name,objectives:s.objectives?Object.fromEntries(['primary','secondary','attack','ccp'].map(k=>[k,{location:s.objectives[k],...secureStatus(s,s.objectives[k])}])):null,achievements:structuredClone(s.achievements),achievement_tally:achievementTally(s),
+    contacts:values(s.contacts).filter(c=>!c.returning||s.knowledge.suspected[c.location]).map(c=>({id:c.id,location:c.location,type:c.counterattack&&!c.revealed&&!c.resolved?'?':c.type,resolved:c.resolved,counterattack:!!c.counterattack})),
     enemies:knownEnemy,suspected:spottingLocations(s),historical_reports:Object.keys(s.knowledge.suspected),
     fire:[...s.fire,...temporaryMortarFire(s)].filter(f=>friendly(s.units[f.source])||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>({...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:visible(s,s.units[f.source])?f.source:null,friendly:friendly(s.units[f.source])})),
     markers:s.markers.filter(m=>occupants(s,m.location).some(u=>friendly(u)||s.knowledge.spotted[u.id])).map(m=>({type:m.type,location:m.location,value:m.value,critical:!!m.critical,...(m.weapon?{weapon:m.weapon}:{})})),phone_lines:structuredClone(s.phone_lines),runners:structuredClone(s.runners),

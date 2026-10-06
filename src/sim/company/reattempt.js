@@ -1,4 +1,5 @@
-import {values,live,friendly,emit,result} from './core.js';
+import {values,live,friendly,emit,result,shuffle,pick} from './core.js';
+import {combinedExperience,transferReconstitutionLoads} from './reconstitution.js';
 import {secureStatus} from './missionFeatures.js';
 import {refresh,occupants} from './battlefield.js';
 import {recordAttemptStart} from './attemptRecords.js';
@@ -6,19 +7,9 @@ import {buySkills} from './skills.js';
 import {validatePhaseLines} from './missionSetup.js';
 
 const rank={Green:0,Line:1,Veteran:2};
-function combinedExperience(steps){
- const sorted=steps.map(step=>rank[step.experience??'Green']).sort((a,b)=>b-a);
- if(sorted.length===1)return ['Green','Line','Veteran'][sorted[0]];
- if(sorted.length===2)return sorted[0]===2&&sorted[1]===2?'Veteran':sorted[0]===2||sorted[1]===1?'Line':'Green';
- if(sorted.length===3){
-  if(sorted[0]===2&&sorted[1]===2&&sorted[2]>=1)return 'Veteran';
-  if(sorted[0]===2&&sorted[1]===2||sorted[1]>=1||sorted[0]===2)return 'Line';
-  return 'Green';
- }
- return sorted.filter(n=>n===2).length>=3?'Veteran':sorted.filter(n=>n===2).length>=2||sorted.filter(n=>n>=1).length>=3?'Line':'Green';
-}
 export function prepareReattempt(state,choices){
  if(!state.mission_rules?.reattempts||state.status!=='DEFEAT'||(state.attempt_number??1)>state.mission_rules.reattempts)throw new Error('No Trévières reattempt is available.');
+ if(!choices||Object.keys(choices).some(k=>!['reconstitute','promote','positions','covers','phone_lines','skills','phase_lines','redistribute'].includes(k)))throw new Error('Unknown reattempt preparation choice.');
  const secured=values(state.locations).filter(l=>secureStatus(state,l.id).secured).map(l=>l.id);
  if(!secured.length)throw new Error('No secured card remains for reattempt deployment.');
  const s=structuredClone(state),assignments=choices?.reconstitute??{},promotions=choices?.promote??{},placements=choices?.positions??{},covers=choices?.covers??{};
@@ -43,13 +34,15 @@ export function prepareReattempt(state,choices){
  const consumed=new Set(),newHQ=new Set();
  for(const [targetId,donorIds] of Object.entries(assignments)){
   const target=s.units[targetId];
-  if(!target||!friendly(target)||!['SQUAD','HQ','STAFF','MG','HMG','AT','MORTAR'].includes(target.kind)||!Array.isArray(donorIds)||!donorIds.length||target.steps.length+donorIds.length>target.max_steps)throw new Error(`Invalid reconstitution for ${targetId}.`);
+  if(!target||!friendly(target)||target.attachment||!['SQUAD','HQ','STAFF','MG','HMG','AT','MORTAR'].includes(target.kind)||!Array.isArray(donorIds)||!donorIds.length||target.steps.length+donorIds.length>target.max_steps)throw new Error(`Invalid reconstitution for ${targetId}.`);
+  const hadSteps=target.steps.length>0;
   for(const id of donorIds){
    const donor=s.units[id];
    if(consumed.has(id)||!donor||!friendly(donor)||donor.kind!=='LAT'||!live(donor)||donor.steps.length!==1||donor.removed)throw new Error(`Ineligible reconstitution donor: ${id}.`);
    consumed.add(id);
    const step=donor.steps.pop();step.experience='Green';target.steps.push(step);donor.removed='RECONSTITUTED';
   }
+  transferReconstitutionLoads(s,target,[...(hadSteps?[target]:[]),...donorIds.map(id=>s.units[id])]);
   target.removed=null;target.cohesion='GOOD';target.pinned=false;
   if(['HQ','STAFF'].includes(target.kind)&&target.steps.length===donorIds.length){target.experience='Green';newHQ.add(targetId);}
  }
@@ -88,14 +81,41 @@ export function prepareReattempt(state,choices){
  s.attempt_number=2;s.attempt_points_spent=s.achievements.reduce((sum,a)=>sum+a.points,0)-points;
  s.casualties=[];s.assets=[];s.prisoners=[];s.markers=[];s.fire=[];s.support=[];s.registered_targets={};s.support_inventory=Object.fromEntries(Object.entries(s.support_agencies??{}).map(([id,agency])=>[id,structuredClone(agency.inventory??{})]));
  for(const l of values(s.locations))l.smoke=false;
+ // §3.9 step 8: randomly select occupants when they compete for limited cover.
+ for(const u of values(s.units))if(!friendly(u)&&['P','L'].includes(u.cohesion))u.removed='REATTEMPT_REMOVED';
+ for(const u of shuffle(s,values(s.units).filter(u=>!friendly(u)&&live(u)&&!u.cover))){
+  const available=s.locations[u.location].covers.filter(c=>!c.parent&&occupants(s,u.location).filter(v=>v.cover===c.id).reduce((n,v)=>n+v.steps.length,0)+u.steps.length<=(c.capacity??16));
+  const best=Math.max(...available.map(c=>c.value));
+  const candidates=available.filter(c=>c.value===best);
+  u.cover=candidates.length?(candidates.length===1?candidates[0]:pick(s,candidates,'Reattempt enemy cover',true)).id:null;
+ }
  for(const u of values(s.units)){
   if(!friendly(u)&&['P','L'].includes(u.cohesion)){u.removed='REATTEMPT_REMOVED';continue;}
   if(!live(u))continue;
-  if(!friendly(u)&&u.cohesion==='F'&&u.named&&['MORTAR','HMG','LMG','MG','FLAK88','SNIPER','SPOTTER','HQ','STAFF'].includes(u.kind)){u.cohesion='GOOD';u.experience=u.original_experience;}
-  if(!friendly(u)&&!u.cover){const cover=s.locations[u.location].covers.filter(c=>!c.parent).sort((a,b)=>b.value-a.value).find(c=>occupants(s,u.location).filter(v=>v.cover===c.id).reduce((n,v)=>n+v.steps.length,0)+u.steps.length<=(c.capacity??16));u.cover=cover?.id??null;}
+  if(!friendly(u)&&u.cohesion==='F'&&u.named&&['MORTAR','HMG','LMG','MG','FLAK88','SNIPER','SPOTTER','HQ','STAFF','LEADER'].includes(u.kind)){u.cohesion='GOOD';u.experience=u.original_experience;}
   u.pinned=false;u.exposed=false;u.saved=0;u.fire=null;u.fire_direction=null;u.fire_effect=null;u.indirect=null;u.used=[];
   const original=u.initial_resources;if(original){u.radios=structuredClone(original.radios);u.assets=structuredClone(original.assets);u.ammo=structuredClone(original.ammo);u.out_of_ammo=false;if(original.missions!==undefined){u.missions_remaining=original.missions;u.calls_made=0;}}
   if(u.assets.phone_line)u.assets.phone_line=Math.max(0,u.assets.phone_line-s.phone_lines.filter(line=>line.owner===u.id).length);
+ }
+ // Player-selected redistribution conserves the replenished inventories.
+ if(choices.redistribute!==undefined&&!Array.isArray(choices.redistribute))throw new Error('Redistribution must be a list.');
+ for(const transfer of choices.redistribute??[]){
+  if(!transfer||Object.keys(transfer).some(k=>!['from','to','type','key','quantity'].includes(k)))throw new Error('Invalid redistribution choice.');
+  const from=s.units[transfer.from],to=s.units[transfer.to],{type,key,quantity}=transfer;
+  if(!from||!to||from===to||!friendly(from)||!friendly(to)||!live(from)||!live(to)||!Number.isSafeInteger(quantity)||quantity<1||!['RADIO','EQUIPMENT','AMMO'].includes(type))throw new Error('Choose surviving friendly carriers and a positive whole quantity.');
+  if(type==='RADIO'){
+   if(from.radios.filter(net=>net===key).length<quantity)throw new Error('Insufficient radios for redistribution.');
+   for(let n=0;n<quantity;n++){from.radios.splice(from.radios.indexOf(key),1);to.radios.push(key);}
+  }else{
+   const field=type==='AMMO'?'ammo':'assets';
+   if(typeof key!=='string'||!Object.hasOwn(from[field],key)||!Number.isSafeInteger(from[field][key])||from[field][key]<quantity||['__proto__','constructor','prototype'].includes(key))throw new Error('Insufficient stock for redistribution.');
+   from[field][key]-=quantity;to[field][key]=(to[field][key]??0)+quantity;
+  }
+  for(const u of [from,to]){
+   u.initial_resources.radios=structuredClone(u.radios);u.initial_resources.assets=structuredClone(u.assets);u.initial_resources.ammo=structuredClone(u.ammo);
+   u.out_of_ammo=u.ammo.MG===0||u.ammo.MTR===0||u.ammo.GUN===0||u.ammo.RKT===0;
+  }
+  emit(s,'REATTEMPT_EQUIPMENT_ASSIGNED',`${from.name} transferred ${quantity} ${key} to ${to.name}.`,{from:from.id,to:to.id,asset_type:type,key,quantity});
  }
  s.turn=1;s.phase='FRIENDLY_EVENTS';s.status='ACTIVE';s.impulse=null;s.segment_progress=null;s.pending_combat=[];s.activated=[];s.completed=[];s.command_obligation=0;s.bn_blocked=false;s.support_unavailable=[];s.enemy_tactics='deliberate_defense';s.counterattack_ends_after=null;
  s.hq_events=[];s.pending_event=null;s.forward_row_blocked=null;s.higher_hq_on_map=false;

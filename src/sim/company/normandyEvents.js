@@ -1,6 +1,7 @@
 import {values,live,friendly,emit,draw,randomNumber,pick} from './core.js';
 import {occupants,refresh} from './battlefield.js';
 import {rally} from './actions.js';
+import {companyCommander} from './commandRoles.js';
 
 const FRIENDLY_EARLY=['SITREP','COMM','NO_ARTY','CHECKING_UP','HOLD','ADVANCE','ADVANCE_PC','ADVANCE_PC','RESUPPLY','RESUPPLY'];
 const FRIENDLY_LATE=['SITREP','COMM','NO_ARTY','CHECKING_UP','HOLD','ADVANCE','ADVANCE_PC','RESUPPLY','RESUPPLY','RESUPPLY'];
@@ -28,9 +29,9 @@ export function resolveNormandyEvent(s,side,choice={}){
   if(code==='CHECKING_UP'){
    const officers=['REGIMENTAL_STAFF','BATTALION_COMMANDER','BATTALION_STAFF'];
    const profile=pick(s,officers,'Higher HQ visitor');
-   const commander=values(s.units).find(u=>u.command_role==='company_commander')??s.units.co;
+   const commander=companyCommander(s);
    const id=`higher_${s.next_id++}`;
-   s.units[id]={id,name:profile.replaceAll('_',' '),kind:'STAFF',command_role:'higher_hq',faction:'friendly',location:commander.location,platoon:null,cohesion:'GOOD',experience:'Line',steps:[{id:`${id}_step1`,personnel:[]}],radios:[],assets:{},saved:0,used:[],removed:null,pinned:false,exposed:false,cover:commander.cover,vof:null,range:0,expires_turn:s.turn+1};
+   s.units[id]={id,name:profile.replaceAll('_',' '),kind:'STAFF',command_role:'higher_hq',capabilities:{higher_priority:officers.indexOf(profile)},faction:'friendly',location:commander.location,platoon:null,cohesion:'GOOD',experience:'Line',steps:[{id:`${id}_step1`,personnel:[]}],radios:[],assets:{},saved:0,used:[],removed:null,pinned:false,exposed:false,cover:commander.cover,vof:null,range:0,expires_turn:s.turn+1};
    s.higher_hq_on_map=true;
   }
   if(code==='RESUPPLY'){
@@ -59,13 +60,22 @@ export function resolveNormandyEvent(s,side,choice={}){
   }
   if(code==='COUNTER_ATTACK'){
    const occupied=values(s.locations).filter(l=>!l.staging&&occupants(s,l.id).some(friendly));
-   const letters=values(s.contacts).filter(pc=>!pc.resolved).map(pc=>pc.type).filter(type=>['A','B','C'].includes(type));
+   // Sixteen physical markers per letter (§8.2.1); resolved markers return to stock.
+   const letters=['A','B','C'].flatMap(type=>Array(Math.max(0,16-values(s.contacts).filter(pc=>!pc.resolved&&pc.type===type).length)).fill(type));
+   event.placements=[];
    for(const l of occupied){if(!letters.length)break;const type=pick(s,letters,'Counterattack remaining PC letter',true),index=letters.indexOf(type);letters.splice(index,1);
-    const id=`pc_counter_${s.next_id++}`;s.contacts[id]={id,location:l.id,type,resolved:false,counterattack:true};}
+    const id=`pc_counter_${s.next_id++}`,pc={id,location:l.id,type,resolved:false,counterattack:true,revealed:false};s.contacts[id]=pc;
+    const overlaps=values(s.contacts).filter(c=>c.location===l.id&&!c.resolved);
+    if(overlaps.length>1){
+      for(const c of overlaps)c.revealed=true;
+      const keep=overlaps.sort((a,b)=>a.type.localeCompare(b.type)||Number(b.counterattack)-Number(a.counterattack))[0];
+      for(const c of overlaps)if(c!==keep){c.resolved=true;c.removed_by_event=true;letters.push(c.type);}
+    }
+    event.placements.push(l.id);}
    s.enemy_tactics='offensive_assault';s.counterattack_ends_after=s.turn+2;
   }
  }
- emit(s,'HQ_EVENT',`${side} higher HQ: ${code.replaceAll('_',' ').toLowerCase()}.`,{side,code,turn:s.turn,...(event.choice??{}),counterattack_ends_after:s.counterattack_ends_after??null});
+ emit(s,'HQ_EVENT',`${side} higher HQ: ${code.replaceAll('_',' ').toLowerCase()}.`,{side,code,turn:s.turn,...(event.choice??{}),lead:event.lead,...(event.placements?{placements:event.placements}:{}),counterattack_ends_after:s.counterattack_ends_after??null});
  refresh(s);
  return event;
 }

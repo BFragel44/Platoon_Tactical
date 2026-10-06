@@ -1,5 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {keepUpTheFire} from '../src/scenarios/keepUpTheFire.js';
+import {trevieres} from '../src/scenarios/trevieres.js';
 import {companyAssault} from '../src/scenarios/companyAssault.js';
 import {normandyTerrain} from '../src/scenarios/normandyTerrain.js';
 import {missionCatalog,playableMissionById} from '../src/scenarios/missions.js';
@@ -12,19 +13,21 @@ import {cards} from '../src/sim/company/core.js';
 import {checkpoint,resumeCheckpoint} from '../src/ui/localRecovery.js';
 import {setupMarkup} from '../src/ui/missionSetup.js';
 
-// The standalone validation mission is available; Normandy remains gated.
+// Accepted standalone missions are available without a development URL.
 const draft={...keepUpTheFire,readiness:{playable:true}};
 const fresh=()=>createMission(draft,'keep-1');
 const stack=(s,ids)=>{s.deck.order=[...ids,...s.deck.order.filter(id=>!ids.includes(id))];};
 describe('Mission foundation and development gates',()=>{
- it('enables the validated standalone while keeping unsupported Normandy unavailable',()=>{
+ it('enables accepted standalone missions in the normal catalog',()=>{
   expect(createMission(keepUpTheFire,'x').scenario_id).toBe(keepUpTheFire.id);
   expect(playableMissionById('keep_up_the_fire')).toBe(keepUpTheFire);
   expect(keepUpTheFire.readiness.stage).toBe('standalone_validated');
-  expect(missionCatalog.find(m=>m.id==='normandy_1').unavailable).not.toContain('human acceptance');
-  expect(()=>playableMissionById('normandy_1')).toThrow('unavailable');
+  expect(missionCatalog.find(m=>m.id==='normandy_1').unavailable).toBeNull();
+  expect(playableMissionById('normandy_1')).toBe(trevieres);
+  expect(createMission(trevieres,'accepted-normal-selection').scenario_id).toBe('normandy_1');
+  expect(trevieres.readiness.stage).toBe('standalone_validated');
   expect(playableMissionById(companyAssault.id)).toBe(companyAssault);
-  expect(missionCatalog.find(m=>m.id==='normandy_1').scenario.readiness.playable).toBe(false);
+  expect(missionCatalog.find(m=>m.id==='normandy_1').scenario.readiness.playable).toBe(true);
  });
  it('previews 16 terrain cards, staging and the published 25-formation force',()=>{
   const p=previewMissionSetup(keepUpTheFire,'keep-1');
@@ -52,7 +55,7 @@ describe('Mission foundation and development gates',()=>{
   let s=createMission(draft,'keep-1',setup);s=endTurn(s).state;s=abortMission(s).state;
   expect(exportReplay(s).setup).toEqual(setup);expect(replayMission(draft,exportReplay(s))).toEqual(s);
   expect(resumeCheckpoint(draft,checkpoint(s,{combatStage:'result'}))).toEqual({state:s,presentation:{combatStage:'result'}});
-  expect(getAfterActionReport(s)).toMatchObject({scenario:keepUpTheFire.id,scenario_version:12,rules_version:17,setup});
+  expect(getAfterActionReport(s)).toMatchObject({scenario:keepUpTheFire.id,scenario_version:12,rules_version:25,setup});
  });
  it('rejects unknown setup data and invalid tactical controls or attachments',()=>{
   for(const setup of [{positions:{ghost:'r0c1'}},{objectives:{primary:'r4c3'}},{objectives:{attack:'r2c1'}},{assignments:{mg1:{platoon:0}}},{positions:{co:'r1c1'}},{assets:{co:{smoke:999}}}])expect(()=>materializeScenario(keepUpTheFire,'x',setup)).toThrow();

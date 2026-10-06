@@ -1,5 +1,7 @@
+import {transferEquipmentResupply} from './equipmentRecovery.js';
 import {transportReason,dropLoad} from './core.js';
 import {SKILLS,skillOptions} from './skills.js';
+import {reconstitutionFirepower,reconstitutionLoads} from './reconstitution.js';
 import {ammoLoadReason,pickUpAmmunition,dropExcessAmmunition,expendAmmunition} from './ammunition.js';
 import {layPhoneLine} from './phoneNetwork.js';
 import {availableRunner,createRunner,dispatchRunner,dismissRunner} from './runners.js';
@@ -10,6 +12,8 @@ import { terrainProtection } from './terrain.js';
 import { values, live, good, friendly, visible, expMod, emit, draw, attempt, randomNumber, pick, result } from './core.js';
 import { adjacent, occupants, distance, los, unitLos, seesCard, unitElevation, coverAvailable, enclosedWeaponCover, communication, chain, coverOf, basicValue, canFire, refresh, spot, hasFire, incoming, movementReason, communicationReason, spottingLocations, vofOf, rangeOf } from './battlefield.js';
 export const ACTIONS = {
+  SKILL_EXTRA_AUTOMATIC:'Assign Extra Draw to next automatic attempt',
+  SKILL_GRENADE_RETURN:'Assign Auto Grenade to next return attempt',
   SKILL_GENERAL:'Skill: extra General Initiative command', SKILL_SPAWN_A:'Skill: spawn Assault Team', SKILL_SPAWN_F:'Skill: spawn Fire Team', SKILL_PARALYZED_A:'Skill: Paralyzed to Assault', SKILL_PARALYZED_F:'Skill: Paralyzed to Fire',
   WP_ATTACK:'Attack with WP grenade',
   ACTIVATE:'Activate HQ / staff', MOVE:'Move', PLATOON_MOVE:'Move platoon', INFILTRATE:'Infiltrate', PLATOON_INFILTRATE:'Infiltrate platoon',
@@ -22,10 +26,11 @@ export const ACTIONS = {
   PYRO_RED_SIGNAL:'Signal: red smoke', PYRO_GREEN_SIGNAL:'Signal: green smoke', PYRO_YELLOW_SIGNAL:'Signal: yellow smoke', PYRO_PURPLE_SIGNAL:'Signal: purple smoke',
   CREATE_RUNNER:'Create runner', DISPATCH_RUNNER:'Dispatch runner', DISMISS_RUNNER:'Dismiss runner', REPAIR_PHONE_LINE:'Repair phone line', DROP_LOAD:'Drop all carried items (free)', PICKUP_RADIO:'Recover equipment', PICKUP_CASUALTY:'Pick up casualty', DROP_CASUALTY:'Drop casualties',
 };
-export const costOf = type => ['SKILL_GENERAL','SKILL_SPAWN_A','SKILL_SPAWN_F'].includes(type)?0:type.startsWith('PLATOON_') ? 2 : 1;
+export const costOf = type => ['SKILL_GENERAL','SKILL_SPAWN_A','SKILL_SPAWN_F','SKILL_EXTRA_AUTOMATIC','SKILL_GRENADE_RETURN'].includes(type)?0:type.startsWith('PLATOON_') ? 2 : 1;
 const hq = u => ['HQ','STAFF'].includes(u.kind);
 const genericInit = s => s.impulse?.hq === 'general';
-const skillActor=(s,u,type,issuerId)=>!genericInit(s)&&['RALLY','RECOVER','RECONSTITUTE','RECONSTITUTE_HQ'].includes(type)?s.units[issuerId]??u:u;
+const HQ_ORIGIN_ACTIONS=['ACTIVATE','RECONSTITUTE','RECONSTITUTE_HQ','CREATE_RUNNER','DISPATCH_RUNNER','DISMISS_RUNNER','SIGNAL_ADVANCE','SIGNAL_CEASE'];
+const skillActor=(s,u,type,issuerId)=>['RECONSTITUTE','RECONSTITUTE_HQ'].includes(type)||!genericInit(s)&&['RALLY','RECOVER'].includes(type)?s.units[issuerId]??u:u;
 const actionKey = (u,type,target) => type==='SEEK_COVER_UPPER'?'SEEK_COVER':type==='WP_ATTACK'?'GRENADE':type.startsWith('CALL_')&&u.mission_weapon?'CALL_FIRE':type === 'ACTIVATE' ? `${type}_${target}` : type === 'RECOVER' ? `${type}_${u.cohesion}` : type;
 const areaTargets = (s,u) => values(s.units).filter(t=>live(t)&&t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]));
 function targetsAt(s,u,id) { return areaTargets(s,u).filter(t=>t.location===id); }
@@ -34,6 +39,7 @@ export function eligibleTargets(s,u,type) {
   if(['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type)) return adjacent(s,u.location).map(l=>l.id);
   if(type==='ACTIVATE') return values(s.units).filter(t=>friendly(t)&&(u.command_role==='higher_hq'||!isCompanyCommander(t))&&hq(t)&&live(t)&&t.command_role!=='higher_hq').map(t=>t.id);
   if(type.startsWith('PYRO_'))return (type.endsWith('_SIGNAL')?[s.locations[u.location]]:[s.locations[u.location],...adjacent(s,u.location)]).filter(Boolean).map(l=>l.id);
+  if(type==='CREATE_RUNNER')return values(s.units).filter(v=>friendly(v)&&live(v)&&(good(v)||!v.pinned&&['A','F'].includes(v.cohesion))&&communication(s,companyCommander(s),v)&&chain(companyCommander(s),v,type)).map(v=>v.id);
   if(type==='DISPATCH_RUNNER')return values(s.units).filter(t=>friendly(t)&&live(t)&&['HQ','STAFF'].includes(t.kind)&&!isCompanyCommander(t)&&t.command_role!=='higher_hq').map(t=>t.id);
   if(['ENTER_COVER','INFILTRATE_WITHIN'].includes(type)) return ['open',...s.locations[u.location].covers.filter(c=>(!friendly(u)||c.known)&&coverAvailable(s,u,c)).map(c=>c.id)];
   if(type==='SPOT') return spottingLocations(s).filter(id=>occupants(s,id).some(t=>t.faction!==u.faction&&!s.knowledge.spotted[t.id]&&unitLos(s,u,t)));
@@ -75,8 +81,9 @@ export function orderReason(s,c) {
    if(type.startsWith('SKILL_SPAWN')&&(!good(u)||u.kind!=='SQUAD'||u.steps.length<3))return 'Spawn from a good-order three- or four-step squad.';
    if(type.startsWith('SKILL_PARALYZED')&&(u.pinned||u.cohesion!=='P'))return 'Select an unpinned Paralyzed Team.';
   }
-  const generalWithoutHQ=s.mission_rules?.reattempts&&genericInit(s)&&!['RECONSTITUTE','RECONSTITUTE_HQ','CREATE_RUNNER','DISPATCH_RUNNER','DISMISS_RUNNER'].includes(type);
-  if(s.impulse.commands<costOf(type)||!generalWithoutHQ&&s.impulse.spent+costOf(type)>6) return 'Insufficient commands, or the six-command impulse limit has been reached.';
+  const normandyGeneral=s.mission_rules?.reattempts&&genericInit(s);
+  const cappedSpent=normandyGeneral?(HQ_ORIGIN_ACTIONS.includes(type)?s.impulse.origin_spent?.[c.issuer_id]??0:null):s.impulse.spent;
+  if(s.impulse.commands<costOf(type)||cappedSpent!==null&&cappedSpent+costOf(type)>6) return 'Insufficient commands, or the six-command impulse limit has been reached.';
   if(!genericInit(s)) {
     if(!live(issuer)) return 'The issuing HQ is unavailable.';
     if(issuer.cohesion!=='GOOD'&&issuer.id!==u.id) return 'A degraded HQ can only order itself.';
@@ -93,7 +100,11 @@ export function orderReason(s,c) {
   if(type.endsWith('_RUNNER')){
     const commander=companyCommander(s);
     if(c.issuer_id!==commander.id||s.impulse?.hq!==commander.id||!good(commander))return 'Only a good-order Company HQ can create, dispatch or dismiss runners in its impulse.';
-    if(type==='CREATE_RUNNER'&&(!(good(u)||!u.pinned&&['A','F'].includes(u.cohesion))||(s.runners??[]).filter(r=>['BOX','DISPATCHED'].includes(r.status)).length>=2))return 'Choose a good-order unit or unpinned assault/fire team; no more than two runners may be in play.';
+    if(type==='CREATE_RUNNER'){
+     const donor=target?s.units[target]:isCompanyCommander(u)?null:u;
+     if(!donor)return 'Choose the unit donating one step to the runner. Company HQ is the issuer, not an automatic donor.';
+     if(!eligibleTargets(s,u,type).includes(donor.id)||(s.runners??[]).filter(r=>['BOX','DISPATCHED'].includes(r.status)).length>=2)return 'Choose a communicating good-order unit or unpinned assault/fire team; no more than two runners may be in play.';
+    }
     if(type==='DISPATCH_RUNNER'&&(!isCompanyCommander(u)||!availableRunner(s)||!eligibleTargets(s,u,type).includes(target)))return 'Choose an available runner and a subordinate HQ or staff on the map.';
     if(type==='DISMISS_RUNNER'&&(!availableRunner(s)||!good(u)||u.location!==commander.location||u.cover!==commander.cover||u.steps.length>=u.max_steps))return 'A runner can return only to a good-order unit with capacity in Company HQ’s area.';
   }
@@ -176,7 +187,8 @@ export function orderReason(s,c) {
     if(!squad||squad.kind!=='SQUAD'||live(squad)||squad.faction!==u.faction) return 'Choose a previously eliminated squad counter to restore.';
     if(!Array.isArray(ids)||ids.length<2||ids.length>4||new Set(ids).size!==ids.length||!ids.includes(u.id)) return 'Choose 2–4 distinct contributing teams, including the selected team.';
     if(ids.length>(squad.max_steps??squad.steps.length)) return `${squad.name} can hold at most ${squad.max_steps??0} steps; choose fewer teams.`;
-    if(ids.some(id=>{const t=s.units[id];return !live(t)||t.faction!==u.faction||t.kind!=='LAT'||!['A','F'].includes(t.cohesion)||t.pinned||t.location!==u.location||t.cover!==u.cover||t.steps.length!==1;})) return 'Every contributor must be an unpinned one-step Fire/Assault Team in the same area.';
+    if(ids.some(id=>{const t=s.units[id];return !live(t)||t.faction!==u.faction||!s.mission_rules?.reattempts&&t.kind!=='LAT'||!['A','F'].includes(t.cohesion)||t.pinned||t.location!==u.location||t.cover!==u.cover||t.steps.length!==1;})) return 'Every contributor must be an unpinned one-step Fire/Assault Team in the same area.';
+    if(s.mission_rules?.reattempts&&!reconstitutionFirepower(squad,ids.map(id=>s.units[id])))return 'The contributing teams cannot supply this squad’s original weapon firepower.';
   }
   if(type==='RECONSTITUTE_HQ') {
     const t=s.units[target];
@@ -260,7 +272,7 @@ export function grenade(s,u,t,response=false,wp=false) {
   if(!wp&&u.location!==t.location&&u.ammo?.RKT!==undefined&&!expendAmmunition(s,u,'RKT',1,'ranged grenade'))return;
   if(mortar){u.temporary_pdf={origin:u.location,target:t.location};emit(s,'MORTAR_PDF_PLACED','Mortar direct lay establishes a temporary firing direction; it counts for crossfire even if the attack misses.',{actor:visible(s,u)?u.id:null,origin:u.location,target:t.location},!visible(s,u)&&!visible(s,t));}
   const targets=t.cover?occupants(s,t.location).filter(v=>v.cover===t.cover&&v.faction===t.faction):[t];
-  const successes=attempt(s,u,2,'grenade',`${visible(s,u)?u.name:'Unidentified unit'}: grenade attack`,!visible(s,u)&&!friendly(t),batch=>u.location===t.location||!weaponJam(s,u,batch));
+  const successes=attempt(s,u,2,'grenade',`${visible(s,u)?u.name:'Unidentified unit'}: grenade attack`,!visible(s,u)&&!friendly(t),batch=>u.location===t.location||!weaponJam(s,u,batch),response||!s.impulse,response);
   if(successes) s.markers.push({type:'GRENADE',source:u.id,origin:u.location,location:t.location,target:t.cover?null:t.id,cover:t.cover,critical:successes>1,
     value:(wp?-4:s.mission_rules?.grenade??(friendly(u)?-4:-3))*(successes>1&&!t.cover?2:1),...(wp?{weapon:'WP'}:mortar?{weapon:'MORTAR'}:{})});
   else if(!s.markers.some(m=>m.type==='GRENADE_MISS'&&m.location===t.location))s.markers.push({type:'GRENADE_MISS',location:t.location});
@@ -313,6 +325,7 @@ export function platoonMoveGroup(s,u,target,type='PLATOON_MOVE') {
 }
 export function execute(s,c) {
   const u=s.units[c.unit_id],issuer=s.units[c.issuer_id]??u,type=c.type,t=s.units[c.target_id];
+  if(['SKILL_EXTRA_AUTOMATIC','SKILL_GRENADE_RETURN'].includes(type))return;
   if(type==='SKILL_GENERAL')s.impulse.commands++;
   else if(type.startsWith('SKILL_SPAWN'))splitTeam(s,u,type.endsWith('_A')?'A':'F',u.steps.pop());
   else if(type.startsWith('SKILL_PARALYZED')){
@@ -385,6 +398,7 @@ export function execute(s,c) {
       const squad=s.units[c.target_id];
       squad.steps=group.flatMap(v=>v.steps);squad.location=u.location;squad.cover=u.cover;squad.cohesion='GOOD';squad.removed=null;squad.pinned=false;squad.exposed=group.some(v=>v.exposed);squad.fire=null;
       squad.experience=group.filter(v=>v.experience==='Line').length>=Math.ceil(group.length/2)?'Line':'Green';
+      if(s.mission_rules?.reattempts)reconstitutionLoads(s,squad,group);
       for(const v of group){v.steps=[];v.removed='RECONSTITUTED';}
       emit(s,'FORMATION_RECONSTITUTED',`${squad.name} restored with ${group.length} steps from ${group.map(v=>v.name).join(', ')}.`,{actor:squad.id,contributors:group.map(v=>v.id),location:u.location});
     }
@@ -395,13 +409,13 @@ export function execute(s,c) {
     else if(u.kind==='SQUAD'&&u.steps.length===1){splitTeam(s,u,'F',u.steps.pop());u.removed='RECONSTITUTED';}
     emit(s,'HQ_RECONSTITUTED',`${t.name} restored at Green experience; recover a radio to restore its net.`,{actor:t.id,donor:u.id,location:t.location,donor_name:u.name,restored_name:t.name});
   }
-  else if(type==='PICKUP_RADIO'){const a=s.assets.find(a=>a.id===c.target_id);if(a.type==='RADIO')u.radios.push(a.net);else if(a.type==='AMMO')pickUpAmmunition(s,u,a);else u.assets[a.key]=(u.assets[a.key]??0)+a.quantity;if(a.type!=='AMMO')s.assets=s.assets.filter(v=>v.id!==a.id);u.exposed=true;}
+  else if(type==='PICKUP_RADIO'){const a=s.assets.find(a=>a.id===c.target_id);transferEquipmentResupply(s,u,a);if(a.type==='RADIO')u.radios.push(a.net);else if(a.type==='AMMO')pickUpAmmunition(s,u,a);else u.assets[a.key]=(u.assets[a.key]??0)+a.quantity;if(a.type!=='AMMO')s.assets=s.assets.filter(v=>v.id!==a.id);u.exposed=true;}
   else if(type==='REPAIR_PHONE_LINE'){
     const line=s.phone_lines.find(line=>line.location===u.location&&line.cut);
     line.cut=false;u.exposed=true;
     emit(s,'PHONE_LINE_REPAIRED',`${u.name} repaired the phone line at ${s.locations[u.location].name}.`,{actor:u.id,location:u.location,line_id:line.id});
   }
-  else if(type==='CREATE_RUNNER')createRunner(s,u);
+  else if(type==='CREATE_RUNNER')createRunner(s,c.target_id?s.units[c.target_id]:u);
   else if(type==='DISPATCH_RUNNER')dispatchRunner(s,t);
   else if(type==='DISMISS_RUNNER')dismissRunner(s,u);
   else if(type==='PICKUP_CASUALTY'){
@@ -428,10 +442,18 @@ export function submitCommand(state,command) {
   const contributors=command.type==='RECONSTITUTE'?` using ${command.contributor_ids.map(id=>s.units[id].name).join(', ')}`:'';
   const event=emit(s,'COMMAND_ISSUED',`${s.impulse.hq==='general'?'General initiative':s.units[s.impulse.hq].name}: ${ACTIONS[command.type]} — ${u.name}${command.target_id?' → '+(s.locations[command.target_id]?.name??s.units[command.target_id]?.name??command.target_id):''}${contributors}.`,{command:structuredClone(command)});
   s.impulse.commands-=costOf(command.type);s.impulse.spent+=costOf(command.type);
+  if(s.mission_rules?.reattempts&&genericInit(s)&&HQ_ORIGIN_ACTIONS.includes(command.type)){
+   s.impulse.origin_spent??={};s.impulse.origin_spent[command.issuer_id]=(s.impulse.origin_spent[command.issuer_id]??0)+costOf(command.type);
+  }
   u.used.push(`${s.impulse.id}:${key}`);
-  if(command.skill_id||command.type.startsWith('SKILL_')){
+  if(['SKILL_EXTRA_AUTOMATIC','SKILL_GRENADE_RETURN'].includes(command.type)){
+   const p=skillOptions(s,u,command.type).find(p=>!command.skill_id||p.id===command.skill_id);
+   s.automatic_skills??={};s.automatic_skills[u.id]=p.id;
+   emit(s,'SKILL_ASSIGNED',`${u.name}: ${SKILLS[p.type].label} assigned to its next ${p.type==='AUTO_GRENADE'?'grenade return':'automatic'} attempt.`,{actor:u.id,holder:p.holder,skill_id:p.id});
+  }else if(command.skill_id||command.type.startsWith('SKILL_')){
    const actor=skillActor(s,u,command.type,command.issuer_id),p=skillOptions(s,actor,command.type).find(p=>!command.skill_id||p.id===command.skill_id),definition=SKILLS[p.type];
    s.skills.find(v=>v.id===p.id).used=true;
+   for(const [id,skill]of Object.entries(s.automatic_skills??{}))if(skill===p.id)delete s.automatic_skills[id];
    s.active_skill={actor:actor.id,extra:definition.extra,icon:definition.icon,applied:false};
    emit(s,'SKILL_USED',`${u.name}: ${definition.label}.`,{actor:u.id,holder:p.holder,skill_id:p.id,skill:p.type});
   }
@@ -452,8 +474,8 @@ export function submitCommand(state,command) {
 export function commandOptions(s,u,issuerId) {
   return Object.entries(ACTIONS).filter(([type])=>(!type.startsWith('SKILL_')||s.skills?.length)&&(type!=='DROP_LOAD'||s.mission_rules?.specialEnemies)&&(type!=='SEEK_COVER_UPPER'||s.mission_rules?.coverTable)&&(s.support_agencies||!['CALL_MORTAR_WP','CALL_ARTILLERY_WP','WP','WP_ATTACK','RIFLE_GRENADE'].includes(type))).map(([type,label])=>{
     const targets=eligibleTargets(s,u,type);
-    const targeted=type.startsWith('PYRO_')||type==='DISPATCH_RUNNER'||['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','CALL_MORTAR_WP','CALL_ARTILLERY_WP','RIFLE_GRENADE','INDIRECT','RECONSTITUTE','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
-    const checks=((targeted||type==='WP_ATTACK')?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id,contributor_ids:type==='RECONSTITUTE'?[u.id,...occupants(s,u.location).filter(t=>t.id!==u.id&&t.faction===u.faction&&t.cover===u.cover&&!t.pinned&&t.kind==='LAT'&&['A','F'].includes(t.cohesion)).slice(0,Math.max(0,(s.units[target_id]?.max_steps??3)-1)).map(t=>t.id)]:undefined})}));
+    const targeted=type.startsWith('PYRO_')||['DISPATCH_RUNNER','CREATE_RUNNER'].includes(type)||['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','CALL_MORTAR_WP','CALL_ARTILLERY_WP','RIFLE_GRENADE','INDIRECT','RECONSTITUTE','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
+    const checks=((targeted||type==='WP_ATTACK')?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id,contributor_ids:type==='RECONSTITUTE'?[u.id,...occupants(s,u.location).filter(t=>t.id!==u.id&&t.faction===u.faction&&t.cover===u.cover&&!t.pinned&&(s.mission_rules?.reattempts?t.steps.length===1:t.kind==='LAT')&&['A','F'].includes(t.cohesion)).slice(0,Math.max(0,(s.units[target_id]?.max_steps??3)-1)).map(t=>t.id)]:undefined})}));
     if(['PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type))for(const check of checks)check.moving_unit_ids=check.reason?[]:platoonMoveGroup(s,u,check.id,type).filter(friendly).map(v=>v.id);
     const displayLabel=type==='RECONSTITUTE_HQ'?'Reconstitute eliminated HQ':type==='DEPLOY_FIRE_TEAM'&&['HQ','STAFF'].includes(u.kind)?'Deploy HQ Fire Team':type==='RECOVER'&&u.named&&u.cohesion==='F'?(['HQ','STAFF'].includes(u.kind)?'Restore HQ command side':u.kind==='FO'?'Restore observer side':'Restore weapon side'):label;
     return {type,label:displayLabel,skills:skillOptions(s,skillActor(s,u,type,issuerId),type),cost:s.mission_rules?.specialEnemies&&['DROP_LOAD','DROP_CASUALTY'].includes(type)?0:costOf(type),targeted:targeted||type==='WP_ATTACK',targets:checks,available:checks.some(c=>!c.reason),reason:checks.find(c=>c.reason)?.reason??'No eligible target.'};

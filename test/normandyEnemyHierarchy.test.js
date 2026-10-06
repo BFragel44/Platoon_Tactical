@@ -2,12 +2,34 @@ import {describe,it,expect} from 'vitest';
 import {latActivityTable} from '../src/sim/company/enemyHierarchy.js';
 import {trevieres} from '../src/scenarios/trevieres.js';
 import {createMission} from '../src/sim/company/engine.js';
-import {enemyActivity} from '../src/sim/company/combat.js';
+import {enemyActivity,selectEnemyCover} from '../src/sim/company/combat.js';
 import {attempt,cards} from '../src/sim/company/core.js';
 import {refresh,basicValue,vofOf} from '../src/sim/company/battlefield.js';
 const fresh=()=>createMission({...trevieres,readiness:{playable:true}},'enemy-hierarchy');
 const table=options=>latActivityTable({cohesion:'P',pinned:false,same:false,covered:false,leader:false,teams:0,localCasualty:false,seenCasualties:0,...options});
 describe('Normandy enemy hierarchy source cases',()=>{
+ it('chooses defensive cover by protection against the actual targeted effect',()=>{
+  const s=fresh(),u={...structuredClone(s.units.s11),id:'enemy_protection',faction:'enemy',location:'r2c2',steps:[s.units.s11.steps[0]]};s.units[u.id]=u;
+  s.locations.r2c2.covers=[{id:'targeted',type:'Trench',value:2,capacity:6},{id:'safe',type:'Foxholes',value:1,capacity:6}];
+  s.markers=[{type:'GRENADE',location:'r2c2',origin:'r1c2',source:'co',cover:'targeted',value:-4}];
+  expect(selectEnemyCover(s,u)?.id).toBe('safe');
+ });
+
+ it('advances into usable cover instead of a stronger bunker facing away',()=>{
+  const s=fresh(),u={...structuredClone(s.units.s11),id:'enemy_cover',faction:'enemy',location:'r2c2',vof:'S',steps:[s.units.s11.steps[0]],mission_weapon:true};s.units[u.id]=u;s.units.s11.location='r1c2';
+  s.locations.r2c2.covers=[{id:'wrong_arc',type:'Bunker',value:3,capacity:3,arc:[1,0]},{id:'usable',type:'Trench',value:2,capacity:6}];
+  expect(selectEnemyCover(s,u,u.location,true)?.id).toBe('usable');
+ });
+
+ it('checks pinned/LAT, good-order units, then a Fire Team leader, once each',()=>{
+  const s=fresh();
+  for(const [id,kind,cohesion,pinned]of [['z_lat','LAT','F',true],['m_good','SQUAD','GOOD',false],['a_leader','LEADER','F',false]]){
+   s.units[id]={...structuredClone(s.units.s11),id,name:id,kind,cohesion,pinned,faction:'enemy',location:'r2c2',named:kind==='LEADER',steps:[{id:`${id}-step`,personnel:[]}],max_steps:1,fire:null,cover:null,used:[]};
+  }
+  enemyActivity(s);
+  expect(s.events.filter(e=>e.type==='ENEMY_ACTIVITY').map(e=>e.actor)).toEqual(['z_lat','m_good','a_leader']);
+ });
+
  it('uses Grenadier two-step firepower and the leader command side without a VOF',()=>{
   const profile=trevieres.enemy_counters.find(c=>c.id==='gr1');
   const u={...profile,steps:[{},{}],cohesion:'GOOD',faction:'enemy'};

@@ -1,6 +1,6 @@
 import {describe,it,expect} from 'vitest';
 import {trevieres} from '../src/scenarios/trevieres.js';
-import {createMission} from '../src/sim/company/engine.js';
+import {createMission,prepareReattempt} from '../src/sim/company/engine.js';
 import {ammoLoadReason,expendAmmunition,pickUpAmmunition,dropExcessAmmunition} from '../src/sim/company/ammunition.js';
 import {supportRequest} from '../src/sim/company/missionFeatures.js';
 import {cards} from '../src/sim/company/core.js';
@@ -55,7 +55,7 @@ describe('mission scoped Normandy supplies',()=>{
  });
  it('passes Grenadier machine-gun ammunition only to its final A fire team',()=>{
   const s=createMission(candidate,'breakdown'),profile=trevieres.enemy_counters[0];
-  const u={...profile,id:'enemy_fixture',counter_id:profile.id,name:'Grenadier fixture',faction:'enemy',location:'r2c2',steps:[1,2,3].map(n=>({id:`e${n}`,personnel:[]})),max_steps:3,cohesion:'GOOD',experience:'Line',radios:[],assets:{},saved:0,used:[],removed:null,pinned:false,cover:null,fire:null};
+  const u={...structuredClone(profile),id:'enemy_fixture',counter_id:profile.id,name:'Grenadier fixture',faction:'enemy',location:'r2c2',steps:[1,2,3].map(n=>({id:`e${n}`,personnel:[]})),max_steps:3,cohesion:'GOOD',experience:'Line',radios:[],assets:{},saved:0,used:[],removed:null,pinned:false,cover:null,fire:null};
   s.units[u.id]=u;
   applyHit(s,u,'F');
   expect(u.ammo.MG).toBe(6);
@@ -63,6 +63,19 @@ describe('mission scoped Normandy supplies',()=>{
   applyHit(s,u,'F');
   const children=Object.values(s.units).filter(v=>v.parent_counter_id===profile.id);
   expect(children.filter(v=>v.ammo?.MG).map(v=>v.ammo.MG)).toEqual([6]);
+ });
+ it('preserves an exhausted Grenadier MG slot through breakdown and finite reattempt resupply',()=>{
+  const s=createMission(candidate,'exhausted-breakdown'),profile=trevieres.enemy_counters[0];
+  const u={...structuredClone(s.units.s11),...structuredClone(profile),id:'enemy_fixture',counter_id:profile.id,faction:'enemy',location:'r2c2',steps:structuredClone(s.units.s11.steps),named:false,max_steps:3,initial_resources:{radios:[],assets:{},ammo:{MG:6}}};
+  s.units[u.id]=u;for(let n=0;n<6;n++)expendAmmunition(s,u,'MG');
+  applyHit(s,u,'F');applyHit(s,u,'F');
+  const team=Object.values(s.units).find(v=>v.parent_counter_id===profile.id&&v.fire_team_vof==='A');
+  expect(team.ammo).toEqual({MG:0});expect(vofOf(team)).toBe('S');
+  s.status='DEFEAT';const positions=Object.fromEntries(Object.values(s.units).filter(v=>v.faction==='friendly'&&v.steps.length&&!v.removed).map(v=>[v.id,'r0c2']));
+  const next=prepareReattempt(s,{positions}).state,restored=next.units[team.id];
+  expect(restored.ammo).toEqual({MG:6});expect(vofOf(restored)).toBe('A');
+  for(let n=0;n<6;n++)expect(expendAmmunition(next,restored,'MG')).toBe(true);
+  expect(expendAmmunition(next,restored,'MG')).toBe(false);expect(vofOf(restored)).toBe('S');
  });
  it('keeps the section ammunition with a surviving one-step mortar team',()=>{
   const s=createMission(candidate,'mortar-breakdown'),u=s.units.mortar_section;

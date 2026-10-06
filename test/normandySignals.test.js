@@ -2,10 +2,46 @@ import {describe,it,expect} from 'vitest';
 import {trevieres} from '../src/scenarios/trevieres.js';
 import {createMission,submitCommand,getPlayerView} from '../src/sim/company/engine.js';
 import {materializeScenario,SIGNAL_KEYS} from '../src/sim/company/missionSetup.js';
+import {seesCard} from '../src/sim/company/battlefield.js';
 import {cards} from '../src/sim/company/core.js';
 
 const candidate={...trevieres,readiness:{playable:true}};
 describe('Normandy pyrotechnic orders',()=>{
+ it.each([['RED_SIGNAL','red_signal',false],['RSP','rsp',true]])('respects smoke LOS while %s flare signaling reaches a distant unit', (action,key,aerial)=>{
+  const s=createMission(candidate,`signal-los-${key}`);
+  for(const l of Object.values(s.locations))if(!l.staging){l.elevation=1;l.smoke=false;l.borders={N:'white',S:'white',E:'white',W:'white',NE:'white',NW:'white',SE:'white',SW:'white'};}
+  s.units.co.location='r1c2';s.units.s11.location='r3c2';s.locations.r2c2.smoke=true;
+  s.units.s11.fire='r3c3';s.units.s11.assets={};s.units.co.assets[key]=1;s.signal_plan[key]='CF';
+  expect(seesCard(s,s.units.s11,'r1c2')).toBe(false);
+  s.phase='CO_ACTIVATION';s.impulse={id:'los-signal',hq:'co',commands:2,spent:0};
+  const r=submitCommand(s,{type:`PYRO_${action}`,unit_id:'co',issuer_id:'co',target_id:'r1c2'});
+  expect(r.accepted).toBe(true);expect(r.state.units.s11.fire).toBe(aerial?null:'r3c3');
+  expect(r.state.locations.r1c2.smoke).toBe(false);
+ });
+
+ it('rejects a pinned signal carrier without spending its device or command',()=>{
+  const s=createMission(candidate,'pinned-signal');s.units.co.pinned=true;
+  s.phase='CO_ACTIVATION';s.impulse={id:'pinned-signal',hq:'co',commands:2,spent:0};
+  const r=submitCommand(s,{type:'PYRO_RSP',unit_id:'co',issuer_id:'co',target_id:s.units.co.location});
+  expect(r.accepted).toBe(false);expect(r.state).toEqual(s);expect(s.units.co.assets.rsp).toBe(1);
+ });
+ it('does not move a pinned recipient across a phase line into fire',()=>{
+  const s=createMission(candidate,'pinned-recipient');s.signal_plan.rsp='XPL1';
+  s.units.s11.location='r0c1';s.units.s11.pinned=true;s.units.s12.location='r0c1';
+  s.units.fixture_enemy={...structuredClone(s.units.s21),id:'fixture_enemy',faction:'enemy',location:'r2c1',fire:'r1c1'};
+  s.fire=[{source:'fixture_enemy',origin:'r2c1',target:'r1c1',value:-1}];
+  s.phase='CO_ACTIVATION';s.impulse={id:'pinned-recipient',hq:'co',commands:2,spent:0};
+  const r=submitCommand(s,{type:'PYRO_RSP',unit_id:'co',issuer_id:'co',target_id:s.units.co.location});
+  expect(r.accepted).toBe(true);expect(r.state.units.s11.location).toBe('r0c1');expect(r.state.units.s12.location).toBe('r1c1');
+ });
+ it('cannot deploy a consumed device again in a later impulse',()=>{
+  const s=createMission(candidate,'consumed-signal');s.phase='CO_ACTIVATION';s.impulse={id:'signal-first',hq:'co',commands:2,spent:0};
+  const command={type:'PYRO_RSP',unit_id:'co',issuer_id:'co',target_id:s.units.co.location};
+  const r=submitCommand(s,command);expect(r.accepted).toBe(true);
+  r.state.impulse={id:'signal-second',hq:'co',commands:2,spent:0};
+  const again=submitCommand(r.state,command);expect(again.accepted).toBe(false);expect(again.state.units.co.assets.rsp).toBe(0);
+ });
+
  it('uses the configured phase line and validates its row before issuing a cross-line signal',()=>{
   const s=createMission(candidate,'phase-lines',{phase_lines:{1:2,2:3}});
   s.signal_plan.rsp='XPL1';s.units.s11.location='r1c1';

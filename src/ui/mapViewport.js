@@ -11,7 +11,7 @@ export function mapPoint(rect,frame,zoom) {
   return [(rect.left-frame.left+rect.width/2)/zoom,(rect.top-frame.top+rect.height/2)/zoom];
 }
 export function mapControls() {
-  return `<div class="map-controls" role="group" aria-label="Battlefield view controls"><button id="clear-selection" title="Clear inspection and LOS dimming; undiscovered terrain stays hidden">Reset LOS</button><div class="zoom-controls"><button id="zoom-out" aria-label="Zoom out">−</button><output id="zoom-level" aria-live="polite">100%</output><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-reset">Reset zoom</button></div><button id="focus-unit" title="Center the selected formation's terrain card">Find unit</button><button id="show-orders" class="mobile-map-link">Orders ↓</button></div>`;
+  return `<div class="map-controls" role="group" aria-label="Battlefield view controls"><button id="clear-selection" title="Clear inspection and LOS dimming; undiscovered terrain stays hidden">Reset LOS</button><div class="zoom-controls"><button id="zoom-out" aria-label="Zoom out">−</button><output id="zoom-level" aria-live="polite">100%</output><button id="zoom-in" aria-label="Zoom in">+</button><button id="zoom-reset">Reset zoom</button></div><button id="focus-unit" title="Center the selected formation's terrain card">Find unit</button><label class="command-layer-toggle"><input type="checkbox" id="command-links"> Command links</label><button id="show-orders" class="mobile-map-link">Orders ↓</button></div>`;
 }
 export function bindMapViewport(root,{camera,columns=4,selectedLocation,selectedUnit,onChange,onLayout}) {
   const viewport=root.querySelector('.map-viewport'),canvas=root.querySelector('.map-canvas'),world=root.querySelector('.map-layer');

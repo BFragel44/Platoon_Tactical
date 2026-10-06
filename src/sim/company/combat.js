@@ -3,6 +3,7 @@ import {latActivityTable} from './enemyHierarchy.js';
 import {availableCounters} from './missionContacts.js';
 import {expendAmmunition} from './ammunition.js';
 import {resolveMissionContact} from './missionContacts.js';
+import {reconstitutionFirepower,reconstitutionLoads,reconstitutionDonors} from './reconstitution.js';
 import { values, live, good, friendly, visible, emit, draw, attempt, randomNumber, pick, shuffle, dropLoad } from './core.js';
 import { adjacent, occupants, los, unitLos, coverAvailable, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire, movementReason,vofOf } from './battlefield.js';
 import { seekCover, rally, grenade, concentrate, move, splitTeam, infiltrationReason } from './actions.js';
@@ -19,14 +20,17 @@ export function casualty(s,u,step) {
 function loseAssets(s,u,casualtyLoss=true) {
   for(const net of u.radios) {
     const phone=net.endsWith('_PHONE'),destroyed=casualtyLoss&&randomNumber(s,2,`${u.name}: ${phone?'phone':'radio'} damage`,!visible(s,u))===1;
-    s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,location:u.location,...(s.mission_rules?.specialEnemies?{cover:u.cover}:{}),destroyed,faction:u.faction});
+    s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,source_unit:u.id,location:u.location,...(s.mission_rules?.specialEnemies?{cover:u.cover}:{}),destroyed,faction:u.faction});
     emit(s,'RADIO_LOST',`${u.name}: ${net} ${phone?'phone':'radio'} ${destroyed?'destroyed':'dropped for recovery'}.`,{actor:u.id,net,destroyed},!visible(s,u));
   }
   if(s.mission_rules?.specialEnemies)for(const [key,quantity] of Object.entries(u.assets))if(quantity){
-    s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,location:u.location,cover:u.cover,faction:u.faction});
+    s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
     emit(s,'ASSETS_DROPPED',`${u.name}: carried equipment dropped for recovery.`,{actor:u.id,location:u.location,key,quantity},!visible(s,u));
   }
-  if(s.mission_rules?.ammo==='tracked')for(const [key,quantity] of Object.entries(u.ammo??{}))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'AMMO',key,quantity,location:u.location,cover:u.cover,faction:u.faction});
+  if(s.mission_rules?.ammo==='tracked')for(const [key,quantity] of Object.entries(u.ammo??{}))if(quantity){
+    if(casualtyLoss)emit(s,'AMMO_LOST',`${visible(s,u)?u.name:'Enemy formation'}: carried ammunition lost with the final casualty.`,{actor:visible(s,u)?u.id:null,location:u.location,key,quantity:visible(s,u)?quantity:null},!visible(s,u));
+    else s.assets.push({id:`asset_${s.next_id++}`,type:'AMMO',key,quantity,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
+  }
   u.radios=[];u.assets={};if(s.mission_rules?.ammo==='tracked')u.ammo={};u.saved=0;
   for(const c of s.casualties.filter(c=>c.carrier===u.id))c.carrier=null;
 }
@@ -51,7 +55,7 @@ export function applyHit(s,u,letters) {
     }
   }
   if(u.steps.length===1&&u.kind==='SQUAD'){const child=splitTeam(s,u,'F',u.steps.pop());if(s.mission_rules?.specialEnemies&&u.last_step_vof)child.fire_team_vof=u.last_step_vof;
-    if(s.mission_rules?.ammo==='tracked'&&child.fire_team_vof==='A'&&u.ammo?.MG){child.ammo={MG:u.ammo.MG};child.initial_resources.ammo={MG:u.initial_resources?.ammo?.MG??u.ammo.MG};u.ammo.MG=0;}
+    if(s.mission_rules?.ammo==='tracked'&&child.fire_team_vof==='A'&&u.ammo?.MG!==undefined){child.ammo={MG:u.ammo.MG};child.initial_resources.ammo={MG:u.initial_resources?.ammo?.MG??u.ammo.MG};u.ammo.MG=0;}
     child.pinned=true;affected.push(child);if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[child.id]={id:child.id};}
   if(s.mission_rules?.ammo==='tracked'&&u.kind==='MORTAR'&&u.max_steps===3&&u.steps.length===1){
     const child=mortarBreakdownTeam(s,u,u.steps.pop(),'GOOD');u.ammo={};affected.push(child);
@@ -66,7 +70,7 @@ export function applyHit(s,u,letters) {
        recipient.initial_resources.radios=structuredClone(u.initial_resources?.radios??u.radios);
        recipient.initial_resources.assets=structuredClone(u.initial_resources?.assets??u.assets);
       }
-      if(s.mission_rules?.ammo==='tracked'&&recipient.fire_team_vof==='A'&&u.ammo?.MG){recipient.ammo={MG:u.ammo.MG};u.ammo.MG=0;}
+      if(s.mission_rules?.ammo==='tracked'&&recipient.fire_team_vof==='A'&&recipient.ammo?.MG===undefined&&u.ammo?.MG!==undefined){recipient.ammo={MG:u.ammo.MG};u.ammo.MG=0;}
       for(const c of s.casualties.filter(c=>c.carrier===u.id))c.carrier=recipient.id;
       u.radios=[];u.assets={};u.saved=0;
       emit(s,'ASSETS_TRANSFERRED',`${u.name}: carried items remain with the final surviving team.`,{actor:u.id,recipient:recipient.id,location:u.location},!visible(s,u));
@@ -194,6 +198,17 @@ export function resolveContacts(s,contactId=null) {
     refresh(s);
   }
 }
+export function selectEnemyCover(s,u,location=u.location,advancing=false){
+ const candidates=s.locations[location].covers.filter(c=>coverAvailable(s,u,c,location));
+ const score=c=>{
+  const probe={...u,location,cover:c.id,exposed:false},state={...s,units:{...s.units,[u.id]:probe}};
+  if(advancing)return values(state.units).some(v=>friendly(v)&&live(v)&&canFire(state,probe,v.location))?c.value:-Infinity;
+  return combatExposure(state,probe)?.total??c.value;
+ };
+ const best=Math.max(...candidates.map(score));
+ const choices=candidates.filter(c=>score(c)===best&&best!==-Infinity);
+ return choices.length?pick(s,choices,'Enemy cover priority',!visible(s,u)):null;
+}
 function fallBack(s,u) {
   if(u.exposed||u.mine_hit)return;
   const from=s.locations[u.location];
@@ -205,9 +220,10 @@ function fallBack(s,u) {
   possible.sort((a,b)=>Number(seen(a))-Number(seen(b))||protection(b)-protection(a));
   const best=possible.filter(l=>seen(l)===seen(possible[0])&&protection(l)===protection(possible[0]));
   move(s,u,pick(s,best,'Retreat destination',!visible(s,u)).id);
+  if(s.mission_rules?.enemyActivity==='normandy')u.cover=selectEnemyCover(s,u)?.id??null;
 }
 function enemyCover(s,u) {
-  const cover=s.locations[u.location].covers.filter(c=>coverAvailable(s,u,c)).sort((a,b)=>b.value-a.value)[0];
+  const cover=s.mission_rules?.enemyActivity==='normandy'?selectEnemyCover(s,u):s.locations[u.location].covers.filter(c=>coverAvailable(s,u,c)).sort((a,b)=>b.value-a.value)[0];
   if(cover){u.cover=cover.id;u.exposed=true;}else seekCover(s,u);
 }
 function attack(s,u) {
@@ -226,7 +242,7 @@ export function enemyActivity(s) {
   const processed=new Set();
   for(const loc of shuffle(s,locations)) {
     const normandy=s.mission_rules?.enemyActivity==='normandy';
-    const units=occupants(s,loc).filter(u=>!friendly(u)).sort((a,b)=> (normandy?(!good(a)?0:a.kind==='LEADER'?2:1)-(!good(b)?0:b.kind==='LEADER'?2:1):Number(good(a))-Number(good(b)))||a.id.localeCompare(b.id));
+    const units=occupants(s,loc).filter(u=>!friendly(u)).sort((a,b)=> (normandy?(a.kind==='LEADER'?2:!good(a)?0:1)-(b.kind==='LEADER'?2:!good(b)?0:1):Number(good(a))-Number(good(b)))||a.id.localeCompare(b.id));
     for(const u of units) {
       if(!live(u)||processed.has(u.id)||u.event_acted===s.turn)continue;
       processed.add(u.id);
@@ -241,7 +257,7 @@ export function enemyActivity(s) {
       const localCasualty=casualties.find(c=>c.location===u.location&&c.cover===u.cover);
       const seenCasualties=casualties.filter(c=>unitLos(s,u,c.location));
       const leader=normandy&&occupants(s,u.location).some(v=>v.kind==='LEADER'&&good(v)&&v.cover===u.cover);
-      const teams=occupants(s,u.location).filter(v=>v.faction===u.faction&&!v.pinned&&v.kind==='LAT'&&['A','F'].includes(v.cohesion)&&v.cover===u.cover);
+      const teams=occupants(s,u.location).filter(v=>v.faction===u.faction&&!v.pinned&&(normandy?v.steps.length===1:v.kind==='LAT')&&['A','F'].includes(v.cohesion)&&v.cover===u.cover);
       const roll=n=>randomNumber(s,n,`${u.name}: activity`,!visible(s,u));
       const canFallBack=!u.exposed&&!u.mine_hit&&(s.locations[u.location].row>=(s.boundaries?.rows??3)||s.locations[u.location].col<1||s.locations[u.location].col>(s.boundaries?.columns??4)||adjacent(s,u.location).some(l=>l.row>s.locations[u.location].row&&!movementReason(s,u,l.id)));
       const choices=list=>{
@@ -250,7 +266,7 @@ export function enemyActivity(s) {
           if(a==='COVER')return (s.locations[u.location].covers.some(c=>coverAvailable(s,u,c))||!u.cover&&s.locations[u.location].covers.filter(c=>c.discovered&&!c.parent).length<s.locations[u.location].cover_limit);
           if(a==='SHIFT')return !['Bunker','Pillbox'].includes(coverOf(s,u)?.type)&&incoming(s,u).some(f=>canFire(s,u,f.origin));
           if(a==='ADVANCE')return adjacent(s,u.location).some(l=>!l.staging&&!movementReason(s,u,l.id));
-          if(a==='RECONSTITUTE')return availableCounters(s,'SQUAD').length>0;
+          if(a==='RECONSTITUTE')return availableCounters(s,'SQUAD').some(p=>!normandy||reconstitutionFirepower(p,reconstitutionDonors(p,teams)));
           if(a==='SEEK_CASUALTY')return !u.mine_hit&&seenCasualties.some(c=>c.location===u.location?(!c.cover||coverAvailable(s,u,s.locations[u.location].covers.find(v=>v.id===c.cover))):adjacent(s,u.location).some(l=>!movementReason(s,u,l.id)&&distance(l,s.locations[c.location])<distance(s.locations[u.location],s.locations[c.location])));
           if(a==='ATTACK')return same||!!u.fire&&occupants(s,u.fire).some(v=>v.faction!==u.faction);
           return true;
@@ -295,10 +311,12 @@ export function enemyActivity(s) {
       if(action==='RALLY')rally(s,u);
       if(action==='RECOVER')rally(s,u,u,true);
       if(action==='RECONSTITUTE'){
-       const profile=pick(s,availableCounters(s,'SQUAD').filter(p=>p.vof==='S'||teams.some(v=>v.cohesion==='A'||v.fire_team_vof==='A')),'Enemy reconstitution counter',!visible(s,u));
+       const profiles=availableCounters(s,'SQUAD').filter(p=>!normandy? p.vof==='S'||teams.some(v=>v.cohesion==='A'||v.fire_team_vof==='A'):reconstitutionFirepower(p,reconstitutionDonors(p,teams)));
+       const profile=profiles.length?pick(s,profiles,'Enemy reconstitution counter',!visible(s,u)):null;
        if(profile&&attempt(s,u,2,'rally','Enemy squad reconstitution',!visible(s,u))){
-        const donors=teams.slice(0,profile.steps),id=`enemy_${s.next_id++}`,steps=donors.flatMap(v=>v.steps);
+        const donors=normandy?reconstitutionDonors(profile,teams):teams.slice(0,profile.steps),id=`enemy_${s.next_id++}`,steps=donors.flatMap(v=>v.steps);
         s.units[id]={...structuredClone(profile),id,counter_id:profile.id,max_steps:profile.steps,faction:'enemy',platoon:null,location:u.location,cover:u.cover,steps,cohesion:'GOOD',experience:'Green',original_experience:'Green',pinned:false,exposed:false,radios:[],assets:{},ammo:donors.reduce((all,v)=>{for(const [key,n]of Object.entries(v.ammo??{}))all[key]=(all[key]??0)+n;return all;},{}),initial_resources:{radios:[],assets:{},ammo:structuredClone(profile.ammo??{})},saved:0,used:[],fire:null,indirect:null,removed:null,named:false,mission_weapon:true,contact_type:u.contact_type};
+        if(normandy)reconstitutionLoads(s,s.units[id],donors);
         for(const v of donors){v.steps=[];v.removed='RECONSTITUTED';processed.add(v.id);if(s.knowledge.spotted[v.id])s.knowledge.spotted[id]={id};}
         processed.add(id);emit(s,'FORMATION_RECONSTITUTED','Enemy squad reconstituted from limited-action teams.',{actor:id,contributors:donors.map(v=>v.id)},!visible(s,s.units[id]));
        }
@@ -326,7 +344,7 @@ export function enemyActivity(s) {
          const forward=s.locations[u.location].row>1?legal.filter(l=>l.row===s.locations[u.location].row-1&&l.col===s.locations[u.location].col):legal.filter(l=>near(l)<near(s.locations[u.location]));
          const minimum=Math.min(...forward.map(near));dest=forward.length?pick(s,forward.filter(l=>near(l)===minimum),'Enemy infiltration fallback',!visible(s,u)):null;
         }
-        if(dest)move(s,u,dest.id,infiltrate);
+        if(dest){move(s,u,dest.id,infiltrate);if(normandy)u.cover=selectEnemyCover(s,u,u.location,true)?.id??null;}
       }
       if(action==='HIDE') {
         u.removed='HIDDEN';u.fire=null;

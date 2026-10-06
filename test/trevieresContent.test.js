@@ -51,9 +51,10 @@ describe('Trévières authored source data',()=>{
   const reassigned=previewMissionSetup(trevieres,'source-review',{mortar_mode:'teams',mortar_radio_recipient:'s11',command_network:'phones'});
   expect(reassigned.units.find(u=>u.id==='s11').radios).toContain('CO_PHONE');
  });
- it('shows the authored candidate while rejecting a playable launch',()=>{
+ it('launches the accepted authored mission while retaining explicit gate validation',()=>{
   expect(missionCatalog.find(m=>m.id==='normandy_1').scenario).toBe(trevieres);
-  expect(()=>createMission(trevieres,'blocked')).toThrow('not playable');
+  expect(createMission(trevieres,'accepted').scenario_id).toBe('normandy_1');
+  expect(()=>createMission({...trevieres,readiness:{playable:false,missing:['Synthetic gate']}},'blocked')).toThrow('not playable');
  });
  it('rejects an unsupported package profile before a mission starts',()=>{
   const invalid=structuredClone(trevieres);invalid.packages[9].units[0].kind='UNAUTHORED_GUN';

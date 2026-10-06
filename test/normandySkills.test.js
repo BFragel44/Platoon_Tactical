@@ -1,14 +1,69 @@
 import {describe,it,expect} from 'vitest';
 import {trevieres} from '../src/scenarios/trevieres.js';
-import {createMission,submitCommand,prepareReattempt,endTurn,exportReplay,replayMission} from '../src/sim/company/engine.js';
+import {createMission,submitCommand,prepareReattempt,endTurn,exportReplay,replayMission,advancePhase} from '../src/sim/company/engine.js';
 import {buySkills,skillOptions} from '../src/sim/company/skills.js';
 import {attempt,cards} from '../src/sim/company/core.js';
-import {concentrate} from '../src/sim/company/actions.js';
+import {concentrate,grenade} from '../src/sim/company/actions.js';
 import {supportRequest} from '../src/sim/company/missionFeatures.js';
 const candidate={...trevieres,readiness:{playable:true}};
 const fresh=()=>createMission(candidate,'skills');
 const enemy=s=>{const u={...structuredClone(s.units.s11),id:'enemy_fixture',faction:'enemy',location:'r1c1'};s.units[u.id]=u;s.knowledge.spotted[u.id]=true;return u;};
 describe('attempt-local skills',()=>{
+ it('reserves Auto Grenade for its own free return, still draws cards, and leaves the opponent unaffected',()=>{
+  const original=fresh();buySkills(original,[{holder:'hq1',type:'AUTO_GRENADE'}],1);
+  original.phase='GENERAL_INITIATIVE';original.impulse={id:'return-fixture',hq:'general',commands:0,spent:0};
+  const r=submitCommand(original,{type:'SKILL_GRENADE_RETURN',unit_id:'s11',issuer_id:'co'});
+  expect(r.accepted).toBe(true);const s=r.state,u=s.units.s11;
+  expect(s.impulse.commands).toBe(0);expect(s.skills[0].used).toBe(false);
+  s.impulse=null;
+  const miss=Object.values(cards).find(c=>c.id!==51&&!c.grenade&&!c.spot).id;
+  s.deck.order=Array(20).fill(miss).concat(s.deck.order);
+  attempt(s,u,2,'spot','unrelated automatic attempt');expect(s.skills[0].used).toBe(false);
+  const attacker=enemy(s);attacker.location=u.location;
+  for(const v of Object.values(s.units))if(v.faction==='friendly'&&v.id!==u.id)v.location='r0c4';
+  const before=s.deck.draws;grenade(s,attacker,u);
+  expect(s.deck.draws-before).toBe(4);expect(s.skills[0].used).toBe(true);
+  const attacks=s.events.filter(e=>e.type==='GRENADE_ATTEMPT');
+  expect(attacks).toHaveLength(2);
+  expect(attacks[0].success).toBe(false);expect(attacks[1].success).toBe(true);
+  expect(s.markers.filter(m=>m.type==='GRENADE').map(m=>m.source)).toEqual([u.id]);
+  expect(s.automatic_skills[u.id]).toBeUndefined();
+ });
+
+ it.each([['EXTRA_DRAW','SKILL_EXTRA_AUTOMATIC'],['AUTO_GRENADE','SKILL_GRENADE_RETURN']])('replays %s assignment after paid second-attempt preparation',(type,action)=>{
+  let s=createMission(candidate,'auto-replay-1');for(let n=0;n<10;n++)s=endTurn(s).state;
+  const positions=Object.fromEntries(Object.values(s.units).filter(u=>u.faction==='friendly'&&u.steps.length&&!u.removed).map(u=>[u.id,'r0c2']));
+  s=prepareReattempt(s,{positions,skills:[{holder:'hq1',type}]}).state;
+  while(!s.impulse)s=advancePhase(s).state;
+  const r=submitCommand(s,{type:action,unit_id:'s11',issuer_id:s.impulse.hq});
+  expect(r.accepted).toBe(true);s=r.state;
+  expect(replayMission(candidate,exportReplay(s))).toEqual(s);
+  expect(s.attempt_records[1].starting_state.automatic_skills).toEqual({});
+  expect(s.automatic_skills.s11).toBe(s.skills[0].id);
+ },20000);
+ it('assigns Extra Draw for free without drawing or consuming it until an automatic return',()=>{
+  const original=fresh();buySkills(original,[{holder:'hq1',type:'EXTRA_DRAW'}],1);
+  original.phase='GENERAL_INITIATIVE';original.impulse={id:'auto-fixture',hq:'general',commands:0,spent:0};
+  const before=original.deck.draws;
+  const r=submitCommand(original,{type:'SKILL_EXTRA_AUTOMATIC',unit_id:'s11',issuer_id:'co'});
+  expect(r.accepted).toBe(true);let s=r.state;
+  expect(s.deck.draws).toBe(before);expect(s.skills[0].used).toBe(false);expect(s.impulse.commands).toBe(0);
+  expect(skillOptions(s,s.units.s12,'SPOT')).toHaveLength(0);
+  const attacker=enemy(s);attacker.location=s.units.s11.location;
+  s.phase='ENEMY_ACTIVITY';s.impulse=null;
+  for(const u of Object.values(s.units))if(u.faction==='friendly'&&u.id!=='s11')u.location='r0c4';
+  const draws=s.deck.draws;grenade(s,attacker,s.units.s11);
+  expect(s.deck.draws-draws).toBe(5); // Line attacker 2, Line return 2 + skill 1.
+  expect(s.skills[0].used).toBe(true);expect(s.automatic_skills.s11).toBeUndefined();
+  expect(s.events.filter(e=>e.type==='SKILL_USED'&&e.automatic)).toHaveLength(1);
+ });
+ it('ignores a reserved skill when its holder has been lost',()=>{
+  const s=fresh();buySkills(s,[{holder:'hq1',type:'EXTRA_DRAW'}],1);
+  s.automatic_skills.s11=s.skills[0].id;s.units.hq1.removed='LOST';
+  const before=s.deck.draws;attempt(s,s.units.s11,2,'grenade','lost holder');
+  expect(s.deck.draws-before).toBe(2);expect(s.skills[0].used).toBe(false);
+  expect(s.automatic_skills.s11).toBeUndefined();
+ });
  it('adds a skill draw to the published artillery caller draw and retains it after an invalid no-draw order',()=>{
   const s=fresh(),u=s.units.artyfo;s.active_skill={actor:u.id,extra:true};
   const before=s.deck.draws;supportRequest(s,u,'artillery','HE','r1c2');

@@ -6,6 +6,25 @@ import {attempt,cards} from '../src/sim/company/core.js';
 
 const candidate={...trevieres,readiness:{playable:true}};
 describe('Normandy higher HQ event choices',()=>{
+ it('selects the senior command-side visitor even when pinned',()=>{
+  const s=createMission(candidate,'senior-visitor');
+  for(const [id,priority,pinned]of [['a_junior',2,false],['z_senior',0,true]])s.units[id]={...structuredClone(s.units.co),id,command_role:'higher_hq',capabilities:{higher_priority:priority},pinned};
+  s.phase='DEFENSIVE_ACTIVITY';const next=advancePhase(s).state;
+  expect(next.impulse).toMatchObject({hq:'z_senior',commands:6});
+ });
+ it('does not fall back to off-map BN activation while a visitor is on its Fire Team side',()=>{
+  const s=createMission(candidate,'visitor-fire');s.units.visitor={...structuredClone(s.units.co),id:'visitor',command_role:'higher_hq',cohesion:'F'};
+  s.phase='BN_ACTIVATION';s.impulse=null;
+  const next=advancePhase(s).state;expect(next.activated).not.toContain('co');
+ });
+ it('keeps a visitor for its triggering turn and the next turn only',()=>{
+  let s=createMission(candidate,'visitor-expiry');s.turn=2;
+  s.units.visitor={...structuredClone(s.units.co),id:'visitor',command_role:'higher_hq',expires_turn:3};
+  s.phase='CLEANUP';s.impulse=null;s=advancePhase(s).state;
+  expect(s.turn).toBe(3);expect(s.units.visitor.removed).toBeNull();
+  s.phase='CLEANUP';s.impulse=null;s=advancePhase(s).state;
+  expect(s.turn).toBe(4);expect(s.units.visitor.removed).toBe('DEPARTED');
+ });
  it('makes rally attempts under fire and upgrades a Fire LAT to Assault, not a full unit',()=>{
   const s=createMission(candidate,'rally-event');s.turn=2;
   const pinned={...structuredClone(s.units.s11),id:'pinned_enemy',faction:'enemy',location:'r2c2',pinned:true};
