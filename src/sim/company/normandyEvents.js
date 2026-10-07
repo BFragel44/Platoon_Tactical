@@ -1,3 +1,4 @@
+import {applyPatrolEvent} from './patrolEvents.js';
 import {values,live,friendly,emit,draw,randomNumber,pick} from './core.js';
 import {occupants,refresh} from './battlefield.js';
 import {rally} from './actions.js';
@@ -16,7 +17,7 @@ export function resolveNormandyEvent(s,side,choice={}){
  }else{
   if(s.turn===1)return emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event on turn 1.`);
   if(!draw(s,1,`${side} higher HQ event check`)[0].hq)return emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event.`);
-  const table=side==='friendly'?(s.turn<=6?FRIENDLY_EARLY:FRIENDLY_LATE):ENEMY;
+  const table=side==='friendly'?((s.turn<=6?s.mission_rules.friendly_event_tables?.early:s.mission_rules.friendly_event_tables?.late)??(s.turn<=6?FRIENDLY_EARLY:FRIENDLY_LATE)):(s.turn<=6?s.mission_rules.enemy_event_tables?.early:s.mission_rules.enemy_event_tables?.late)??ENEMY;
   code=table[randomNumber(s,10,`${side} higher HQ event`)-1];
   event={side,code,turn:s.turn,lead:leadRow(s),completed:false};s.hq_events.push(event);
   if(code==='RESUPPLY'&&!choice.ammo_type){s.pending_event={side,code,turn:s.turn};emit(s,'HQ_EVENT_CHOICE_REQUIRED','Choose one ammunition type and a Row 1 resupply card.',{side,code});return event;}
@@ -75,7 +76,8 @@ export function resolveNormandyEvent(s,side,choice={}){
    s.enemy_tactics='offensive_assault';s.counterattack_ends_after=s.turn+2;
   }
  }
- emit(s,'HQ_EVENT',`${side} higher HQ: ${code.replaceAll('_',' ').toLowerCase()}.`,{side,code,turn:s.turn,...(event.choice??{}),lead:event.lead,...(event.placements?{placements:event.placements}:{}),counterattack_ends_after:s.counterattack_ends_after??null});
+ applyPatrolEvent(s,side,code,event);
+ emit(s,'HQ_EVENT',`${side} higher HQ: ${code.replaceAll('_',' ').toLowerCase()}.`,{side,code,turn:s.turn,...(event.choice??{}),lead:event.lead,...(event.waypoint!==undefined?{waypoint:event.waypoint,ignored:event.ignored}:{}),...(event.placements?{placements:event.placements}:{}),counterattack_ends_after:s.counterattack_ends_after??null});
  refresh(s);
  return event;
 }

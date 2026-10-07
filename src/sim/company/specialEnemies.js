@@ -25,7 +25,7 @@ export function specialActivity(s,u,fallBack){
  }
  if(u.kind!=='SPOTTER')return false;
  if(u.placed_turn===s.turn)return true;
- if(u.missions_remaining===0)return true;
+ if(u.missions_remaining===0){if(u.subsequent_draws){u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW','Enemy spotter exhausted its fire missions.',{actor:u.id,location:u.location},!visible(s,u));}return true;}
  const candidates=values(s.locations).filter(l=>!l.staging&&seesCard(s,u,l.id)&&occupants(s,l.id).some(friendly));
  if(!candidates.length)return true;
  const agency=u.spotter_agency??'enemy_mortar',registered=s.registered_targets[agency];
@@ -33,8 +33,8 @@ export function specialActivity(s,u,fallBack){
  candidates.sort((a,b)=>Number(b.id===registered)-Number(a.id===registered)||steps(b)-steps(a)||range(a)-range(b));
  const best=candidates[0],equals=candidates.filter(l=>(l.id===registered)===(best.id===registered)&&steps(l)===steps(best)&&range(l)===range(best));
  let target=pick(s,equals,'Enemy spotter target',true).id;
- const count=s.mission_rules?.ammo==='tracked'&&u.calls_made>0?(agency==='enemy_artillery'?3:4):2+Number(target===registered);
- const cards=draw(s,count,'Enemy spotter call for fire',true),short=cards.some(c=>c.short);
+ const count=s.mission_rules?.ammo==='tracked'&&u.calls_made>0?(u.subsequent_draws??(agency==='enemy_artillery'?3:4)):2+Number(target===registered);
+ const cards=draw(s,count+(u.subsequent_draws?Number(target===registered):0),'Enemy spotter call for fire',true),short=cards.some(c=>c.short);
  if(short||cards.some(c=>c.burst)){
   if(short)target=shortRoundDestination(s,u,target,true);
   s.support.push({id:`support_${s.next_id++}`,source:u.id,agency,ammo:'HE',location:target,status:'PENDING',value:agency==='enemy_artillery'?-4:-3});s.registered_targets[agency]=target;

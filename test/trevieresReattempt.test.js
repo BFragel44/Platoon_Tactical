@@ -46,7 +46,7 @@ describe('Trévières reattempt state',()=>{
   expect(replayMission(candidate,exportReplay(next)).units.s11.steps).toEqual(next.units.s11.steps);
   const altered=exportReplay(next);altered.attempt_records[0].starting_state.turn=99;
   expect(()=>replayMission(candidate,altered)).toThrow('starting record mismatch');
-  expect(()=>prepareReattempt(next,{positions})).toThrow('No Trévières reattempt');
+  expect(()=>prepareReattempt(next,{positions})).toThrow('No mission reattempt');
  },20000);
  it('repositions existing phone lines without duplicating the four-line pool',()=>{
   const s=createMission(candidate,'phone-reattempt',{command_network:'phones'});

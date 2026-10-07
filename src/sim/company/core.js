@@ -1,3 +1,4 @@
+import {recordPatrolMovement} from './patrols.js';
 import data from './actionDeckData.json' with { type: 'json' };
 import { drawRandom } from '../rng.js';
 import {skillOptions} from './skills.js';
@@ -11,7 +12,9 @@ export const visible = (s,u) => friendly(u) || s.knowledge.spotted[u.id];
 export function emit(s, type, text, details = {}, hidden = false) {
   const event = { id: `event_${s.events.length+1}`, sequence: s.events.length+1, turn: s.turn,
     phase: s.phase, impulse: s.impulse?.id ?? null, type, text, ...details, hidden };
-  s.events.push(event); return event;
+  s.events.push(event);
+  if(type==='UNIT_MOVED'&&s.patrol&&s.units[details.actor])s.patrol=recordPatrolMovement(s.patrol,s.units[details.actor],details.from,details.target,s.locations);
+  return event;
 }
 export function shuffle(s, items) {
   const result = [...items];

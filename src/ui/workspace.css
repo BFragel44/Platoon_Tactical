@@ -92,3 +92,35 @@
 
 
 .potential-contact-counter.question-side strong{color:#ffdf62}
+
+/* Patrol counter lettering fits the existing counter footprint. */
+.objective-marker.route strong{font-size:14px;line-height:1.2}
+.objective-marker.concentration strong{font-size:8px;line-height:1.2;white-space:nowrap}
+.mlr-boundary{display:flex;align-items:center;gap:12px;color:#ffe194;font-size:12px;font-weight:700;min-height:28px;padding:3px 0}
+.mlr-boundary::before,.mlr-boundary::after{content:'';height:4px;background:#e1c779;flex:1;min-width:24px;box-shadow:0 0 0 1px #17231d}
+.mlr-boundary span{background:#17231d;border:1px solid #e1c779;padding:4px 10px;text-align:center}
+
+/* Phase-only controls occupy spare header space, never an extra header row. */
+.header-phase{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,auto) minmax(150px,1fr);align-items:center;gap:12px;min-height:88px}
+.header-phase-title{min-width:0}.header-phase-title>p{font-size:11px;color:#e7d69a;margin-top:5px}
+.header-phase-controls{font-size:11px;min-width:0;max-height:80px;overflow:visible;text-align:center}
+.header-phase-controls strong{font-size:21px;color:#ded39a}
+.header-phase-controls label{display:block;font-size:11px;line-height:1.3}
+.header-phase-controls select{display:block;width:100%;margin-top:5px;font-size:12px;padding:6px}
+.header-phase-controls .command-arithmetic{margin:5px 0 0;padding:0;border:0}
+.header-phase-controls .command-arithmetic summary{font-size:10px}
+.header-phase-controls .command-arithmetic .header-popover{position:absolute;top:100%;right:0;z-index:50;text-align:left}
+@media(max-width:1100px){.header-phase{grid-template-columns:minmax(0,1fr) 150px}.header-phase-spacer{display:none}}
+@media(max-width:750px){.header-phase{grid-template-columns:minmax(0,1fr) 140px;min-height:88px;gap:8px}.header-phase-title h1{font-size:15px}.header-phase-controls{font-size:10px}.header-phase-controls select{font-size:11px}}
+
+.header-phase-controls label:has(#guard-remainder){width:max-content;max-width:100%;margin-inline:auto}
+.header-phase-controls #guard-remainder{width:100%;min-width:0}
+
+.compact-header .command-mat .hq-reserve{background:#292d2c;border-color:#515957;color:#afb7b3}
+.compact-header .command-mat .hq-reserve b,.compact-header .command-mat .hq-reserve small,.compact-header .command-mat .hq-reserve .hq-capability{color:#afb7b3}
+
+.objective-marker.cop strong{font-size:14px;line-height:1.2}
+
+.route-completed{align-self:center;color:#bce0bf;background:#24392e;border:1px solid #719778;padding:4px 6px;font-size:11px;white-space:nowrap}
+.patrol-route-checklist{display:flex;gap:8px 18px;flex-wrap:wrap;list-style:none;padding:0;margin:6px 0 0;font-size:11px}
+.patrol-route-checklist .complete{color:#bce0bf}

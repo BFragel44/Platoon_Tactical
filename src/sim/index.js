@@ -14,6 +14,6 @@ export const resolveCombat = (state,resolutionId) => isCompany(state)?company.re
 export const getPlayerView = (state,...args) => (isCompany(state)?company:legacyView).getPlayerView(state,...args);
 export const getVisibleEvents = (state,...args) => (isCompany(state)?company:legacyView).getVisibleEvents(state,...args);
 export const getAfterActionReport = (state,...args) => (isCompany(state)?company:legacyView).getAfterActionReport(state,...args);
-export { selectHQ, exportReplay, replayMission, compareReplay, prepareReattempt, declineReattempt } from './company/engine.js';
+export { resolveSupportChoice,selectHQ, exportReplay, replayMission, compareReplay, prepareReattempt, preparePatrol, declineReattempt } from './company/engine.js';
 export { createCommandRecord, createFactionKnowledge, createFireRelationshipRecord } from './records.js';
 export { createRng, drawRandom } from './rng.js';

@@ -1,0 +1,8 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>St. Georges development UI fixture</title><body><main id="app"><h1>St. Georges development UI fixture</h1><p>Isolated synthetic fixture. It does not save or change a company roster.</p><button id="prepare">Prepare next patrol</button><p id="outcome" role="status"></p></main><script type="module">
+import '/src/style.css';import '/src/ui/company.css';import '/src/ui/workspace.css';
+import {stGeorges} from '/src/scenarios/stGeorges.js';
+import {createMission,checkObjective,getPlayerView} from '/src/sim/company/engine.js';
+import {openPatrolSetup} from '/src/ui/reattemptSetup.js';
+const state=createMission({...stGeorges,readiness:{playable:true}},'ui-fixture');state.turn=10;checkObjective(state);
+const root=document.querySelector('#app');document.querySelector('#prepare').onclick=()=>openPatrolSetup(root,state,next=>{const view=getPlayerView(next);document.querySelector('#outcome').textContent=`Patrol ${next.attempt_number}: Platoon ${view.patrol.plan.platoon}; Moon +${view.visibility.light}; ${view.patrol.visited.length}/4 route points. ${next.attempt_records.length} immutable starts.`;});
+</script></body></html>

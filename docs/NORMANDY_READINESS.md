@@ -1,6 +1,6 @@
 # Normandy — next delivery gates
 
-KUTF standalone playability is accepted. Normandy 1: Trévières standalone playability is accepted as of October 5, 2026 and enabled in normal mission selection. Connected campaign progression and vehicles remain deferred.
+KUTF standalone playability is accepted. Normandy 1: Trévières standalone playability is accepted as of October 5, 2026 and enabled in normal mission selection. Standalone Normandy 2: Cerisy is accepted October 6, 2026 and normally selectable at rules 26/content 1; see [Cerisy readiness](CERISY_READINESS.md) for source checks, fixtures and release evidence. Connected campaign progression and vehicles remain deferred.
 
 ## Accepted standalone mission
 
@@ -84,6 +84,8 @@ Acceptance: KUTF/course deterministic regressions remain intact; a synthetic mis
 - [x] Data/profiles verified against the supplied Normandy PDF; complete deterministic runs, focused fixtures and accepted user playthrough; normal selection enabled October 5, 2026.
 
 ## 3. Connected campaign
+
+Standalone Mission 3 work started October 6, 2026 after Cerisy acceptance. See [St. Georges readiness](ST_GEORGES_READINESS.md) for its visually checked sources, authored content, tested patrol/visibility foundation and remaining execution/release gates. This does not enable connected progression or normal M3 selection.
 
 - [ ] Source-checked casualties, experience, promotions, replacements and between-mission reconstitution.
 - [ ] Progression, reattempts, retained terrain/scouting and immutable debrief history.

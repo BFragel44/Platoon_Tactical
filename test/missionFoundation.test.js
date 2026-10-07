@@ -55,7 +55,7 @@ describe('Mission foundation and development gates',()=>{
   let s=createMission(draft,'keep-1',setup);s=endTurn(s).state;s=abortMission(s).state;
   expect(exportReplay(s).setup).toEqual(setup);expect(replayMission(draft,exportReplay(s))).toEqual(s);
   expect(resumeCheckpoint(draft,checkpoint(s,{combatStage:'result'}))).toEqual({state:s,presentation:{combatStage:'result'}});
-  expect(getAfterActionReport(s)).toMatchObject({scenario:keepUpTheFire.id,scenario_version:12,rules_version:25,setup});
+  expect(getAfterActionReport(s)).toMatchObject({scenario:keepUpTheFire.id,scenario_version:12,rules_version:27,setup});
  });
  it('rejects unknown setup data and invalid tactical controls or attachments',()=>{
   for(const setup of [{positions:{ghost:'r0c1'}},{objectives:{primary:'r4c3'}},{objectives:{attack:'r2c1'}},{assignments:{mg1:{platoon:0}}},{positions:{co:'r1c1'}},{assets:{co:{smoke:999}}}])expect(()=>materializeScenario(keepUpTheFire,'x',setup)).toThrow();

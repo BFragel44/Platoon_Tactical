@@ -55,7 +55,7 @@ export const trevieres={
  briefing:'Cross the Aure on foot. Secure both Row 3 objectives and clear Rows 1 and 2 within ten turns. One reattempt is permitted after failure.',
  map:{columns:4,rows:3,hidden:true,deck:normandyTerrain},locations:[],units,contacts:[],
  unit_options:{mortar:{default:'section',section_id:'mortar_section',teams:mortarTeams},command_network:{default:'radio',choices:['radio','phones']}},
- rules:{enemyActivity:'normandy',contactExpansion:true,communications:'normandy',events:'normandy',grenade:-4,contactOrder:true,coverTable:'normandy',specialEnemies:true,signals:true,runners:true,ammo:'tracked',leaderBonus:true,tactics:'deliberate_defense',reattempts:1,counterattack_table:[2,2,11,12]},
+ rules:{missionIdentity:true,rosterKey:'platoon-normandy-campaign',enemyActivity:'normandy',contactExpansion:true,communications:'normandy',events:'normandy',grenade:-4,contactOrder:true,coverTable:'normandy',specialEnemies:true,signals:true,runners:true,ammo:'tracked',leaderBonus:true,tactics:'deliberate_defense',reattempts:1,counterattack_table:[2,2,11,12]},
  objectives:{type:'secure_and_clear',primary:'r3c2',secondary:'r3c3',attack:'r2c2',ccp:'r0c2',clear_rows:[1,2]},
  contact_rows:{1:'C',2:'A',3:'B'},contact_draws:keepUpTheFire.contact_draws,
  package_tables:{A:[3,5,5,6,7,7,8,10,11,11],B:[2,2,4,5,5,5,6,6,9,10],C:[1,1,2,2,2,2,3,4,5,5]},

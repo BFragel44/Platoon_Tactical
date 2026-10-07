@@ -1,5 +1,5 @@
 import {prepareSpecialTargets,specialActivity} from './specialEnemies.js';
-import {latActivityTable} from './enemyHierarchy.js';
+import {latActivityTable,hastyActivityTable} from './enemyHierarchy.js';
 import {availableCounters} from './missionContacts.js';
 import {expendAmmunition} from './ammunition.js';
 import {resolveMissionContact} from './missionContacts.js';
@@ -43,6 +43,8 @@ function mortarBreakdownTeam(s,u,step,cohesion){
 }
 export function applyHit(s,u,letters) {
   const originalCount=u.steps.length,affected=[];
+  const twoMG=u.breakdown==='fallschirmjager_a'&&originalCount===2&&letters.includes('F')&&randomNumber(s,2,'Fallschirmjäger second-step MG breakdown',!visible(s,u))===1;
+  const mgBefore=u.ammo?.MG??0,mgInitial=u.initial_resources?.ammo?.MG??mgBefore;
   for(const letter of letters.slice(0,Math.min(2,originalCount))) {
     const step=u.steps.shift();if(!step)break;
     if(letter==='C')casualty(s,u,step);
@@ -50,15 +52,15 @@ export function applyHit(s,u,letters) {
     else if(originalCount===1&&u.named&&['A','F'].includes(letter)) {
       u.steps.push(step);u.cohesion='F';u.pinned=true;affected.push(u);break;
     } else {
-      const child=splitTeam(s,u,letter,step);child.pinned=true;affected.push(child);
+      const child=splitTeam(s,u,letter,step);if(twoMG&&letter==='F'){child.fire_team_vof='A';child.range=2;child.ammo={MG:Math.floor(mgBefore/2)};child.initial_resources.ammo={MG:Math.floor(mgInitial/2)};u.ammo.MG-=child.ammo.MG;if(u.initial_resources?.ammo)u.initial_resources.ammo.MG-=child.initial_resources.ammo.MG;}child.pinned=true;affected.push(child);
       if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[child.id]={id:child.id};
     }
   }
-  if(u.steps.length===1&&u.kind==='SQUAD'){const child=splitTeam(s,u,'F',u.steps.pop());if(s.mission_rules?.specialEnemies&&u.last_step_vof)child.fire_team_vof=u.last_step_vof;
+  if(u.steps.length===1&&u.kind==='SQUAD'){const child=splitTeam(s,u,'F',u.steps.pop());if(s.mission_rules?.specialEnemies&&u.last_step_vof){child.fire_team_vof=u.last_step_vof;if(u.breakdown?.startsWith('fallschirmjager')&&child.fire_team_vof==='A')child.range=2;}
     if(s.mission_rules?.ammo==='tracked'&&child.fire_team_vof==='A'&&u.ammo?.MG!==undefined){child.ammo={MG:u.ammo.MG};child.initial_resources.ammo={MG:u.initial_resources?.ammo?.MG??u.ammo.MG};u.ammo.MG=0;}
     child.pinned=true;affected.push(child);if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[child.id]={id:child.id};}
   if(s.mission_rules?.ammo==='tracked'&&u.kind==='MORTAR'&&u.max_steps===3&&u.steps.length===1){
-    const child=mortarBreakdownTeam(s,u,u.steps.pop(),'GOOD');u.ammo={};affected.push(child);
+    const child=mortarBreakdownTeam(s,u,u.steps.pop(),u.breakdown==='german_mortar_section'?'F':'GOOD');u.ammo={};affected.push(child);
   }
   if(u.steps.length){u.pinned=true;if(!affected.includes(u))affected.push(u);}else{
     u.removed='BROKEN';
@@ -232,8 +234,8 @@ function attack(s,u) {
   const areas=opponents.filter((v,i,a)=>!v.cover||a.findIndex(t=>t.cover===v.cover)===i);
   const largest=Math.max(0,...areas.map(size));
   const close=areas.length?pick(s,areas.filter(v=>size(v)===largest),'Enemy point-blank target',!visible(s,u)):null;
-  if(close){if(['Bunker','Pillbox'].includes(coverOf(s,u)?.type)){u.cover=null;u.exposed=true;}grenade(s,u,close);}
-  else if(u.fire){const targets=occupants(s,u.fire).filter(v=>v.faction!==u.faction);const target=targets.length?pick(s,targets,'Enemy fire target',!visible(s,u)):null;if(target){if(u.kind==='MORTAR'&&u.steps.length===1&&u.cohesion==='GOOD')grenade(s,u,target);else concentrate(s,u,target);}}
+  if(close){if(['Bunker','Pillbox','Deep Bunker'].includes(coverOf(s,u)?.type)){u.cover=null;u.exposed=true;}grenade(s,u,close);}
+  else if(u.fire){if(coverOf(s,u)?.type==='Deep Bunker'){u.cover=null;u.exposed=true;}const targets=occupants(s,u.fire).filter(v=>v.faction!==u.faction);const target=targets.length?pick(s,targets,'Enemy fire target',!visible(s,u)):null;if(target){if(u.kind==='MORTAR'&&u.steps.length===1&&u.cohesion==='GOOD')grenade(s,u,target);else if(u.kind==='LEADER'&&u.assets.rifle_grenade&&distance(s.locations[u.location],s.locations[target.location])<=1){u.assets.rifle_grenade--;grenade(s,u,target);}else if(u.kind!=='LEADER')concentrate(s,u,target);}}
 }
 // First matching row of Deliberate Defence / No Leader LAT hierarchy.
 export function enemyActivity(s) {
@@ -248,10 +250,11 @@ export function enemyActivity(s) {
       processed.add(u.id);
       if(normandy&&good(u)&&u.kind==='LEADER'){
        if(!occupants(s,u.location).some(v=>v.id!==u.id&&v.faction===u.faction)){u.cohesion='F';u.experience='Green';emit(s,'COHESION_CHANGED',`${u.name}: alone; flipped to Fire Team.`,{actor:u.id,from:'GOOD',to:'F'},!visible(s,u));}
-       else continue;
+       else if(!u.assets.rifle_grenade)continue;
       }
       if(specialActivity(s,u,fallBack)){refresh(s);continue;}
       refresh(s);
+      if(normandy&&good(u)&&u.kind==='LEADER'&&u.assets.rifle_grenade)u.fire=occupants(s,u.location).find(v=>v.id!==u.id&&v.faction===u.faction&&v.fire)?.fire??null;
       const same=occupants(s,u.location).some(friendly),under=hasFire(s,u.location,{includeInactiveMines:false}),covered=!!u.cover;
       const casualties=s.casualties.filter(c=>!c.evacuated&&c.faction===u.faction&&(!c.carrier||c.carrier===u.id));
       const localCasualty=casualties.find(c=>c.location===u.location&&c.cover===u.cover);
@@ -291,6 +294,13 @@ export function enemyActivity(s) {
         else if(u.out_of_ammo)action=choices(['NONE','NONE','FALL_BACK']);
         else if((normandy?(u.tripod||['G','H'].includes(vofOf(u))):['A','G','H'].includes(u.vof))&&u.fire&&occupants(s,u.fire).some(friendly))action='ATTACK';
         else action=choices(['NONE','INFILTRATE','INFILTRATE','ADVANCE']);
+      }
+      else if(s.enemy_tactics==='hasty_defense'){
+       const different=incoming(s,u).some(f=>{const here=s.locations[u.location],aim=s.locations[u.fire],origin=s.locations[f.origin];return !aim||Math.sign(aim.row-here.row)!==Math.sign(origin.row-here.row)||Math.sign(aim.col-here.col)!==Math.sign(origin.col-here.col);});
+       const opposing=incoming(s,u).map(f=>f.value),valid=!!u.fire&&occupants(s,u.fire).some(friendly);
+       do{action=choices(hastyActivityTable({same,covered,outOfAmmo:u.out_of_ammo&&(u.tripod||['G','H'].includes(u.vof)),noLOS:!values(s.units).some(v=>friendly(v)&&live(v)&&unitLos(s,u,v)),under,validPDF:valid,differentDirection:different,heavy:u.tripod||['G','H'].includes(vofOf(u))||u.kind==='LEADER'&&u.assets.rifle_grenade>0,stronger:opposing.length&&basicValue(u)<Math.min(...opposing),trading:!!u.fire}));
+        if(action==='SHIFT'&&['Bunker','Pillbox','Deep Bunker'].includes(coverOf(s,u)?.type))emit(s,'ENEMY_ACTIVITY_REDRAW','Fortification firing arc cannot shift; redraw enemy activity.',{actor:u.id},!visible(s,u));else break;
+       }while(true);
       }
       else if(same&&!covered)action=choices(['COVER','FALL_BACK','ATTACK']);
       else if(same&&covered)action=choices(['NONE','ATTACK','ATTACK']);

@@ -1,3 +1,7 @@
+import {placeIllumination} from './visibility.js';
+import {patrolHoldReason} from './patrolEvents.js';
+import {patrolMovementReason} from './patrols.js';
+import {visibilityCommandLimits} from './visibility.js';
 import {transferEquipmentResupply} from './equipmentRecovery.js';
 import {transportReason,dropLoad} from './core.js';
 import {SKILLS,skillOptions} from './skills.js';
@@ -20,7 +24,7 @@ export const ACTIONS = {
   INFILTRATE_WITHIN:'Infiltrate within card', SEEK_COVER_UPPER:'Seek cover — enter upper story if found', SEEK_COVER:'Seek cover', ENTER_COVER:'Move within card', SPOT:'Spot position', SHIFT_FIRE:'Shift fire', CEASE_FIRE:'Cease fire on this card',
   CONCENTRATE:'Concentrate fire', GRENADE:'Grenade / close assault', RALLY:'Remove pin', RECOVER:'Recover cohesion',
   DEPLOY_FIRE_TEAM:'Deploy named Fire Team', RECONSTITUTE:'Reconstitute squad', RECONSTITUTE_HQ:'Reconstitute HQ', DETACH:'Detach assault team',
-  CALL_MORTAR_WP:'Call mortar WP', CALL_ARTILLERY_WP:'Call artillery WP', WP:'Deploy WP smoke', RIFLE_GRENADE:'Fire rifle grenade', CALL_MORTAR:'Call 81mm fire', CALL_ARTILLERY:'Call 105mm fire', INDIRECT:'Direct mortar section',
+  HANDHELD_ILLUM:'Deploy handheld illumination', CALL_MORTAR_ILLUM:'Call mortar illumination', CALL_ARTILLERY_ILLUM:'Call artillery illumination', CALL_CANNON:'Call cannon HE',CALL_CANNON_WP:'Call cannon WP', CALL_MORTAR_WP:'Call mortar WP', CALL_ARTILLERY_WP:'Call artillery WP', WP:'Deploy WP smoke', RIFLE_GRENADE:'Fire rifle grenade', CALL_MORTAR:'Call 81mm fire', CALL_ARTILLERY:'Call 105mm fire', INDIRECT:'Direct mortar section',
   SMOKE:'Deploy screening smoke', SIGNAL_ADVANCE:'Signal: cross phase line 2', SIGNAL_CEASE:'Signal: cease fire',
   PYRO_RSP:'Signal: red star parachute', PYRO_RSC:'Signal: red star cluster', PYRO_GSP:'Signal: green star parachute', PYRO_GSC:'Signal: green star cluster',
   PYRO_RED_SIGNAL:'Signal: red smoke', PYRO_GREEN_SIGNAL:'Signal: green smoke', PYRO_YELLOW_SIGNAL:'Signal: yellow smoke', PYRO_PURPLE_SIGNAL:'Signal: purple smoke',
@@ -44,6 +48,7 @@ export function eligibleTargets(s,u,type) {
   if(['ENTER_COVER','INFILTRATE_WITHIN'].includes(type)) return ['open',...s.locations[u.location].covers.filter(c=>(!friendly(u)||c.known)&&coverAvailable(s,u,c)).map(c=>c.id)];
   if(type==='SPOT') return spottingLocations(s).filter(id=>occupants(s,id).some(t=>t.faction!==u.faction&&!s.knowledge.spotted[t.id]&&unitLos(s,u,t)));
   if(type==='INDIRECT') return values(s.locations).filter(l=>!l.staging&&distance(s.locations[u.location],l)<=u.range).map(l=>l.id);
+  if(type.endsWith('_ILLUM'))return values(s.locations).filter(l=>!l.staging&&(type==='HANDHELD_ILLUM'||l.known!==false)&&(type!=='HANDHELD_ILLUM'||l.id===u.location||adjacent(s,u.location).some(a=>a.id===l.id))).map(l=>l.id);
   if((['SHIFT_FIRE'].includes(type)||type.startsWith('CALL_'))) return values(s.locations).filter(l=>!l.staging&&seesCard(s,u,l.id)).map(l=>l.id);
   if(['GRENADE','RIFLE_GRENADE','CONCENTRATE'].includes(type)) return areaTargets(s,u).filter(t=>unitLos(s,u,t,type==='RIFLE_GRENADE'?1:type==='GRENADE'?(u.grenade_range??(vofOf(u)==='G'?rangeOf(u):0)):rangeOf(u))).map(t=>t.id);
   if(type==='RECONSTITUTE_HQ') return values(s.units).filter(t=>friendly(t)&&t.kind==='HQ'&&!live(t)).map(t=>t.id);
@@ -70,6 +75,8 @@ export function orderReason(s,c) {
   if(type==='REPAIR_PHONE_LINE'&&s.mission_rules?.communications!=='phones')return 'Field phones are not in use.';
   if(type.endsWith('_RUNNER')&&!s.mission_rules?.runners)return 'Runners are not available in this mission.';
   if(type.startsWith('PYRO_')&&!s.signal_plan)return 'These signals are not available in this mission.';
+  if(s.pending_support)return 'Resolve the pending battalion fire choice first.';
+  if(coverOf(s,u)?.type==='Deep Bunker'&&(type==='SPOT'||type.startsWith('PYRO_')||['GRENADE','RIFLE_GRENADE','WP_ATTACK'].includes(type)))return 'Leave the Deep Bunker before spotting, signalling or making grenade attacks.';
   if(!s.impulse) return 'Advance to a command impulse to issue orders.';
   if(!live(u)||!friendly(u)) return 'Select an available friendly formation.';
   if(!genericInit(s) && c.issuer_id!==s.impulse.hq) return 'Only the active HQ can issue orders in this impulse.';
@@ -81,19 +88,21 @@ export function orderReason(s,c) {
    if(type.startsWith('SKILL_SPAWN')&&(!good(u)||u.kind!=='SQUAD'||u.steps.length<3))return 'Spawn from a good-order three- or four-step squad.';
    if(type.startsWith('SKILL_PARALYZED')&&(u.pinned||u.cohesion!=='P'))return 'Select an unpinned Paralyzed Team.';
   }
-  const normandyGeneral=s.mission_rules?.reattempts&&genericInit(s);
+  const normandyGeneral=(s.mission_rules?.reattempts||s.patrol)&&genericInit(s);
   const cappedSpent=normandyGeneral?(HQ_ORIGIN_ACTIONS.includes(type)?s.impulse.origin_spent?.[c.issuer_id]??0:null):s.impulse.spent;
-  if(s.impulse.commands<costOf(type)||cappedSpent!==null&&cappedSpent+costOf(type)>6) return 'Insufficient commands, or the six-command impulse limit has been reached.';
+  if(s.impulse.commands<costOf(type)||cappedSpent!==null&&cappedSpent+costOf(type)>visibilityCommandLimits(s.visibility).spend) return `Insufficient commands, or the ${visibilityCommandLimits(s.visibility).spend===6?'six':'four'}-command impulse limit has been reached.`;
   if(!genericInit(s)) {
     if(!live(issuer)) return 'The issuing HQ is unavailable.';
     if(issuer.cohesion!=='GOOD'&&issuer.id!==u.id) return 'A degraded HQ can only order itself.';
     if(!chain(issuer,u,type)) return 'The unit is outside this HQ’s chain of command.';
     if(!communication(s,issuer,u,type==='RALLY')) return communicationReason(s,issuer,u,type==='RALLY');
   }
+  if(s.patrol&&['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type)){const restriction=patrolMovementReason(s.patrol,u);if(restriction)return restriction;const hold=patrolHoldReason(s,target);if(hold)return hold;}
   if(type==='ACTIVATE'&&s.activated.includes(target)) return `${s.units[target]?.name??'This HQ'} is already activated. Complete Company HQ’s impulse, then select it in 3.3.1c to spend its commands.`;
   if(type==='REPAIR_PHONE_LINE'&&!s.phone_lines?.some(line=>line.location===u.location&&line.cut))return 'No damaged phone line at this location.';
   if(type.startsWith('PYRO_')){
    const key=type.slice(5).toLowerCase();
+   if(key.endsWith('_signal')&&(s.visibility?.light??0)>=2)return 'Colored smoke cannot signal during Moon +2 or higher (rules §4.4.1).';
    if(!good(u)||!u.assets[key])return 'This good-order unit has no remaining device of that type.';
    if(!s.signal_plan?.[key]||!eligibleTargets(s,u,type).includes(target))return 'Choose the device’s assigned offensive order and an eligible signal card.';
   }
@@ -158,14 +167,15 @@ export function orderReason(s,c) {
     }
   }
   if(type.startsWith('CALL_')&&s.support_agencies){
-    const agency=type.includes('MORTAR')?'mortar':'artillery',definition=s.support_agencies[agency];
+    const agency=type.includes('MORTAR')?'mortar':type.includes('CANNON')?'cannon':'artillery',definition=s.support_agencies[agency];
     const role=u.agency_role??u.id,net=definition?.networks?.[role];
     if(!good(u)||!definition?.draws[role])return 'This formation cannot call this firing agency.';
-    const ammunition=type.endsWith('_WP')?'WP':'HE';
+    const ammunition=type.endsWith('_ILLUM')?'ILLUM':type.endsWith('_WP')?'WP':'HE';
+    if(ammunition==='ILLUM'&&(!s.visibility||!definition?.inventory?.ILLUM))return 'This agency has no illumination capability.';
     if(s.support_inventory?.[agency]?.[ammunition]===0)return `${definition.name} has no ${ammunition} missions remaining.`;
     if(!net||!u.radios.includes(net))return `This caller needs its working ${net??'fire-direction'} radio network.`;
     if(s.support_unavailable.includes(agency))return 'Higher HQ reports this agency unavailable this turn.';
-    if(!s.locations[target]||!seesCard(s,u,target)||(!type.endsWith('_WP')&&!targetsAt(s,u,target).length))return 'Need a spotted enemy position within the caller’s LOS.';
+    if(type.endsWith('_ILLUM')?(!s.locations[target]||s.locations[target].staging||s.locations[target].known===false):(!s.locations[target]||!seesCard(s,u,target)||(!type.endsWith('_WP')&&!targetsAt(s,u,target).length)))return 'Need a spotted enemy position within the caller’s LOS.';
   }
   else if(type.startsWith('CALL_')) {
     const agency=type==='CALL_MORTAR'?'MTR':'ARTY';
@@ -174,6 +184,7 @@ export function orderReason(s,c) {
   }
   if(type==='INDIRECT'&&(!good(u)||u.kind!=='MORTAR'||u.steps.length<2||u.exposed||c.target_id===u.location||enclosedWeaponCover(coverOf(s,u))||s.locations[u.location].terrain==='woods'||
     !s.locations[target]||!issuer||!seesCard(s,issuer,target)||distance(s.locations[u.location],s.locations[target])>u.range||!targetsAt(s,u,target).length)) return 'Need an unexposed two-step mortar outside woods and enclosed cover, in communication with an HQ that sees the spotted target.';
+  if(type==='HANDHELD_ILLUM'&&(!s.visibility||!good(u)||!u.assets.illum||coverOf(s,u)?.type==='Deep Bunker'||!s.locations[target]||distance(s.locations[u.location],s.locations[target])>1))return 'Need handheld illumination, good order outside a Deep Bunker, and a card here or adjacent.';
   if(type==='RIFLE_GRENADE'&&(!good(u)||!u.assets.rifle_grenade))return 'No rifle-grenade asset on this good-order unit.';
   if(type==='WP_ATTACK'&&!u.assets.wp)return 'No WP grenade asset remains on this formation.';
   if(u.mine_hit&&['MOVE','INFILTRATE','SEEK_COVER','ENTER_COVER','INFILTRATE_WITHIN'].includes(type))return 'Mines prevent further movement this turn.';
@@ -266,6 +277,7 @@ export function rally(s,u,issuer=u,recover=false) {
   emit(s,'RALLY_ATTEMPT',`${u.name}: ${success ? (recover?'cohesion recovered':'pin removed') : 'rally failed'}.`,{actor:u.id,success},!visible(s,u));
 }
 export function grenade(s,u,t,response=false,wp=false) {
+  if(coverOf(s,u)?.type==='Deep Bunker')return;
   if(response&&s.mission_contacts&&['Bunker','Pillbox'].includes(coverOf(s,u)?.type))return;
   const mortar=!wp&&u.mission_weapon&&u.kind==='MORTAR'&&u.cohesion==='GOOD'&&u.steps.length===1&&u.location!==t.location;
   if(mortar&&!expendAmmunition(s,u,'MTR',1,'direct-lay grenade'))return;
@@ -358,7 +370,8 @@ export function execute(s,c) {
   else if(type==='GRENADE'||type==='RIFLE_GRENADE'){if(type==='RIFLE_GRENADE')u.assets.rifle_grenade--;grenade(s,u,t);}
   else if(type==='WP_ATTACK'){u.assets.wp--;grenade(s,u,t,false,true);}
   else if(type==='CONCENTRATE')concentrate(s,u,t);
-  else if(type.startsWith('CALL_')&&s.support_agencies)supportRequest(s,u,type.includes('MORTAR')?'mortar':'artillery',type.endsWith('_WP')?'WP':'HE',c.target_id);
+  else if(type==='HANDHELD_ILLUM'){u.assets.illum--;placeIllumination(s,c.target_id,'handheld',u.id);emit(s,'ILLUMINATION_DEPLOYED',`${u.name} deployed handheld illumination.`,{actor:u.id,location:c.target_id,delivery:'handheld'});}
+  else if(type.startsWith('CALL_')&&s.support_agencies)supportRequest(s,u,type.includes('MORTAR')?'mortar':type.includes('CANNON')?'cannon':'artillery',type.endsWith('_ILLUM')?'ILLUM':type.endsWith('_WP')?'WP':'HE',c.target_id);
   else if(type.startsWith('CALL_')) {
     const success=attempt(s,u,isCompanyCommander(u)?1:2,'burst',`${u.name}: call for fire`)>0;
     if(success)s.support.push({id:`support_${s.next_id++}`,location:c.target_id,status:'PENDING',value:type==='CALL_MORTAR'?-3:-5,source:u.id});
@@ -384,6 +397,7 @@ export function execute(s,c) {
       if(order==='CF'){v.fire=null;v.indirect=null;continue;}
       const line=order.startsWith('XPL')?(s.phase_lines?.[order.at(-1)]??Number(order.at(-1))):null;
       const destination=order==='M2S'?c.target_id:order==='M2PO'||order==='INFAP2PO'?s.objectives.primary:order==='M2SO'||order==='INFAP2SO'?s.objectives.secondary:order.startsWith('XPL')?`r${line}c${s.locations[v.location].col}`:null;
+      if(s.patrol&&(patrolMovementReason(s.patrol,v)||patrolHoldReason(s,destination)))continue;
       if(!destination||order.startsWith('INFAP')&&v.location!==s.objectives.attack||order.startsWith('XPL')&&s.locations[v.location].row!==line-1||movementReason(s,v,destination))continue;
       const infiltrate=order.startsWith('INFAP');
       if(infiltrate&&infiltrationReason(s,v,destination))continue;
@@ -442,7 +456,7 @@ export function submitCommand(state,command) {
   const contributors=command.type==='RECONSTITUTE'?` using ${command.contributor_ids.map(id=>s.units[id].name).join(', ')}`:'';
   const event=emit(s,'COMMAND_ISSUED',`${s.impulse.hq==='general'?'General initiative':s.units[s.impulse.hq].name}: ${ACTIONS[command.type]} — ${u.name}${command.target_id?' → '+(s.locations[command.target_id]?.name??s.units[command.target_id]?.name??command.target_id):''}${contributors}.`,{command:structuredClone(command)});
   s.impulse.commands-=costOf(command.type);s.impulse.spent+=costOf(command.type);
-  if(s.mission_rules?.reattempts&&genericInit(s)&&HQ_ORIGIN_ACTIONS.includes(command.type)){
+  if((s.mission_rules?.reattempts||s.patrol)&&genericInit(s)&&HQ_ORIGIN_ACTIONS.includes(command.type)){
    s.impulse.origin_spent??={};s.impulse.origin_spent[command.issuer_id]=(s.impulse.origin_spent[command.issuer_id]??0)+costOf(command.type);
   }
   u.used.push(`${s.impulse.id}:${key}`);
@@ -472,9 +486,9 @@ export function submitCommand(state,command) {
   return result(state,s,{accepted:true});
 }
 export function commandOptions(s,u,issuerId) {
-  return Object.entries(ACTIONS).filter(([type])=>(!type.startsWith('SKILL_')||s.skills?.length)&&(type!=='DROP_LOAD'||s.mission_rules?.specialEnemies)&&(type!=='SEEK_COVER_UPPER'||s.mission_rules?.coverTable)&&(s.support_agencies||!['CALL_MORTAR_WP','CALL_ARTILLERY_WP','WP','WP_ATTACK','RIFLE_GRENADE'].includes(type))).map(([type,label])=>{
+  return Object.entries(ACTIONS).filter(([type])=>(!type.endsWith('_ILLUM')||s.visibility&&(type==='HANDHELD_ILLUM'||s.support_agencies?.[type.includes('MORTAR')?'mortar':'artillery']?.inventory?.ILLUM))&&(!type.includes('CANNON')||s.support_agencies?.cannon)&&(!type.startsWith('SKILL_')||s.skills?.length)&&(type!=='DROP_LOAD'||s.mission_rules?.specialEnemies)&&(type!=='SEEK_COVER_UPPER'||s.mission_rules?.coverTable)&&(s.support_agencies||!['CALL_MORTAR_WP','CALL_ARTILLERY_WP','WP','WP_ATTACK','RIFLE_GRENADE'].includes(type))).map(([type,label])=>{
     const targets=eligibleTargets(s,u,type);
-    const targeted=type.startsWith('PYRO_')||['DISPATCH_RUNNER','CREATE_RUNNER'].includes(type)||['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','CALL_MORTAR_WP','CALL_ARTILLERY_WP','RIFLE_GRENADE','INDIRECT','RECONSTITUTE','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
+    const targeted=type.endsWith('_ILLUM')||type.startsWith('PYRO_')||['DISPATCH_RUNNER','CREATE_RUNNER'].includes(type)||['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','CALL_MORTAR_WP','CALL_ARTILLERY_WP','CALL_CANNON','CALL_CANNON_WP','RIFLE_GRENADE','INDIRECT','RECONSTITUTE','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
     const checks=((targeted||type==='WP_ATTACK')?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id,contributor_ids:type==='RECONSTITUTE'?[u.id,...occupants(s,u.location).filter(t=>t.id!==u.id&&t.faction===u.faction&&t.cover===u.cover&&!t.pinned&&(s.mission_rules?.reattempts?t.steps.length===1:t.kind==='LAT')&&['A','F'].includes(t.cohesion)).slice(0,Math.max(0,(s.units[target_id]?.max_steps??3)-1)).map(t=>t.id)]:undefined})}));
     if(['PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type))for(const check of checks)check.moving_unit_ids=check.reason?[]:platoonMoveGroup(s,u,check.id,type).filter(friendly).map(v=>v.id);
     const displayLabel=type==='RECONSTITUTE_HQ'?'Reconstitute eliminated HQ':type==='DEPLOY_FIRE_TEAM'&&['HQ','STAFF'].includes(u.kind)?'Deploy HQ Fire Team':type==='RECOVER'&&u.named&&u.cohesion==='F'?(['HQ','STAFF'].includes(u.kind)?'Restore HQ command side':u.kind==='FO'?'Restore observer side':'Restore weapon side'):label;

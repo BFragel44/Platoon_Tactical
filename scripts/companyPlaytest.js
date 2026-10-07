@@ -45,7 +45,7 @@ export function run(seed,policy){
   return {s,record,summary:{seed,policy,outcome:s.status,turn:s.turn,orders:s.events.filter(e=>e.type==='COMMAND_ISSUED').length,
     casualty_steps:s.casualties.filter(c=>c.faction==='friendly').length,contacts_remaining:Object.values(s.contacts).filter(c=>!c.resolved).length}};
 }
-const output='output/company-playtests';mkdirSync(output,{recursive:true});
+const output=process.env.PLAYTEST_OUTPUT??'output/company-playtests';mkdirSync(output,{recursive:true});
 const results=[];
 for(const seed of ['company-1','company-2'])for(const policy of ['direct','support','recovery']){
   const {s,record,summary}=run(seed,policy);results.push(summary);

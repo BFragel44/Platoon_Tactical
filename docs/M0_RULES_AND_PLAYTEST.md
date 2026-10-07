@@ -1,8 +1,10 @@
 # Company Assault: implemented rules and manual playtest
 
-Normandy 1 is under development and remains unavailable for normal play. The separate campaign roster, authored setup preview, finite support/ammunition groundwork, and replayed reattempt are tracked in [Normandy readiness](NORMANDY_READINESS.md). KUTF's accepted standalone behavior remains the active playable mission.
+Normandy 1 standalone is accepted and normally selectable. Normandy 2 standalone Cerisy is accepted October 6, 2026 and normally selectable at rules 26/content 1; see [Cerisy readiness](CERISY_READINESS.md) for its authored rules, source checklist, validation and human-acceptance gate. Company Assault, KUTF and the restored right-panel layout remain preserved. Connected campaigns and vehicles remain deferred.
 
 ## Current authority — standalone accepted, rules 14 / KUTF 12
+
+Normandy 3 has a source-checked content and patrol/visibility foundation; see [St. Georges readiness](ST_GEORGES_READINESS.md). Its initial setup, patrol progress and night engine are integrated at rules 27 (October 7); HQ events, three-patrol preparation and printed illumination delivery are integrated and fixture-tested; setup/preparation UI is connected. Three successful patrols, mixed success/failure runs, exact replay, recovery and terminal debrief pass; the final suite has 810 passing tests. An explicit `?stGeorgesDev=1` development candidate is available. User acceptance received October 7; St. Georges is enabled in normal standalone selection. Earlier interrupted agent browser illumination-order/reload checks remain recorded as incomplete rather than retrospectively passed. The accepted selected-unit panel layout is preserved. Historical rules-26 Cerisy records retain strict rejection and original export access.
 
 The user has accepted the standalone play experience through repeated playthroughs and reports that it is fun. See [current KUTF status](KEEP_UP_THE_FIRE_STATUS.md) for the completed checklist and retained adaptations, and [Normandy readiness](NORMANDY_READINESS.md) for the actual next gates. Further general KUTF human acceptance is not a prerequisite for starting campaign engineering. Concrete new bugs remain actionable.
 

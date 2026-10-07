@@ -12,10 +12,11 @@ export const SKILLS={
  AUTO_GRENADE:{label:'Auto Grenade',cost:1,actions:['GRENADE','SKILL_GRENADE_RETURN'],icon:'grenade'},
 };
 const counters=[['SPAWN_TEAM','AUTO_COVER'],['SPAWN_TEAM','AUTO_CONCENTRATE'],['SPAWN_TEAM','AUTO_GRENADE'],['GENERAL_INITIATIVE','EXTRA_DRAW'],['SPAWN_TEAM','AUTO_COVER'],['GENERAL_INITIATIVE','EXTRA_DRAW'],['GENERAL_INITIATIVE','EXTRA_DRAW'],['AUTO_INFILTRATE'],['AUTO_INFILTRATE','AUTO_GRENADE'],['PARALYZED_FIRE','AUTO_CONCENTRATE'],['PARALYZED_ASSAULT','AUTO_SPOT'],['PARALYZED_ASSAULT','AUTO_SPOT']];
-export function buySkills(s,purchases,points){
+export function buySkills(s,purchases,points,{retain=false}={}){
+ const existing=retain?structuredClone(s.skills??[]):[];
  if(!Array.isArray(purchases))throw new Error('Skill purchases must be a list.');
- if(purchases.length>counters.length)throw new Error('Skill purchases exceed the printed counter mix.');
- const counts={};
+ if(purchases.length+existing.length>counters.length)throw new Error('Skill purchases exceed the printed counter mix.');
+ const counts={};for(const p of existing)counts[p.holder]=(counts[p.holder]??0)+1;
  for(const p of purchases){
   const u=s.units[p.holder],skill=SKILLS[p.type];
   if(!skill||!u||u.faction!=='friendly'||u.removed||!u.steps.length||!['HQ','STAFF'].includes(u.kind)||u.command_role==='higher_hq')throw new Error('Assign a published skill to a surviving company HQ or staff.');
@@ -23,14 +24,14 @@ export function buySkills(s,purchases,points){
   points-=skill.cost;if(points<0)throw new Error('Not enough attempt experience for skills.');
  }
  // Match all purchases to physical counters, allowing either printed side.
- const assigned=[],used=new Set();
+ const assigned=[],used=new Set(existing.map(p=>p.counter-1));
  function match(n){if(n===purchases.length)return true;
   for(let i=0;i<counters.length;i++)if(!used.has(i)&&counters[i].includes(purchases[n].type)){
    used.add(i);assigned[n]=i;if(match(n+1))return true;used.delete(i);
   }return false;
  }
  if(!match(0))throw new Error('Skill purchases exceed the printed counter mix.');
- s.skills=purchases.map((p,i)=>({...p,id:`skill_${s.attempt_number+1}_${assigned[i]+1}`,counter:assigned[i]+1,used:false}));s.automatic_skills={};
+ s.skills=[...existing,...purchases.map((p,i)=>({...p,id:`skill_${s.attempt_number+1}_${assigned[i]+1}`,counter:assigned[i]+1,used:false}))];s.automatic_skills={};
  return points;
 }
 export function skillOptions(s,u,type){

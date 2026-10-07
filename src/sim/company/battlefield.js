@@ -1,3 +1,4 @@
+import {visibilityLosLimit,visibilityFireModifier,illuminationReductionsAt} from './visibility.js';
 import {transportReason} from './core.js';
 import {commandHub,canCommandCompany,isCompanyCommander} from './commandRoles.js';
 import {ammoLoadReason} from './ammunition.js';
@@ -8,7 +9,7 @@ export const distance = (a,b) => Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b
 export const occupants = (s,id) => values(s.units).filter(u => live(u) && u.location === id);
 export const adjacent = (s,id) => values(s.locations).filter(l => l.id !== id && distance(l,s.locations[id]) === 1);
 export const coverOf = (s,u) => s.locations[u.location].covers.find(c => c.id === u.cover);
-export const enclosedWeaponCover = c => ['Building','Light Building','Strong Building','Upper Story','Church Tower','Bunker','Cave','Pillbox'].includes(c?.type);
+export const enclosedWeaponCover = c => ['Building','Light Building','Strong Building','Upper Story','Church Tower','Bunker','Deep Bunker','Cave','Pillbox'].includes(c?.type);
 export const temporaryMortarFire=s=>values(s.units).filter(u=>u.temporary_pdf).map(u=>({source:u.id,origin:u.temporary_pdf.origin,target:u.temporary_pdf.target,value:null,pdf_only:true,indirect:false,reason:'TEMPORARY_MORTAR_PDF'}));
 export const unitElevation = (s,u) => s.locations[u.location].elevation+(coverOf(s,u)?.elevation??0);
 export function coverAvailable(s,u,c,location=u.location){
@@ -25,8 +26,9 @@ export function explainLos(s, from, to, max = 3, elevations = {}) {
   if(from===to)return result(true,'Same card: point-blank LOS.');
   const dr=b.row-a.row,dc=b.col-a.col,d=distance(a,b);
   if(dr&&dc&&Math.abs(dr)!==Math.abs(dc))return result(false,'LOS follows one of eight straight directions.');
-  if(d>Math.min(max,3))return result(false,'Beyond the permitted LOS range.');
-  if(screen(s,from))return result(false,'Smoke or active incoming fire blocks outward LOS.',from);
+  const limit=s.visibility&&!elevations.ignoreVisibility?visibilityLosLimit(s.visibility,illuminationReductionsAt(s.markers.filter(m=>m.type==='ILLUMINATION'),to,s.locations),Math.min(max,3)):Math.min(max,3);
+  if(d>limit)return result(false,'Beyond the permitted LOS range.');
+  if(!elevations.ignoreSmoke&&screen(s,from))return result(false,'Smoke or active incoming fire blocks outward LOS.',from);
   for(let i=1;i<d;i++) {
     const mid=values(s.locations).find(l=>l.row===a.row+Math.sign(dr)*i&&l.col===a.col+Math.sign(dc)*i);
     if(!mid)return result(false,'The LOS path leaves the map.');
@@ -36,7 +38,7 @@ export function explainLos(s, from, to, max = 3, elevations = {}) {
     const high=Math.max(elevations.from??a.elevation,elevations.to??b.elevation),low=Math.min(elevations.from??a.elevation,elevations.to??b.elevation);
     const overlooked=mid.elevation<high && !(mid.elevation>low);
     path.push({location:mid.id,entry,exit,entry_border:mid.borders[entry],exit_border:mid.borders[exit],elevation:mid.elevation,overlooked:!clear&&overlooked});
-    if(screen(s,mid.id))return result(false,`LOS is blocked at ${mid.name}.`,mid.id);
+    if(!elevations.ignoreSmoke&&screen(s,mid.id))return result(false,`LOS is blocked at ${mid.name}.`,mid.id);
     if(mid.elevation>high || (!clear&&!overlooked))return result(false,`Blocked by ${mid.name}: intervening elevation or dark LOS border.`,mid.id);
   }
   return result(true,d===1?'Adjacent terrain is visible regardless of border color.':path.some(p=>p.overlooked)?'Clear LOS: higher elevation overlooks lower dark borders.':'Clear LOS through white entry and exit borders.');
@@ -60,7 +62,7 @@ export function communicationLos(s,from,to) {
   if(!a||!b)return false;
   if(a.staging&&b.staging)return true;
   if(a.staging||b.staging)return (a.staging?b:a).row===1&&distance(a,b)===1;
-  return los(s,from,to);
+  return explainLos(s,from,to,3,{ignoreVisibility:true,ignoreSmoke:!!s.visibility}).visible;
 }
 export function communicationChannels(s,issuer,u,rally=false) {
   if (!issuer || !u || !live(issuer) || !live(u)) return [];
@@ -113,7 +115,7 @@ export function basicValue(u,range=1) {
   return ({S:0,'S!':0,'A+':-1,A:-1,H:-3,'A/S':range===0 ? -1 : 0})[vof] ?? null;
 }
 export function canFire(s,u,id) {
-  if(u.hold_fire_until_cleanup)return false;
+  if(u.hold_fire_until_cleanup||coverOf(s,u)?.type==='Deep Bunker')return false;
   if(u.mission_weapon&&u.tripod&&(!u.tripod_good_only||u.cohesion==='GOOD')&&u.exposed)return false;
   if (basicValue(u) === null || !seesCard(s,u,id,rangeOf(u))) return false;
   if (u.cohesion==='GOOD' && u.kind === 'MORTAR' && (u.exposed || u.location===id || enclosedWeaponCover(coverOf(s,u)) || s.locations[u.location].terrain === 'woods')) return false;
@@ -244,7 +246,7 @@ export function refresh(s) {
     if(u.fire)establish(`${u.faction}:${u.location}`,u.fire);
   }
   const selectionSnapshot={units:structuredClone(s.units)};
-  const indirectUnits=values(s.units).filter(u=>live(u)&&u.indirect&&!u.exposed&&u.steps.length>=2&&u.cohesion==='GOOD'&&!u.pinned&&u.indirect!==u.location&&!['Building','Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type)&&s.locations[u.location].terrain!=='woods');
+  const indirectUnits=values(s.units).filter(u=>live(u)&&u.indirect&&!u.exposed&&u.steps.length>=2&&u.cohesion==='GOOD'&&!u.pinned&&u.indirect!==u.location&&!['Building','Bunker','Deep Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type)&&s.locations[u.location].terrain!=='woods');
   const projectedFire=values(s.units).filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)&&!indirectUnits.includes(u)).map(u=>({source:u.id,origin:u.location,value:basicValue(u,distance(s.locations[u.location],s.locations[u.fire]))})).filter(f=>f.value!==null).concat(indirectUnits.map(u=>({source:u.id,origin:u.location,value:-3})));
   for (const u of values(s.units).filter(live)) {
     if (occupants(s,u.location).some(t=>t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]))&&canFire(s,u,u.location))u.fire=u.location;
@@ -324,7 +326,7 @@ export function combatExposure(s,u) {
     ...effects.map(m=>({kind:m.type,source_id:m.source??null,origin:m.origin??s.units[m.source]?.location??m.location,value:m.value+(m.type==='SNIPER'?smoke:0),vof:m.value,smoke:m.type==='SNIPER'?smoke:0,burst:0,blast:m.type==='GRENADE',...(m.label?{label:m.label}:{}),...(m.weapon?{label:m.weapon==='WP'?'WP grenade effect':'On-map mortar grenade effect'}:{})}))];
   if(miss&&!fire.length&&!indirect.length&&!grenades.length) candidates.push({value:0+smoke,blast:false});
   const stack=cover ? occupants(s,u.location).filter(t=>t.cover===cover.id).reduce((n,t)=>n+t.steps.length,0) : 0;
-  for(const c of candidates){c.overcrowding=c.blast?-Math.max(0,stack-3):0;c.value+=c.overcrowding;}
+  for(const c of candidates){if(s.visibility){const kind=({BASIC_FIRE:'basic',ON_MAP_INDIRECT:'on_map_indirect',SNIPER:'sniper'})[c.kind]??'off_map';c.visibility=visibilityFireModifier(s.visibility,illuminationReductionsAt(s.markers.filter(m=>m.type==='ILLUMINATION'),u.location,s.locations),kind);c.value+=c.visibility;}c.overcrowding=c.blast?-Math.max(0,stack-3):0;c.value+=c.overcrowding;}
   candidates.sort((a,b)=>a.value-b.value||String(a.source_id??a.kind).localeCompare(String(b.source_id??b.kind)));
   const strongest=candidates[0];
   const critical=targeted.some(m=>m.critical);
@@ -335,8 +337,9 @@ export function combatExposure(s,u) {
   const parts={ fire:strongest.vof??0,smoke:strongest.smoke??smoke,burst:strongest.burst??0,terrain:terrainValue,cover:critical?0:cover?.value??0,
     pinned:u.pinned?1:0,exposed:u.exposed?-2:0,crossfire:cross,concentrated:-targeted.filter(m=>m.type==='CONCENTRATE').reduce((n,m)=>n+(m.value??1),0),
     grenade_miss:miss?-1:0,overcrowding:strongest.overcrowding };
+  if(s.visibility)parts.visibility=strongest.visibility??0;
   const total=Object.values(parts).reduce((a,b)=>a+b,0);
-  const labels={fire:'Selected fire VOF',smoke:'Applicable smoke protection',burst:'Applicable terrain burst',terrain:terrain.name,cover:cover?.type??'Occupied cover',pinned:'Pinned protection',exposed:'Exposure',crossfire:'Crossfire',concentrated:'Concentrated fire',grenade_miss:'Grenade miss',overcrowding:'Crowded cover'};
+  const labels={visibility:'Light and weather',fire:'Selected fire VOF',smoke:'Applicable smoke protection',burst:'Applicable terrain burst',terrain:terrain.name,cover:cover?.type??'Occupied cover',pinned:'Pinned protection',exposed:'Exposure',crossfire:'Crossfire',concentrated:'Concentrated fire',grenade_miss:'Grenade miss',overcrowding:'Crowded cover'};
   const modifiers=Object.entries(parts).map(([source,value])=>({source:source.toUpperCase(),label:labels[source],value}));
   return {ncm:Math.max(-4,Math.min(6,total)),total,parts,modifiers,sources:candidates,strongest};
 }

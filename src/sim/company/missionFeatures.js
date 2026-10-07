@@ -1,6 +1,7 @@
+import {placeIllumination} from './visibility.js';
 import {values,live,friendly,visible,good,emit,draw,randomNumber,pick,dropLoad} from './core.js';
 import {resolveNormandyEvent} from './normandyEvents.js';
-import {occupants,los,distance,spot,refresh,coverOf} from './battlefield.js';
+import {occupants,adjacent,los,distance,spot,refresh,coverOf} from './battlefield.js';
 
 export function discoveredCover(s,l,known=true,enemy=false) {
  let type='Cover',value=1,upper=false;
@@ -27,6 +28,7 @@ export function checkMines(s,u){
 export function secureStatus(s,id){const units=occupants(s,id),cleared=!values(s.contacts).some(c=>c.location===id&&!c.resolved)&&!units.some(u=>!friendly(u));return {cleared,secured:cleared&&units.some(friendly)};}
 export function scoreMission(s,{final=false}={}){
  if(!s.objectives)return;
+ if(s.patrol){scorePatrol(s,{final});return;}
  const add=(key,points,text)=>{if(!s.achievements.some(a=>a.key===key)){s.achievements.push({key,points,text,turn:s.turn});emit(s,'ACHIEVEMENT',`${text}: +${points} points.`,{key,points});}};
  for(const e of s.hq_events.filter(e=>e.side==='friendly'&&e.turn===s.turn)){
   if(s.phase==='CLEANUP'){
@@ -92,6 +94,31 @@ export function supportRequest(s,u,agencyId,ammo,target){
  if(extra)s.active_skill.applied=true;
  let destination=target;const short=batch.some(c=>c.short),success=short||batch.some(c=>c.burst);
  if(short)destination=shortRoundDestination(s,u,target);
- if(success){s.support.push({id:`support_${s.next_id++}`,location:destination,status:'PENDING',value:agency[ammo],source:u.id,agency:agencyId,ammo});s.registered_targets[agencyId]=destination;if(s.support_inventory?.[agencyId]?.[ammo]!==undefined)s.support_inventory[agencyId][ammo]--;}
- emit(s,'SUPPORT_REQUEST',`${agency.name} ${ammo}: ${success?`${short?'short round; ':''}pending at ${s.locations[destination].name}`:'request failed'}.`,{actor:u.id,location:destination,success,agency:agencyId,ammo});
+ if(success&&ammo==='ILLUM'){placeIllumination(s,destination,agencyId,u.id);s.support_inventory[agencyId][ammo]--;s.registered_targets[agencyId]=destination;}
+ else if(success){const mission={id:`support_${s.next_id++}`,location:destination,status:'PENDING',value:agency[ammo],source:u.id,agency:agencyId,ammo};s.support.push(mission);if(agency.battalion&&!short&&batch.some(c=>c.multi)){const choices=adjacent(s,destination).filter(l=>!l.staging).map(l=>l.id);if(choices.length>=2)s.pending_support={support_id:mission.id,location:destination,adjacent:choices};}s.registered_targets[agencyId]=destination;if(s.support_inventory?.[agencyId]?.[ammo]!==undefined)s.support_inventory[agencyId][ammo]--;}
+ emit(s,'SUPPORT_REQUEST',`${agency.name} ${ammo}: ${success?`${short?'short round; ':''}${ammo==='ILLUM'?'illumination active':'pending'} at ${s.locations[destination].name}`:'request failed'}.`,{actor:u.id,location:destination,success,agency:agencyId,ammo});
+}
+
+export function applySupportChoice(s,choice){
+ if(s.status!=='ACTIVE')throw new Error('No active support choice is available.');
+ const pending=s.pending_support;if(!pending)throw new Error('No battalion fire choice is pending.');
+ if(!choice||!Array.isArray(choice.locations)||![0,2].includes(choice.locations.length)||new Set(choice.locations).size!==choice.locations.length||choice.locations.some(id=>!pending.adjacent.includes(id)))throw new Error('Choose ordinary fire or two different adjacent battlefield cards.');
+ const original=s.support.find(m=>m.id===pending.support_id);
+ for(const location of choice.locations)s.support.push({...structuredClone(original),id:`support_${s.next_id++}`,location});
+ emit(s,'BATTALION_FIRE_SELECTED',choice.locations.length?'Battalion fire added two adjacent cards.':'Ordinary fire selected.',{location:pending.location,locations:[...choice.locations]});s.pending_support=null;
+}
+
+function scorePatrol(s,{final}){
+ const add=(key,points,text)=>{if(!s.achievements.some(a=>a.key===key)){s.achievements.push({key,points,text,turn:s.turn,platoon:s.patrol.plan.platoon});emit(s,'ACHIEVEMENT',`${text}: +${points} points.`,{key,points,platoon:s.patrol.plan.platoon});}};
+ if(final){
+  if(secureStatus(s,s.patrol.plan.primary).cleared)add(`clear_${s.patrol.plan.primary}`,4,'Primary patrol objective cleared');
+  for(let i=0;i<s.patrol.visited.length;i++)add(`route_${s.attempt_number}_${i+1}`,1,'Patrol route point visited');
+  if(s.patrol.returned)add(`patrol_${s.attempt_number}`,5,'Patrol completed successfully');
+ }
+ for(const e of s.events.slice(s.attempt_history?.at(-1)?.event_count??0)){
+  const actor=s.units[e.actor];if(e.type==='GRENADE_ATTEMPT'&&e.success&&e.point_blank&&actor?.faction==='friendly'&&actor.platoon===s.patrol.plan.platoon)add(`grenade_${e.id}`,1,'Successful patrol grenade attack');
+  if(e.type==='UNIT_CAPTURED'&&e.faction==='enemy')for(const id of e.step_ids??[])add(`prisoner_${id}`,2,'Enemy prisoner captured');
+  if(e.type==='ENEMY_CASUALTY_CAPTURED')add(`enemy_casualty_${e.step_id}`,1,'Enemy casualty captured');
+  if(e.type==='CASUALTY_EVACUATED'){const formationId=s.roster_snapshot?.steps[e.step_id]?.formation_id;const owner=s.units[formationId]??values(s.units).find(u=>u.steps.some(t=>t.id===e.step_id));if(owner?.platoon===s.patrol.plan.platoon)add(`evac_${e.step_id}`,1,'Patrol casualty evacuated');}
+ }
 }

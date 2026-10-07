@@ -1,0 +1,11 @@
+[
+  {
+    "seed": "kut-1",
+    "policy": "direct",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 124,
+    "casualty_steps": 10,
+    "contacts_remaining": 5
+  }
+]

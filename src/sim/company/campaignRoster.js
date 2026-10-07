@@ -32,7 +32,7 @@ export function createCampaignRoster(companyId,scenario){
 export function rosterSnapshot(record){const source=assertRecord(record);return copy({company_id:source.company_id,revision:source.revision,formations:source.formations,steps:source.steps,people:source.people});}
 export function applyMissionDebrief(record,mission){
  const next=copy(assertRecord(record));
- if(mission.status==='ACTIVE'||!mission.status)throw new Error('Only a terminal mission can be debriefed.');
+ if(['ACTIVE','PATROL_COMPLETE'].includes(mission.status)||!mission.status)throw new Error('Only a terminal mission can be debriefed.');
  if(mission.mission_rules?.reattempts&&mission.status==='DEFEAT'&&(mission.attempt_number??1)<=mission.mission_rules.reattempts&&!mission.reattempt_declined)throw new Error('Finish or explicitly decline the permitted reattempt before debrief.');
  if(!mission.mission_instance_id||!mission.roster_snapshot)throw new Error('Mission lacks its deployment roster.');
  if(next.applied_missions[mission.mission_instance_id])throw new Error('This mission was already applied.');
@@ -81,4 +81,12 @@ export function debriefAndSave(storage,mission,key=CAMPAIGN_KEY){
  if(!current.record)throw new Error('No campaign roster to debrief.');
  const next=applyMissionDebrief(current.record,mission);
  return saveCampaign(storage,next,key,current.record.revision);
+}
+
+// Explicit standalone runs replace only their own slot, retaining a backup.
+export function startStandaloneRoster(storage,record,key){
+ if(!['platoon-normandy-cerisy-standalone','platoon-normandy-st-georges-standalone'].includes(key))throw new Error('Standalone replacement requires the Cerisy slot or St. Georges slot.');
+ const value=JSON.stringify(assertRecord(record)),previous=storage.getItem(key);
+ if(previous!==null)storage.setItem(`${key}-previous`,previous);
+ storage.setItem(key,value);return copy(record);
 }
