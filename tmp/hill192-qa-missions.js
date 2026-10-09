@@ -1,0 +1,1 @@
+import {missionCatalog as normal} from '/src/scenarios/missions.js';import {hill192} from '/src/scenarios/hill192.js';export const missionCatalog=[...normal,{id:hill192.id,name:hill192.name+' · isolated QA',scenario:{...hill192,readiness:{playable:true}}}];export const missionById=id=>missionCatalog.find(m=>m.id===id)?.scenario;export const playableMissionById=missionById;

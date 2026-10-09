@@ -11,6 +11,7 @@ export const expMod = u => ({ Green: -1, Line: 0, Veteran: 1 }[u.experience] ?? 
 export const visible = (s,u) => friendly(u) || s.knowledge.spotted[u.id];
 export function emit(s, type, text, details = {}, hidden = false) {
   const event = { id: `event_${s.events.length+1}`, sequence: s.events.length+1, turn: s.turn,
+    ...(type==='UNIT_MOVED'&&s.mission_rules?.hill192?{had_potential_contact:values(s.contacts).some(c=>!c.resolved&&c.location===details.target)}:{}),
     phase: s.phase, impulse: s.impulse?.id ?? null, type, text, ...details, hidden };
   s.events.push(event);
   if(type==='UNIT_MOVED'&&s.patrol&&s.units[details.actor])s.patrol=recordPatrolMovement(s.patrol,s.units[details.actor],details.from,details.target,s.locations);

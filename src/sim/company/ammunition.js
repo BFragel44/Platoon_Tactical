@@ -37,7 +37,7 @@ export function expendAmmunition(s,u,key,quantity=1,reason='fire'){
  emit(s,'AMMO_EXPENDED',`${visible(s,u)?u.name:'Enemy formation'} expended ${quantity} ${key} ammunition.`,{actor:visible(s,u)?u.id:null,location:u.location,key,quantity,remaining:visible(s,u)?u.ammo[key]:null,reason},!visible(s,u));
  if(u.ammo[key]===0){
   u.out_of_ammo=true;
-  if(u.steps.length===1&&['S','A/S'].includes(u.fire_team_vof)){u.cohesion='F';u.fire=null;}
+  if(!u.keep_good_on_depletion&&u.steps.length===1&&['S','A/S'].includes(u.fire_team_vof)){u.cohesion='F';u.fire=null;}
   emit(s,'OUT_OF_AMMO',`${visible(s,u)?u.name:'Enemy formation'} is out of ${key} ammunition.`,{actor:visible(s,u)?u.id:null,location:u.location,key},!visible(s,u));
  }
  return true;

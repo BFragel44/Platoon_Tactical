@@ -32,6 +32,15 @@ export function openReattemptSetup(root,state,onStart,patrol=false){
  document.addEventListener('keydown',keyboard);
  panel.querySelector('#reattempt-close').onclick=close;
  if(patrol)bindPatrolDeployment(panel.querySelector('#reattempt-form'),deployable,'assignment');
+
+ // A changed deployment card must not retain a cover choice from the old card.
+ for(const u of deployable){
+  const position=panel.querySelector(`[name="position-${u.id}"]`),cover=panel.querySelector(`[name="cover-${u.id}"]`);
+  const update=()=>{const previous=cover.value,card=secured.find(l=>l.id===position.value);
+   const entries=[['','Open'],...(card?.covers??[]).filter(c=>c.discovered).map(c=>[c.id,`${card.name} · ${c.type}`])];
+   cover.innerHTML=options(entries,entries.some(([id])=>id===previous)?previous:'');};
+  position.addEventListener('change',update);update();
+ }
  panel.querySelector('#reattempt-form').onsubmit=e=>{
   e.preventDefault();const data=new FormData(e.currentTarget),positions={},covers={},reconstitute={},promote={},phone_lines={},skills=[],redistribute=[];
   for(const u of deployable){positions[u.id]=data.get(`position-${u.id}`);const cover=data.get(`cover-${u.id}`);if(cover&&positions[u.id]!=='RESERVE')covers[u.id]=cover;}

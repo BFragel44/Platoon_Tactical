@@ -1,3 +1,4 @@
+import {rangedWeaponTargets} from './rangedWeapons.js';
 import {prepareSpecialTargets,specialActivity} from './specialEnemies.js';
 import {latActivityTable,hastyActivityTable} from './enemyHierarchy.js';
 import {availableCounters} from './missionContacts.js';
@@ -112,7 +113,7 @@ export function prepareCombat(s) {
    for(const u of values(s.units).filter(live)){
     if(u.ammo?.MG!==undefined&&firing.has(u.id))expendAmmunition(s,u,'MG');
     if(u.ammo?.MTR!==undefined&&(u.indirect||firing.has(u.id)))expendAmmunition(s,u,'MTR');
-    if(u.ammo?.GUN!==undefined&&firing.has(u.id))expendAmmunition(s,u,'GUN');
+    if(u.ammo?.GUN!==undefined&&u.basic_ammo!==false&&firing.has(u.id))expendAmmunition(s,u,'GUN');
    }
   }
   return resolutions;
@@ -235,6 +236,7 @@ function attack(s,u) {
   const largest=Math.max(0,...areas.map(size));
   const close=areas.length?pick(s,areas.filter(v=>size(v)===largest),'Enemy point-blank target',!visible(s,u)):null;
   if(close){if(['Bunker','Pillbox','Deep Bunker'].includes(coverOf(s,u)?.type)){u.cover=null;u.exposed=true;}grenade(s,u,close);}
+  else if(rangedWeaponTargets(s,u).length)grenade(s,u,pick(s,rangedWeaponTargets(s,u),'Enemy ranged grenade target',!visible(s,u)));
   else if(u.fire){if(coverOf(s,u)?.type==='Deep Bunker'){u.cover=null;u.exposed=true;}const targets=occupants(s,u.fire).filter(v=>v.faction!==u.faction);const target=targets.length?pick(s,targets,'Enemy fire target',!visible(s,u)):null;if(target){if(u.kind==='MORTAR'&&u.steps.length===1&&u.cohesion==='GOOD')grenade(s,u,target);else if(u.kind==='LEADER'&&u.assets.rifle_grenade&&distance(s.locations[u.location],s.locations[target.location])<=1){u.assets.rifle_grenade--;grenade(s,u,target);}else if(u.kind!=='LEADER')concentrate(s,u,target);}}
 }
 // First matching row of Deliberate Defence / No Leader LAT hierarchy.
@@ -263,6 +265,7 @@ export function enemyActivity(s) {
       const teams=occupants(s,u.location).filter(v=>v.faction===u.faction&&!v.pinned&&(normandy?v.steps.length===1:v.kind==='LAT')&&['A','F'].includes(v.cohesion)&&v.cover===u.cover);
       const roll=n=>randomNumber(s,n,`${u.name}: activity`,!visible(s,u));
       const canFallBack=!u.exposed&&!u.mine_hit&&(s.locations[u.location].row>=(s.boundaries?.rows??3)||s.locations[u.location].col<1||s.locations[u.location].col>(s.boundaries?.columns??4)||adjacent(s,u.location).some(l=>l.row>s.locations[u.location].row&&!movementReason(s,u,l.id)));
+      const ranged=rangedWeaponTargets(s,u),attackCard=u.fire??ranged[0]?.location;
       const choices=list=>{
         const legal=!s.mission_contacts?list:list.filter(a=>{
           if(['FALL_BACK','EVACUATE'].includes(a))return canFallBack;
@@ -271,7 +274,7 @@ export function enemyActivity(s) {
           if(a==='ADVANCE')return adjacent(s,u.location).some(l=>!l.staging&&!movementReason(s,u,l.id));
           if(a==='RECONSTITUTE')return availableCounters(s,'SQUAD').some(p=>!normandy||reconstitutionFirepower(p,reconstitutionDonors(p,teams)));
           if(a==='SEEK_CASUALTY')return !u.mine_hit&&seenCasualties.some(c=>c.location===u.location?(!c.cover||coverAvailable(s,u,s.locations[u.location].covers.find(v=>v.id===c.cover))):adjacent(s,u.location).some(l=>!movementReason(s,u,l.id)&&distance(l,s.locations[c.location])<distance(s.locations[u.location],s.locations[c.location])));
-          if(a==='ATTACK')return same||!!u.fire&&occupants(s,u.fire).some(v=>v.faction!==u.faction);
+          if(a==='ATTACK')return same||!!attackCard&&occupants(s,attackCard).some(v=>v.faction!==u.faction);
           return true;
         });
         return legal.length?legal[roll(legal.length)-1]:'NONE';
@@ -292,7 +295,7 @@ export function enemyActivity(s) {
         if(same&&!covered)action=choices(['NONE','COVER','COVER','FALL_BACK','ATTACK']);
         else if(same&&covered)action=choices(['NONE','FALL_BACK','ATTACK','ATTACK','ATTACK']);
         else if(u.out_of_ammo)action=choices(['NONE','NONE','FALL_BACK']);
-        else if((normandy?(u.tripod||['G','H'].includes(vofOf(u))):['A','G','H'].includes(u.vof))&&u.fire&&occupants(s,u.fire).some(friendly))action='ATTACK';
+        else if((normandy?(u.tripod||['G','H'].includes(vofOf(u))||ranged.length):['A','G','H'].includes(u.vof))&&attackCard&&occupants(s,attackCard).some(friendly))action='ATTACK';
         else action=choices(['NONE','INFILTRATE','INFILTRATE','ADVANCE']);
       }
       else if(s.enemy_tactics==='hasty_defense'){
@@ -306,7 +309,7 @@ export function enemyActivity(s) {
       else if(same&&covered)action=choices(['NONE','ATTACK','ATTACK']);
       else if(s.mission_contacts&&u.out_of_ammo&&(u.tripod||['G','H'].includes(u.vof)))action=choices(['NONE','FALL_BACK']);
       else if(!under&&!values(s.units).some(v=>friendly(v)&&live(v)&&unitLos(s,u,v)))action=s.mission_contacts?'HIDE':'NONE';
-      else if(!under&&u.fire)action='ATTACK';
+      else if(!under&&attackCard)action='ATTACK';
       else if(under&&!covered)action=choices(['COVER','COVER','ATTACK']);
       else if(incoming(s,u).some(f=>{const here=s.locations[u.location],aim=s.locations[u.fire],origin=s.locations[f.origin];return !aim||Math.sign(aim.row-here.row)!==Math.sign(origin.row-here.row)||Math.sign(aim.col-here.col)!==Math.sign(origin.col-here.col);})){
         do{
@@ -315,7 +318,7 @@ export function enemyActivity(s) {
           else break;
         }while(true);
       }
-      else if((s.mission_contacts?(u.tripod||u.vof==='H'):['A','H'].includes(u.vof))&&u.fire)action='ATTACK';
+      else if((s.mission_contacts?(u.tripod||u.vof==='H'||ranged.length):['A','H'].includes(u.vof))&&attackCard)action='ATTACK';
       else if(u.fire){const opposing=incoming(s,u).map(f=>f.value);const stronger=opposing.length&&basicValue(u)<Math.min(...opposing);action=roll(s.mission_contacts&&stronger?3:2)>1?'ATTACK':'NONE';}
       if(action==='COVER')enemyCover(s,u);
       if(action==='RALLY')rally(s,u);

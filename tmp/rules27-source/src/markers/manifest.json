@@ -1,0 +1,200 @@
+{
+  "provenance": "GMT Games, Fields of Fire Deluxe Update Kit, supplied Countersheet 2 of 3. Cropped without redrawing. Pixel boxes [left,top,right,bottom], right/bottom exclusive; original source resolution. Fire/status markers only. PDF, PIN and EXPOSED use original labelled CSS/SVG, not All Pinned VOF artwork.",
+  "markers": {
+    "small-arms": {
+      "source": "reference/FoF_Countersheet_2_of_3_FRONT.png",
+      "source_sha256": "a045ca0992739563652ffbfb0478363bec1df3657a5435bd0e746faa64f35f17",
+      "source_size": [
+        1046,
+        771
+      ],
+      "crop": [
+        17,
+        35,
+        76,
+        93
+      ],
+      "file": "small-arms.png"
+    },
+    "automatic": {
+      "source": "reference/FoF_Countersheet_2_of_3_FRONT.png",
+      "source_sha256": "a045ca0992739563652ffbfb0478363bec1df3657a5435bd0e746faa64f35f17",
+      "source_size": [
+        1046,
+        771
+      ],
+      "crop": [
+        17,
+        96,
+        76,
+        154
+      ],
+      "file": "automatic.png"
+    },
+    "heavy": {
+      "source": "reference/FoF_Countersheet_2_of_3_BACK.png",
+      "source_sha256": "121d70f917dd77d1d64e837015d830fc2dac4e85448597a1a77d4815c3c1fc3e",
+      "source_size": [
+        1044,
+        774
+      ],
+      "crop": [
+        535,
+        98,
+        593,
+        156
+      ],
+      "file": "heavy.png"
+    },
+    "all-pinned": {
+      "source": "reference/FoF_Countersheet_2_of_3_BACK.png",
+      "source_sha256": "121d70f917dd77d1d64e837015d830fc2dac4e85448597a1a77d4815c3c1fc3e",
+      "source_size": [
+        1044,
+        774
+      ],
+      "crop": [
+        535,
+        37,
+        593,
+        95
+      ],
+      "file": "all-pinned.png"
+    },
+    "crossfire": {
+      "source": "reference/FoF_Countersheet_2_of_3_FRONT.png",
+      "source_sha256": "a045ca0992739563652ffbfb0478363bec1df3657a5435bd0e746faa64f35f17",
+      "source_size": [
+        1046,
+        771
+      ],
+      "crop": [
+        452,
+        301,
+        510,
+        359
+      ],
+      "file": "crossfire.png"
+    },
+    "concentrated": {
+      "source": "reference/FoF_Countersheet_2_of_3_FRONT.png",
+      "source_sha256": "a045ca0992739563652ffbfb0478363bec1df3657a5435bd0e746faa64f35f17",
+      "source_size": [
+        1046,
+        771
+      ],
+      "crop": [
+        17,
+        301,
+        76,
+        359
+      ],
+      "file": "concentrated.png"
+    },
+    "grenade": {
+      "source": "reference/FoF_Countersheet_2_of_3_FRONT.png",
+      "source_sha256": "a045ca0992739563652ffbfb0478363bec1df3657a5435bd0e746faa64f35f17",
+      "source_size": [
+        1046,
+        771
+      ],
+      "crop": [
+        17,
+        362,
+        76,
+        420
+      ],
+      "file": "grenade.png"
+    },
+    "grenade-miss": {
+      "source": "reference/FoF_Countersheet_2_of_3_BACK.png",
+      "source_sha256": "121d70f917dd77d1d64e837015d830fc2dac4e85448597a1a77d4815c3c1fc3e",
+      "source_size": [
+        1044,
+        774
+      ],
+      "crop": [
+        535,
+        363,
+        593,
+        421
+      ],
+      "file": "grenade-miss.png"
+    },
+    "critical-grenade": {
+      "source": "reference/FoF_Countersheet_2_of_3_FRONT.png",
+      "source_sha256": "a045ca0992739563652ffbfb0478363bec1df3657a5435bd0e746faa64f35f17",
+      "source_size": [
+        1046,
+        771
+      ],
+      "crop": [
+        538,
+        35,
+        596,
+        93
+      ],
+      "file": "critical-grenade.png"
+    },
+    "pending-3": {
+      "source": "reference/FoF_Countersheet_2_of_3_FRONT.png",
+      "source_sha256": "a045ca0992739563652ffbfb0478363bec1df3657a5435bd0e746faa64f35f17",
+      "source_size": [
+        1046,
+        771
+      ],
+      "crop": [
+        17,
+        495,
+        76,
+        553
+      ],
+      "file": "pending-3.png"
+    },
+    "pending-4": {
+      "source": "reference/FoF_Countersheet_2_of_3_FRONT.png",
+      "source_sha256": "a045ca0992739563652ffbfb0478363bec1df3657a5435bd0e746faa64f35f17",
+      "source_size": [
+        1046,
+        771
+      ],
+      "crop": [
+        452,
+        495,
+        510,
+        553
+      ],
+      "file": "pending-4.png"
+    },
+    "incoming-3": {
+      "source": "reference/FoF_Countersheet_2_of_3_BACK.png",
+      "source_sha256": "121d70f917dd77d1d64e837015d830fc2dac4e85448597a1a77d4815c3c1fc3e",
+      "source_size": [
+        1044,
+        774
+      ],
+      "crop": [
+        788,
+        499,
+        846,
+        557
+      ],
+      "file": "incoming-3.png"
+    },
+    "incoming-4": {
+      "source": "reference/FoF_Countersheet_2_of_3_BACK.png",
+      "source_sha256": "121d70f917dd77d1d64e837015d830fc2dac4e85448597a1a77d4815c3c1fc3e",
+      "source_size": [
+        1044,
+        774
+      ],
+      "crop": [
+        535,
+        499,
+        593,
+        557
+      ],
+      "file": "incoming-4.png"
+    }
+  }
+}

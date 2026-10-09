@@ -21,5 +21,5 @@ export function revealTerrain(s,{setup=false}={}) {
 }
 export function terrainProjection(l){
  if(l.known!==false)return {...structuredClone(l),covers:l.covers.filter(c=>c.known).map(c=>structuredClone(c))};
- return {id:l.id,row:l.row,col:l.col,name:`${l.row}.${l.col} Unrevealed terrain`,known:false,staging:false,covers:[],borders:null};
+ return {id:l.id,row:l.row,col:l.col,name:`${l.row}.${l.col} Unrevealed terrain`,known:false,staging:false,covers:[],borders:null,...(l.outside_boundary?{outside_boundary:true}:{})};
 }

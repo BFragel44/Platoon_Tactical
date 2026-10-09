@@ -5,6 +5,7 @@ export function hqEventExplanation(e,name=id=>id){
  LOST:'One randomly selected active-patrol formation moves one card in a random direction and becomes exposed. Leaving the map reveals a new terrain card and the row’s contact marker; Row 5 uses A.',
  HOLD_PATROL:'No unit may move onto an unoccupied card this turn. A card with a unit or unresolved contact marker is not unoccupied. Fixed defenders still cannot move by orders.',
  RAIN:'Rain adds +2 weather visibility for this turn, then is removed at cleanup. Illumination does not reduce weather or permit long-range LOS while weather is +2 or higher.',
+ NO_CANNON:'The regimental cannon company is displacing and unavailable this turn. Remaining cannon fire missions are retained.',
  NO_MORTAR:'The battalion mortar platoon is displacing and unavailable this turn. Remaining mortar fire missions are retained; the company’s on-map 60mm mortars are unaffected.',
  ADVANCE_ROUTE:e.ignored?'All four route points have been visited; the advance obligation is ignored.':`Move at least one patrol formation closer to the next route point${e.waypoint?` at ${name(e.waypoint)}`:''} this turn. Completion earns one experience point for the patrol platoon; there is no penalty for insufficient commands.`,
  SHIFTING_LINES:'All unresolved Row 4 contacts are returned to stock and redrawn from remaining A/B/C markers on their question sides. Letters remain concealed until evaluation. Enemy tactics and the offensive phase sequence stay unchanged.',
@@ -22,7 +23,7 @@ export function hqEventExplanation(e,name=id=>id){
  DISPLACE_HMG:'Enemy HMG teams on cards without US troops leave the map. Hidden affected units and locations are not reported.',
  RALLY:'Enemy pinned units attempt to rally; unpinned Limited Action Teams attempt recovery. Success is determined separately for each unit; hidden results remain concealed.',
  FALL_BACK:'Unpinned enemy units move straight back one card, or leave the map if no destination exists. Hidden movements remain concealed.',
- COUNTER_ATTACK:`Random remaining contacts are placed on US-occupied battlefield cards on their “?” sides; overlaps are revealed and only the highest letter remains. Enemy tactics change to Offensive Assault through turn ${through}, ending at the start of turn ${through+1}. The offensive sequence stays unchanged. Counterattack PC A uses the alternate package chart.${Array.isArray(e.placements)?e.placements.length?` Placement cards: ${e.placements.map(name).join(', ')}.`:' No markers could be placed from the remaining stock.':''}`,
+ COUNTER_ATTACK:`${e.hill192?'PC A contacts are placed on US-occupied Row 4 cards or US-occupied cards adjacent to an unrevealed contact':'Random remaining contacts are placed on US-occupied battlefield cards'} on their “?” sides; overlaps are revealed and only the highest letter remains. Enemy tactics change to Offensive Assault through turn ${through}, ending at the start of turn ${through+1}. The offensive sequence stays unchanged. Counterattack PC A uses the alternate package chart.${Array.isArray(e.placements)?e.placements.length?` Placement cards: ${e.placements.map(name).join(', ')}.`:' No markers could be placed from the remaining stock.':''}`,
  };
  return descriptions[e.code]??e.text??'No higher headquarters event.';
 }

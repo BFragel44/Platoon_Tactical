@@ -1,0 +1,88 @@
+{
+  "source": "reference/UNITS_AMMO_ASSETS_COUNTERS.png",
+  "source_sha256": "4b86b40b23c2d289c9b17ed3ab5093fdf7bd68becf1883c1f9852423fbb7a01c",
+  "notes": "Crops are decorative illustrations. All identity, steps, ammunition rules and quantities come from the player projection; printed statistics are not used. Bounds are [left, top, right, bottom], exclusive right/bottom.",
+  "counters": {
+    "hq": {
+      "file": "/counters/hq.png",
+      "bounds": [
+        291,
+        52,
+        348,
+        92
+      ]
+    },
+    "infantry": {
+      "file": "/counters/infantry.png",
+      "bounds": [
+        217,
+        295,
+        260,
+        331
+      ]
+    },
+    "mg": {
+      "file": "/counters/mg.png",
+      "bounds": [
+        290,
+        539,
+        339,
+        574
+      ]
+    },
+    "mortar": {
+      "file": "/counters/mortar.png",
+      "bounds": [
+        139,
+        620,
+        173,
+        657
+      ]
+    },
+    "bazooka": {
+      "file": "/counters/bazooka.png",
+      "bounds": [
+        47,
+        549,
+        88,
+        575
+      ]
+    },
+    "radio": {
+      "file": "/counters/radio.png",
+      "bounds": [
+        395,
+        139,
+        437,
+        171
+      ]
+    },
+    "smoke": {
+      "file": "/counters/smoke.png",
+      "bounds": [
+        877,
+        440,
+        944,
+        505
+      ]
+    },
+    "wp": {
+      "file": "/counters/wp.png",
+      "bounds": [
+        877,
+        359,
+        944,
+        423
+      ]
+    },
+    "rifle-grenade": {
+      "file": "/counters/rifle-grenade.png",
+      "bounds": [
+        798,
+        132,
+        852,
+        151
+      ]
+    }
+  }
+}

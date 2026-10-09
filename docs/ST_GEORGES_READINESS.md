@@ -116,3 +116,6 @@ Mission 4 campaign carryover requirement (Normandy MSR 3): retain the actual ter
 ### October 7 explicit-phase acceptance
 
 The user reports completing the mission and accepts both gameplay and the subsequent general/mission-specific UI changes. St. Georges is now `standalone_validated` and enabled in normal selection without a URL opt-in. The legacy `stGeorgesDev=1` URL remains usable. Rules 27 / content 1 / roster schema 1 are unchanged: this is acceptance/catalog activation, not a simulation migration. The acceptance covers the candidate playthrough; it does not retrospectively claim the interrupted agent browser checks passed. Connected Mission 4 battlefield handoff remains deferred and its terrain/cover/mine retention requirements remain documented.
+
+
+Mission 4 planning now lives in [Hill 192 readiness](HILL_192_READINESS.md). It specifies an immutable battlefield handoff preserving terrain, friendly/enemy cover and discovered mines while keeping standalone rosters and source recovery isolated. This planning link does not enable connected progression.

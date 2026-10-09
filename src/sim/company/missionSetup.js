@@ -1,3 +1,5 @@
+import {loadScoutedBattlefield} from './battlefieldCarryover.js';
+import {validateHill192Deployment,hill192DeploymentDefinition} from './hill192Setup.js';
 import {validatePatrolPlan} from './patrols.js';
 import {createRng} from '../rng.js';
 import {shuffle} from './core.js';
@@ -11,13 +13,15 @@ export function validatePhaseLines(lines,rows){
  return structuredClone(lines);
 }
 export function materializeScenario(definition,seed,setup={}) {
+ definition=hill192DeploymentDefinition(definition,setup);
  validateNormandyContent(definition);
  if(!definition.map){if(Object.keys(setup).length)throw new Error('This authored course has no configurable setup.');return definition;}
- if(Object.keys(setup).some(k=>!['objectives','assignments','positions','assets','mortar_mode','mortar_radio_recipient','command_network','phone_lines','signals','phase_lines','patrol'].includes(k)))throw new Error('Unknown setup field.');
+ if(Object.keys(setup).some(k=>!['objectives','assignments','positions','assets','mortar_mode','mortar_radio_recipient','command_network','phone_lines','signals','phase_lines','patrol','battlefield','forward_defense','concentration'].includes(k)))throw new Error('Unknown setup field.');
  if(setup.phase_lines&&!definition.rules?.signals)throw new Error('This mission has no configurable phase lines.');
  if(setup.mortar_mode&&!definition.unit_options?.mortar)throw new Error('This mission has no mortar setup choice.');
  if(setup.mortar_mode&&!['section','teams'].includes(setup.mortar_mode))throw new Error('Choose the mortar section or individual teams.');
  if(setup.patrol&&!definition.rules?.patrols)throw new Error('This mission has no patrol setup.');
+ if((setup.battlefield||setup.forward_defense||setup.concentration)&&!definition.rules?.hill192)throw new Error('This mission does not accept Hill 192 battlefield controls.');
  const eligibleUnits=[...definition.units,...(definition.unit_options?.mortar?.teams??[])];
  for(const field of ['assignments','positions','assets'])if(Object.keys(setup[field]??{}).some(id=>!eligibleUnits.some(u=>u.id===id)))throw new Error('Unknown setup formation.');
  if(Object.keys(setup.objectives??{}).some(k=>!['primary','secondary','attack','ccp'].includes(k)))throw new Error('Unknown tactical control.');
@@ -47,19 +51,23 @@ export function materializeScenario(definition,seed,setup={}) {
   while(row===1&&card.terrain==='hill'){hills.push(card.id);elevation++;card=deck.pop();}
   locations.push({...card,id:`r${row}c${col}`,terrain_card:card.id,name:`${row}.${col} ${card.name}${hills.length?' / Hill':''}`,row,col,elevation,hills,borders:hills.length?borders():card.borders,staging:false,known:!scenario.map.hidden||row===1});
  }
- scenario.locations=locations;scenario.terrain_deck=deck;
+ if(setup.battlefield){const imported=loadScoutedBattlefield(setup.battlefield);locations.splice(0,locations.length,...imported.locations);scenario.battlefield_source=imported.source;scenario.engineers_available=imported.engineers_available;scenario.terrain_deck=imported.terrain_deck;}else scenario.terrain_deck=deck;
+ scenario.locations=locations;
+ if(scenario.rules?.hill192){scenario.forward_defense=setup.forward_defense??null;scenario.concentration=setup.concentration??'r4c3';if(!locations.some(l=>l.id===scenario.concentration&&!l.staging))throw new Error('Choose a battlefield artillery concentration.');}
  if(scenario.rules?.patrols){scenario.patrol_plan=validatePatrolPlan(locations,{...scenario.patrol_plan,...setup.patrol});scenario.objectives={...scenario.objectives,primary:scenario.patrol_plan.primary,secondary:scenario.patrol_plan.primary,attack:scenario.patrol_plan.cop,ccp:scenario.patrol_plan.ccp};}
- scenario.contacts=locations.filter(l=>!l.staging&&scenario.contact_rows[l.row]&&l.id!==scenario.patrol_plan?.cop).map(l=>{const type=scenario.contact_rows[l.row];return {id:`pc_${l.id}`,location:l.id,type:Array.isArray(type)?shuffle(random,type)[0]:type,question_side:Array.isArray(type),resolved:false};});
+ scenario.contacts=locations.filter(l=>!l.staging&&(!scenario.rules.hill192||!l.outside_boundary)&&scenario.contact_rows[l.row]&&l.id!==scenario.patrol_plan?.cop).map(l=>{const type=scenario.contact_rows[l.row];return {id:`pc_${l.id}`,location:l.id,type:Array.isArray(type)?shuffle(random,type)[0]:type,question_side:Array.isArray(type),resolved:false};});
  scenario.objectives={...scenario.objectives,...setup.objectives};
  const o=scenario.objectives,get=id=>locations.find(l=>l.id===id);
+ if(scenario.rules.hill192&&Object.values(o).some(id=>typeof id==='string'&&get(id)?.outside_boundary))throw new Error('Hill 192 tactical controls must stay inside the printed mission boundaries.');
  if(!scenario.rules?.patrols&&(o.primary===o.secondary||get(o.primary)?.row!==scenario.map.rows||get(o.secondary)?.row!==scenario.map.rows))throw new Error('Choose two different objectives in the final row.');
  if(!scenario.rules?.patrols&&(get(o.attack)?.row!==scenario.map.rows-1||![o.primary,o.secondary].some(id=>Math.abs(get(id).col-get(o.attack).col)<=1)))throw new Error('Attack position must be adjacent to an objective in the preceding row.');
  if(!get(o.ccp))throw new Error('Choose a terrain or staging card for the CCP.');
  for(const u of scenario.units){
   const assignment=setup.assignments?.[u.id];
-  if(assignment){if(!(['MG','HMG','AT','MORTAR','FO'].includes(u.kind)||scenario.rules.patrols&&u.kind==='STAFF')||![0,1,2,3].includes(assignment.platoon)||assignment.platoon===0&&u.kind!=='FO'&&scenario.rules.enemyActivity!=='normandy')throw new Error('Invalid platoon attachment.');u.platoon=assignment.platoon||null;}
-  if(setup.positions?.[u.id]){if(scenario.rules?.patrols){if(setup.positions[u.id]==='RESERVE'){u.reserve=true;}else{if(!get(setup.positions[u.id]))throw new Error('Unknown patrol deployment card.');u.location=setup.positions[u.id];}}else{if(!get(setup.positions[u.id])?.staging)throw new Error('Initial units must be in staging.');u.location=setup.positions[u.id];}}
+  if(assignment){if(!(['MG','HMG','AT','MORTAR','FO'].includes(u.kind)||(scenario.rules.patrols||scenario.rules.hill192)&&u.kind==='STAFF'||scenario.rules.hill192&&u.capabilities?.engineer)||![0,1,2,3].includes(assignment.platoon)||assignment.platoon===0&&u.kind!=='FO'&&scenario.rules.enemyActivity!=='normandy')throw new Error('Invalid platoon attachment.');u.platoon=assignment.platoon||null;}
+  if(setup.positions?.[u.id]){if(scenario.rules?.patrols||scenario.rules?.hill192){if(setup.positions[u.id]==='RESERVE'){u.reserve=true;}else{if(!get(setup.positions[u.id]))throw new Error('Unknown patrol deployment card.');u.location=setup.positions[u.id];}}else{if(!get(setup.positions[u.id])?.staging)throw new Error('Initial units must be in staging.');u.location=setup.positions[u.id];}}
  }
+ if(scenario.rules?.hill192)validateHill192Deployment(locations,scenario.units,scenario.forward_defense);
  if(scenario.rules?.patrols){
   if(setup.objectives)throw new Error('Use patrol controls for this mission.');
   const copPlatoons=new Set();

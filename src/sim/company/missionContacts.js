@@ -1,3 +1,4 @@
+import {rangedWeaponTarget} from './rangedWeapons.js';
 import {placeIllumination} from './visibility.js';
 import {expandContactRay} from './missionExpansion.js';
 import {values,live,friendly,emit,draw,pick,randomNumber,attempt} from './core.js';
@@ -23,12 +24,16 @@ export function contactQueue(s,contacts){
 }
 export function availableCounters(s,kind){return s.mission_contacts.counters.filter(c=>c.kind===kind&&!values(s.units).some(u=>live(u)&&u.counter_id===c.id));}
 function packageVariants(p){
- const {alternatives,optional,...rest}=p,core={...rest,units:p.units??[]};
+ const {alternatives,optional,mine_followup,...rest}=p,core={...rest,units:p.units??[]};
+ if(mine_followup)return mine_followup.branches.map(branch=>({...core,units:[...core.units,...branch.units]}));
  if(p.alternatives)return p.alternatives.map(option=>({...core,...option,units:option.units??[]}));
  if(p.optional)return [core,{...core,units:[...core.units,...p.optional.units]}];
  return [core];
 }
 function chosenVariant(s,p){
+ if(p.mine_followup){const n=randomNumber(s,p.mine_followup.sides,'Mine package follow-up',true),branch=p.mine_followup.branches.find(b=>b.numbers.includes(n));
+  if(!branch)throw new Error(`Missing mine follow-up branch ${n}.`);
+  const {mine_followup,...rest}=p;return {...rest,units:[...(p.units??[]),...branch.units]};}
  if(p.alternatives)return {...p,...p.alternatives[randomNumber(s,p.alternatives.length,'Enemy package variant',true)-1]};
  if(p.optional){const include=p.optional.if_available? p.optional.units.every(spec=>availableCounters(s,spec.kind).length>0):randomNumber(s,2,'Enemy package optional force',true)===1;
   return {...p,units:[...(p.units??[]),...(include?p.optional.units:[])]};}
@@ -58,7 +63,7 @@ function canPlaceFire(s,profile,location,target,coverType=null,actualCover=undef
  if(blockers.some(t=>!friendly(t)&&!overheadAllowed(s,u,target,t.location)))return false;
  if(blockers.some(t=>friendly(t)&&!overheadAllowed(s,u,target,t.location)&&!profile.tripod))return false;
  if(profile.kind==='MORTAR'&&profile.vof==='G')return location!==target&&s.locations[location].terrain!=='woods'&&placementLos(s,profile,location,target,profile.range,false,coverType,actualCover);
- return basicFireTargets(s,u,target).includes(target);
+ return basicFireTargets(s,u,target).includes(target)||occupants(s,target).some(t=>rangedWeaponTarget(s,u,t));
 }
 function placementLos(s,profile,location,target,range,observed,coverType,actualCover){
  if(observed)return occupants(s,target).filter(friendly).some(u=>unitLos(s,u,location,range));
@@ -78,7 +83,7 @@ export function contactPlacements(s,pc,profile,used=[],range=profile.range,noFir
 // Pure feasibility search: checking exhaustion must not spend cards or create enemies.
 export function packageAvailable(s,pc,p,allocated=[]){
  if(!allocated.length&&p.illumination&&!s.markers.some(m=>m.type==='ILLUMINATION'&&m.location===pc.location&&m.delivery===p.illumination)){s=structuredClone(s);placeIllumination(s,pc.location,p.illumination);}
- if(!allocated.length&&(p.alternatives||p.optional))return packageVariants(p).some(v=>packageAvailable(s,pc,v,allocated));
+ if(!allocated.length&&(p.alternatives||p.optional||p.mine_followup))return packageVariants(p).some(v=>packageAvailable(s,pc,v,allocated));
  if(p.mines&&s.locations[pc.location].mines)return false;
  if(!allocated.length&&p.placement_draw?.point_blank?.length&&p.units?.every(spec=>availableCounters(s,spec.kind).length)&&occupants(s,pc.location).some(friendly))return true;
  if(!allocated.length&&p.point_blank_chance&&p.units?.length===1&&availableCounters(s,p.units[0].kind).length&&occupants(s,pc.location).some(friendly))return true;
@@ -98,12 +103,15 @@ export function packageAvailable(s,pc,p,allocated=[]){
  return false;
 }
 export function placePackage(s,pc,p){
+ const mineFollowup=!!p.mine_followup;
  p=chosenVariant(s,p);
+ // Reject the selected follow-up before publishing mines or creating a partial force.
+ if(mineFollowup&&!packageAvailable(s,pc,p))return false;
  if(p.illumination){placeIllumination(s,pc.location,p.illumination);emit(s,'ILLUMINATION_DEPLOYED','Incoming mortar illumination at the contact card.',{location:pc.location,delivery:p.illumination});}
  if(p.placement_draw){const d=p.placement_draw;let n;do{n=randomNumber(s,d.sides,'Enemy placement branch',true);}while(![...(d.point_blank??[]),...(d.close??[]),...(d.max??[])].includes(n));p={...p,point_blank:d.point_blank?.includes(n),close_range:d.close?.includes(n)};}
  if(p.close_chance)p={...p,close_range:randomNumber(s,10,'Enemy close-range placement',true)<=2};
  if(p.point_blank_chance)p={...p,point_blank:randomNumber(s,10,'Enemy point-blank placement',true)<=2};
- if(p.mines){if(s.locations[pc.location].mines)return false;s.locations[pc.location].mines=true;emit(s,'MINEFIELD_FOUND',`Mines discovered at ${s.locations[pc.location].name}.`,{location:pc.location});for(const u of occupants(s,pc.location))checkMines(s,u);}
+ if(p.mines){if(s.locations[pc.location].mines)return false;s.locations[pc.location].mines=true;emit(s,'MINEFIELD_FOUND',`Mines discovered at ${s.locations[pc.location].name}.`,{location:pc.location});for(const u of occupants(s,pc.location))checkMines(s,u,{discovery:true});}
  if(p.incoming_options){const incoming=pick(s,p.incoming_options,'Enemy incoming agency',true);p={...p,incoming:incoming.value,incoming_agency:incoming.agency};}
  const used=[];
  for(const spec of p.units??[]){
@@ -146,11 +154,13 @@ export function placePackage(s,pc,p){
    }
   }
   const l=location;if((spec.same_as_previous||spec.same_as_any)&&!noFire&&!canPlaceFire(s,profile,l.id,pc.location,spec.cover,cover))return false;used.push(l.id);
-  const id=`enemy_${s.next_id++}`,u={...structuredClone(profile),id,counter_id:profile.id,contact_type:pc.type,max_steps:profile.steps,platoon:null,faction:'enemy',location:l.id,cohesion:'GOOD',experience:s.mission_rules?.enemyExperience??'Line',original_experience:s.mission_rules?.enemyExperience??'Line',ammo:spec.ammo!==undefined?{[profile.kind==='MORTAR'?'MTR':profile.kind==='FLAK88'?'GUN':'MG']:spec.ammo}:structuredClone(profile.ammo??{}),spotter_agency:p.incoming_agency??'enemy_mortar',missions_remaining:profile.missions??null,calls_made:0,
+  const spotterAgency=p.incoming_agency??'enemy_mortar',spotterRules=profile.kind==='SPOTTER'?s.mission_rules?.enemy_spotters?.[spotterAgency.replace('enemy_','')]:null;
+  const id=`enemy_${s.next_id++}`,u={...structuredClone(profile),id,counter_id:profile.id,contact_type:pc.type,max_steps:profile.steps,platoon:null,faction:'enemy',location:l.id,cohesion:'GOOD',experience:s.mission_rules?.enemyExperience??'Line',original_experience:s.mission_rules?.enemyExperience??'Line',ammo:spec.ammo!==undefined?{[profile.ammo_key??(profile.kind==='MORTAR'?'MTR':profile.kind==='FLAK88'?'GUN':'MG')]:spec.ammo}:structuredClone(profile.ammo??{}),spotter_agency:spotterAgency,missions_remaining:spotterRules?.missions??profile.missions??null,subsequent_draws:spotterRules?.subsequent_draws??profile.subsequent_draws,calls_made:0,
    steps:Array.from({length:spec.steps??profile.steps},(_,i)=>({id:`${id}_step${i+1}`,personnel:[]})),named:profile.kind!=='SQUAD',pinned:false,exposed:!!p.exposed,cover:cover?.id??null,
    fire:p.no_fire||profile.kind==='SPOTTER'?null:pc.location,hold_fire_until_cleanup:!!p.no_fire,indirect:null,radios:[],assets:structuredClone(profile.assets??{}),used:[],saved:0,removed:null,mission_weapon:true,placed_turn:s.turn};
-  u.initial_resources={radios:[],assets:structuredClone(u.assets),ammo:structuredClone(u.ammo??{}),missions:profile.missions??null};s.units[id]=u;
+  u.initial_resources={radios:[],assets:structuredClone(u.assets),ammo:structuredClone(u.ammo??{}),missions:u.missions_remaining};s.units[id]=u;
   if(p.outflanked&&p.point_blank){const directions=[[-1,0],[-1,1],[0,1],[1,1],[1,0],[1,-1],[0,-1],[-1,-1]];cover.arc=directions[randomNumber(s,8,'Outflanked pillbox facing',true)-1];u.fire=null;u.hold_fire_until_cleanup=true;spot(s,u);}
+  if(profile.grenade_ammo&&!p.no_fire){const target=occupants(s,pc.location).find(t=>rangedWeaponTarget(s,u,t));if(target)grenade(s,u,target);}
   if(profile.kind==='MORTAR'&&profile.vof==='G'&&!p.no_fire){const target=occupants(s,pc.location).find(friendly);if(target)grenade(s,u,target);}
   if(p.infiltration){const success=attempt(s,u,2,'infiltrate',`${u.name}: patrol placement`,true)>0;u.exposed=!success;if(success){const candidate=l.covers.filter(c=>!c.parent&&!occupants(s,l.id).some(v=>v.id!==u.id&&v.cover===c.id&&v.faction==='friendly')).sort((a,b)=>b.value-a.value)[0];u.cover=candidate?.id??u.cover;}}
   if(p.spotted)spot(s,u);

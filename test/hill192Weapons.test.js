@@ -1,0 +1,43 @@
+import {stGeorges} from '../src/scenarios/stGeorges.js';
+import {exportScoutedBattlefield} from '../src/sim/company/battlefieldCarryover.js';
+import {describe,it,expect} from 'vitest';
+import {hill192} from '../src/scenarios/hill192.js';
+import {createMission,exportReplay,replayMission,previewMissionSetup,prepareReattempt} from '../src/sim/company/engine.js';
+import {placePackage,packageAvailable} from '../src/sim/company/missionContacts.js';
+import {rangedWeaponTarget} from '../src/sim/company/rangedWeapons.js';
+import {grenade,concentrate} from '../src/sim/company/actions.js';
+import {prepareCombat,enemyActivity} from '../src/sim/company/combat.js';
+import {refresh,canFire} from '../src/sim/company/battlefield.js';
+import {cards} from '../src/sim/company/core.js';
+import {borders,DIRECTIONS} from '../src/sim/company/terrain.js';
+// Test-only execution override: this does not release the authored scenario gate.
+const candidate={...hill192,readiness:{playable:true}};
+const flat=()=>{const s=createMission(candidate,'hill-weapons');for(const l of Object.values(s.locations)){l.terrain='field';l.elevation=0;l.borders=borders(DIRECTIONS);l.building=false;}for(const u of Object.values(s.units))if(u.id!=='s11')u.removed='RESERVE';s.units.s11.location='r1c2';return s;};
+const stack=(s,p,n=8)=>{const c=Object.values(cards).find(p);s.deck.order=Array(n).fill(c.id).concat(s.deck.order);};
+const place=(s,kind)=>{expect(placePackage(s,{location:'r1c2',type:'C'},{units:[{kind,cover:'Foxholes',ammo:kind==='PANZERSCHRECK'?4:6}]})).toBe(true);return Object.values(s.units).find(u=>u.faction==='enemy');};
+describe('Hill 192 authored scenario and infantry weapon capabilities',()=>{
+ it('keeps the actual scenario gated, but validates a five-by-four setup preview',()=>{expect(()=>createMission(hill192,'gated')).toThrow('not playable');const p=previewMissionSetup(hill192,'preview');expect(p.playable).toBe(false);const s=createMission(candidate,'identity');expect(s.boundaries).toMatchObject({columns:5,rows:4});expect(s.locations.r0c1).toBeUndefined();expect(s.objectives.clear_rows).toEqual([2,3]);expect(s.units.hmg1.ammo.MG).toBe(6);expect(replayMission(candidate,exportReplay(s))).toEqual(s);});
+ it('places PAK40 at Close Range and never expends gun ammo for basic or concentrated fire',()=>{const s=flat(),u=place(s,'PAK40');expect(s.locations[u.location].row).toBe(2);expect(canFire(s,u,'r1c2')).toBe(true);stack(s,c=>c.spot&&!c.jam);concentrate(s,u,s.units.s11);prepareCombat(s);expect(u.ammo.GUN).toBe(6);expect(s.events.filter(e=>e.type==='AMMO_EXPENDED'&&e.actor===u.id)).toHaveLength(0);});
+ for(const kind of ['PANZERSCHRECK','INFANTRY_GUN75'])it(`${kind} opens with a ranged grenade and consumes the correct ammo once`,()=>{const s=flat();stack(s,c=>c.grenade&&!c.jam);const u=place(s,kind),key=kind==='PANZERSCHRECK'?'RKT':'GUN';expect(u.ammo[key]).toBe(kind==='PANZERSCHRECK'?3:5);expect(s.events.some(e=>e.type==='GRENADE_ATTEMPT')).toBe(true);if(kind==='INFANTRY_GUN75'){expect(s.locations[u.location].row).toBe(4);expect(canFire(s,u,'r1c2')).toBe(false);}prepareCombat(s);expect(u.ammo[key]).toBe(kind==='PANZERSCHRECK'?3:5);});
+ it('keeps SG! good order and its Small Arms fire when rockets are depleted',()=>{const s=flat(),u=place(s,'PANZERSCHRECK');u.ammo.RKT=1;stack(s,c=>!c.grenade&&!c.jam);grenade(s,u,s.units.s11);expect(u.ammo.RKT).toBe(0);expect(u.cohesion).toBe('GOOD');expect(rangedWeaponTarget(s,u,s.units.s11)).toBe(false);refresh(s);expect(canFire(s,u,'r1c2')).toBe(true);});
+ it('does not spend ranged ammunition on point-blank hand grenades',()=>{const s=flat(),u=place(s,'INFANTRY_GUN75');u.location='r1c2';const ammo=u.ammo.GUN;stack(s,c=>!c.grenade&&!c.jam);grenade(s,u,s.units.s11);expect(u.ammo.GUN).toBe(ammo);});
+ it('blocks rockets from enclosed cover and ranged attacks through either faction',()=>{const s=flat(),u=place(s,'PANZERSCHRECK');const l=s.locations[u.location];l.covers.push({id:'testbuilding',type:'Building',value:2});u.cover='testbuilding';expect(rangedWeaponTarget(s,u,s.units.s11)).toBe(false);u.cover=null;u.location='r4c2';u.grenade_range=3;s.units.mg1.removed=null;s.units.mg1.location='r2c2';expect(rangedWeaponTarget(s,u,s.units.s11)).toBe(false);s.units.mg1.faction='enemy';expect(rangedWeaponTarget(s,u,s.units.s11)).toBe(false);});
+ it('respects existing PDF and point-blank engagement when selecting ranged targets',()=>{const s=flat(),u=place(s,'INFANTRY_GUN75');u.fire='r1c1';expect(rangedWeaponTarget(s,u,s.units.s11)).toBe(false);u.fire=null;s.units.mg1.removed=null;s.units.mg1.location=u.location;expect(rangedWeaponTarget(s,u,s.units.s11)).toBe(false);});
+ it('uses the two printed counters per AT/gun type and immobile 75mm weapon sides',()=>{for(const kind of ['PANZERSCHRECK','PAK40','INFANTRY_GUN75','FLAK88'])expect(hill192.enemy_counters.filter(c=>c.kind===kind)).toHaveLength(2);for(const kind of ['PAK40','INFANTRY_GUN75','FLAK88'])expect(hill192.enemy_counters.filter(c=>c.kind===kind).every(c=>c.mobile===false)).toBe(true);});
+ it('rejects an AT package when all its finite weapon counters are unavailable',()=>{const s=flat();s.mission_contacts.counters=s.mission_contacts.counters.filter(c=>!['PANZERSCHRECK','PAK40'].includes(c.kind));expect(packageAvailable(s,{location:'r1c2'},hill192.packages[6])).toBe(false);});
+ it('uses the ranged attack during enemy activity even without a basic Long Range PDF',()=>{const s=flat();stack(s,c=>c.grenade&&!c.jam);const u=place(s,'INFANTRY_GUN75');expect(u.fire).toBeNull();const before=u.ammo.GUN;enemyActivity(s);expect(u.ammo.GUN).toBe(before-1);});
+ it('jams a ranged AT weapon without placing a successful grenade',()=>{const s=flat(),u=place(s,'PANZERSCHRECK');const before=s.markers.length;stack(s,c=>c.jam);grenade(s,u,s.units.s11);expect(u.removed).toBe('JAMMED');expect(s.markers.slice(before).some(m=>m.type==='GRENADE')).toBe(false);});
+});
+
+describe('conditional engineer immutable deployment',()=>{
+ const source=(row)=>{const s=createMission(stGeorges,'engineer-source');s.status='SUCCESS';s.patrol_history=[1,2,3].map(platoon=>({platoon,outcome:'SUCCESS'}));s.locations[`r${row}c2`].mines=true;s.events.push({type:'MINEFIELD_FOUND',location:`r${row}c2`});return exportScoutedBattlefield(s);};
+ it('deploys a Line three-step S engineer only from discovered Row-2/3 source mines',()=>{for(const row of [2,3]){const battlefield=source(row),before=structuredClone(battlefield),s=createMission(candidate,'conditional',{battlefield});expect(s.units.engineers).toMatchObject({experience:'Line',vof:'S',capabilities:{engineer:true}});expect(s.units.engineers.steps).toHaveLength(3);expect(s.roster_snapshot.formations.engineers.step_ids).toEqual(s.units.engineers.steps.map(t=>t.id));expect(replayMission(candidate,exportReplay(s))).toEqual(s);expect(battlefield).toEqual(before);expect(hill192.units.some(u=>u.id==='engineers')).toBe(false);}});
+ it('does not create engineers for a fresh map or only Row-4 source mines',()=>{expect(createMission(candidate,'fresh').units.engineers).toBeUndefined();expect(createMission(candidate,'row4',{battlefield:source(4)}).units.engineers).toBeUndefined();});
+});
+
+describe('Hill 192 no-staging reattempt reserve policy',()=>{
+ const failed=()=>{const s=createMission(candidate,'reattempt',{positions:{s21:'RESERVE'}});s.status='DEFEAT';s.contacts={};return s;};
+ const placements=s=>Object.fromEntries(Object.values(s.units).filter(u=>u.faction==='friendly'&&!u.removed).map(u=>[u.id,u.location]));
+ it('retains unavailable reserve identities, terrain and mines while replenishing M4 support and restoring tactics',()=>{const s=failed(),reserve=structuredClone(s.units.s21),terrain=structuredClone(s.locations);s.locations.r3c2.mines=true;s.enemy_tactics='offensive_assault';s.counterattack_ends_after=5;s.support_inventory.artillery.TOT=0;const n=prepareReattempt(s,{positions:placements(s)}).state;expect(n.units.s21).toEqual(reserve);expect(n.locations.r3c2.mines).toBe(true);expect(n.locations.r1c1.covers).toEqual(terrain.r1c1.covers);expect(n.support_inventory.artillery.TOT).toBe(1);expect(n.enemy_tactics).toBe('deliberate_defense');expect(n.counterattack_ends_after).toBeNull();expect(n.attempt_number).toBe(2);expect(n.attempt_records).toHaveLength(2);});
+ it('rejects explicitly placing or promoting an undeployed reserve',()=>{const s=failed();expect(()=>prepareReattempt(s,{positions:{...placements(s),s21:'r1c2'}})).toThrow('reserves remain unavailable');s.achievements=[{points:10}];expect(()=>prepareReattempt(s,{positions:placements(s),promote:{[s.units.s21.steps[0].id]:'Veteran'}})).toThrow('not eligible');});
+});

@@ -1,3 +1,4 @@
+import {eligibleEngineer} from './engineers.js';
 import {placeIllumination} from './visibility.js';
 import {values,live,friendly,visible,good,emit,draw,randomNumber,pick,dropLoad} from './core.js';
 import {resolveNormandyEvent} from './normandyEvents.js';
@@ -19,9 +20,9 @@ export function discoveredCover(s,l,known=true,enemy=false) {
  if(value>1&&(s.mission_rules?.coverTable==='normandy'?upper:(l.multi_story||l.tower)))l.covers.push({id:`cover_${s.next_id++}`,type:l.tower?'Church Tower':'Upper Story',value,known,parent:c.id,elevation:1,capacity:l.tower?1:null});
  return c;
 }
-export function checkMines(s,u){
+export function checkMines(s,u,{discovery=false}={}){
  if(!s.locations[u.location].mines||!live(u))return;
- const hit=draw(s,3,`${visible(s,u)?u.name:'Enemy'}: mine check`,!visible(s,u)).some(c=>c.burst||c.short);
+ const hit=draw(s,discovery&&s.mission_rules.hill192&&eligibleEngineer(u)?1:3,`${visible(s,u)?u.name:'Enemy'}: mine check`,!visible(s,u)).some(c=>c.burst||c.short);
  if(hit){u.mine_hit=true;s.markers.push({type:'MINES',location:u.location,target:u.id,value:-4});}
  emit(s,'MINE_CHECK',`${visible(s,u)?u.name:'Enemy'} ${hit?'triggered mines; cannot move again this turn':'avoided the mines'}.`,{actor:visible(s,u)?u.id:null,location:u.location,hit},!visible(s,u));
 }
@@ -32,11 +33,11 @@ export function scoreMission(s,{final=false}={}){
  const add=(key,points,text)=>{if(!s.achievements.some(a=>a.key===key)){s.achievements.push({key,points,text,turn:s.turn});emit(s,'ACHIEVEMENT',`${text}: +${points} points.`,{key,points});}};
  for(const e of s.hq_events.filter(e=>e.side==='friendly'&&e.turn===s.turn)){
   if(s.phase==='CLEANUP'){
-   const advanced=s.events.some(v=>v.turn===s.turn&&v.type==='UNIT_MOVED'&&s.units[v.actor]?.faction==='friendly'&&s.locations[v.target]?.row>e.lead);
+   const advanced=s.events.some(v=>v.turn===s.turn&&v.type==='UNIT_MOVED'&&s.units[v.actor]?.faction==='friendly'&&s.locations[v.target]?.row>e.lead&&(!s.mission_rules.hill192||e.code!=='ADVANCE_PC'||v.had_potential_contact));
   if(['ADVANCE','ADVANCE_PC'].includes(e.code)&&e.lead<(s.boundaries?.rows??Math.max(...values(s.locations).map(l=>l.row))))e.completed=advanced;
    if(e.code==='HOLD')e.completed=!advanced;
   }
-  if(e.completed)add(s.mission_rules?.reattempts?`event_${s.attempt_number??1}_${e.turn}_${e.code}`:`event_${e.turn}_${e.code}`,1,'Higher HQ obligation completed');
+  if(e.completed&&(!s.mission_rules.hill192||['SITREP','COMM','ADVANCE','ADVANCE_PC'].includes(e.code)))add(s.mission_rules?.reattempts?`event_${s.attempt_number??1}_${e.turn}_${e.code}`:`event_${e.turn}_${e.code}`,1,'Higher HQ obligation completed');
  }
  if(final){
   for(const [key,points]of [['primary',5],['secondary',4],['attack',3]])if(secureStatus(s,s.objectives[key]).secured)add(key,points,`${key} objective secured`);
@@ -87,7 +88,7 @@ export function shortRoundDestination(s,u,target,hidden=false){
  return `r${b.row-Math.sign(b.row-a.row)}c${b.col-Math.sign(b.col-a.col)}`;
 }
 export function supportRequest(s,u,agencyId,ammo,target){
- const agency=s.support_agencies[agencyId],base=agency.draws[u.agency_role??u.id],registered=s.registered_targets[agencyId]===target?1:0;
+ const agency=s.support_agencies[agencyId],base=(agency.ammo_draws?.[ammo]??agency.draws)[u.agency_role??u.id],registered=s.registered_targets[agencyId]===target?1:0;
   if(s.support_inventory?.[agencyId]?.[ammo]===0)throw new Error(`${agency.name} has no ${ammo} missions remaining.`);
  const extra=s.active_skill?.actor===u.id&&s.active_skill.extra&&!s.active_skill.applied;
  const batch=draw(s,Math.max(1,base+registered+({Green:-1,Line:0,Veteran:1}[u.experience]))+(extra?1:0),`${u.name}: ${agency.name} ${ammo}`);

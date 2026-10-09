@@ -1,0 +1,8 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Hill 192 gated setup QA</title><link rel="stylesheet" href="/src/style.css"><link rel="stylesheet" href="/src/ui/company.css"></head><body><main id="qa"><button id="menu-file">File</button><p>Read-only synthetic setup QA; no mission or user storage writes.</p></main><script type="module">
+import {hill192} from '/src/scenarios/hill192.js';
+import {stGeorges} from '/src/scenarios/stGeorges.js';
+import {createMission} from '/src/sim/company/engine.js';
+import {exportScoutedBattlefield,saveBattlefield} from '/src/sim/company/battlefieldCarryover.js';
+import {openMissionSetup} from '/src/ui/missionSetup.js';
+const s=createMission(stGeorges,'qa-scouted');s.status='SUCCESS';s.patrol_history=[1,2,3].map(platoon=>({platoon,outcome:'SUCCESS'}));s.locations.r2c2.mines=true;s.events.push({type:'MINEFIELD_FOUND',location:'r2c2'});const data=new Map(),storage={getItem:k=>data.get(k)??null,setItem:(k,v)=>data.set(k,v)};saveBattlefield(storage,exportScoutedBattlefield(s));openMissionSetup(document.querySelector('#qa'),hill192,'qa-hill',null,{storage});
+</script></body></html>

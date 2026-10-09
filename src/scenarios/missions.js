@@ -1,4 +1,5 @@
 import {stGeorges} from './stGeorges.js';
+import {hill192} from './hill192.js';
 import {cerisy} from './cerisy.js';
 import {companyAssault} from './companyAssault.js';
 import {keepUpTheFire} from './keepUpTheFire.js';
@@ -13,7 +14,8 @@ const stGeorgesCandidate=stGeorgesDevelopment?{...stGeorges,readiness:{...stGeor
 export const missionCatalog=[{id:companyAssault.id,name:'Company Assault — regression course',scenario:companyAssault},{id:keepUpTheFire.id,name:'Keep Up the Fire — standalone',scenario:keepUpTheFire,unavailable:keepUpTheFire.readiness.playable?null:keepUpTheFire.readiness.missing.join('; ')},
  {id:trevieres.id,name:normandyDevelopment?`${trevieres.name} · development playtest`:trevieres.name,scenario:trevieresCandidate,unavailable:normandyDevelopment||trevieres.readiness.playable?null:trevieres.readiness.missing.join('; ')},
  {id:cerisy.id,name:cerisyDevelopment?`${cerisy.name} · development playtest`:cerisy.name,scenario:cerisyCandidate,unavailable:cerisyDevelopment||cerisy.readiness.playable?null:cerisy.readiness.missing.join('; ')},
- {id:stGeorges.id,name:stGeorgesDevelopment?`${stGeorges.name} · development playtest`:stGeorges.readiness.playable?stGeorges.name:`${stGeorges.name} · setup preview only`,scenario:stGeorgesCandidate,unavailable:stGeorgesDevelopment||stGeorges.readiness.playable?null:stGeorges.readiness.missing.join('; ')}];
+ {id:stGeorges.id,name:stGeorgesDevelopment?`${stGeorges.name} · development playtest`:stGeorges.readiness.playable?stGeorges.name:`${stGeorges.name} · setup preview only`,scenario:stGeorgesCandidate,unavailable:stGeorgesDevelopment||stGeorges.readiness.playable?null:stGeorges.readiness.missing.join('; ')},
+ {id:hill192.id,name:hill192.name,scenario:hill192,unavailable:hill192.readiness.playable?null:hill192.readiness.missing.join('; ')}];
 export const missionById=id=>missionCatalog.find(m=>m.id===id)?.scenario;
 export function playableMissionById(id){
  const entry=missionCatalog.find(m=>m.id===id);

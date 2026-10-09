@@ -1,3 +1,4 @@
+import {hill192CounterattackLocations} from './hill192Setup.js';
 import {applyPatrolEvent} from './patrolEvents.js';
 import {values,live,friendly,emit,draw,randomNumber,pick} from './core.js';
 import {occupants,refresh} from './battlefield.js';
@@ -17,7 +18,7 @@ export function resolveNormandyEvent(s,side,choice={}){
  }else{
   if(s.turn===1)return emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event on turn 1.`);
   if(!draw(s,1,`${side} higher HQ event check`)[0].hq)return emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event.`);
-  const table=side==='friendly'?((s.turn<=6?s.mission_rules.friendly_event_tables?.early:s.mission_rules.friendly_event_tables?.late)??(s.turn<=6?FRIENDLY_EARLY:FRIENDLY_LATE)):(s.turn<=6?s.mission_rules.enemy_event_tables?.early:s.mission_rules.enemy_event_tables?.late)??ENEMY;
+  const table=side==='friendly'?((s.turn<=6?s.mission_rules.friendly_event_tables?.early:s.mission_rules.friendly_event_tables?.late)??(s.turn<=6?FRIENDLY_EARLY:FRIENDLY_LATE)):(s.turn<(s.mission_rules.enemy_late_start??7)?s.mission_rules.enemy_event_tables?.early:s.mission_rules.enemy_event_tables?.late)??ENEMY;
   code=table[randomNumber(s,10,`${side} higher HQ event`)-1];
   event={side,code,turn:s.turn,lead:leadRow(s),completed:false};s.hq_events.push(event);
   if(code==='RESUPPLY'&&!choice.ammo_type){s.pending_event={side,code,turn:s.turn};emit(s,'HQ_EVENT_CHOICE_REQUIRED','Choose one ammunition type and a Row 1 resupply card.',{side,code});return event;}
@@ -26,6 +27,8 @@ export function resolveNormandyEvent(s,side,choice={}){
   if(code==='SITREP')s.command_obligation=3;
   if(code==='COMM'){s.bn_blocked=true;s.command_obligation=2;}
   if(code==='NO_ARTY')s.support_unavailable.push('artillery');
+  if(code==='NO_CANNON')s.support_unavailable.push('cannon');
+  if(code==='NO_MORTAR'&&!s.patrol)s.support_unavailable.push('mortar');
   if(code==='HOLD')s.forward_row_blocked=event.lead+1;
   if(code==='CHECKING_UP'){
    const officers=['REGIMENTAL_STAFF','BATTALION_COMMANDER','BATTALION_STAFF'];
@@ -60,9 +63,9 @@ export function resolveNormandyEvent(s,side,choice={}){
    else{u.removed='WITHDRAWN';u.event_acted=s.turn;}
   }
   if(code==='COUNTER_ATTACK'){
-   const occupied=values(s.locations).filter(l=>!l.staging&&occupants(s,l.id).some(friendly));
+   const occupied=values(s.locations).filter(l=>!l.staging&&occupants(s,l.id).some(friendly)&&(!s.mission_rules.hill192||hill192CounterattackLocations(s).includes(l.id)));
    // Sixteen physical markers per letter (§8.2.1); resolved markers return to stock.
-   const letters=['A','B','C'].flatMap(type=>Array(Math.max(0,16-values(s.contacts).filter(pc=>!pc.resolved&&pc.type===type).length)).fill(type));
+   const letters=(s.mission_rules.hill192?['A']:['A','B','C']).flatMap(type=>Array(Math.max(0,16-values(s.contacts).filter(pc=>!pc.resolved&&pc.type===type).length)).fill(type));
    event.placements=[];
    for(const l of occupied){if(!letters.length)break;const type=pick(s,letters,'Counterattack remaining PC letter',true),index=letters.indexOf(type);letters.splice(index,1);
     const id=`pc_counter_${s.next_id++}`,pc={id,location:l.id,type,resolved:false,counterattack:true,revealed:false};s.contacts[id]=pc;

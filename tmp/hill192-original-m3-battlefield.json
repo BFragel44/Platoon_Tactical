@@ -1,0 +1,1652 @@
+{
+  "schema": 1,
+  "source": {
+    "scenario": "normandy_3",
+    "content_version": 1,
+    "rules_version": 27,
+    "mission_instance_id": "1900a2e5-3765-4628-b707-d8455752e1fd",
+    "mission_run_id": "1900a2e5-3765-4628-b707-d8455752e1fd",
+    "seed": "st-georges-attached-1",
+    "outcome": "SUCCESS",
+    "attempt": 3,
+    "patrols": [
+      {
+        "platoon": 1,
+        "outcome": "SUCCESS",
+        "turns": 10
+      },
+      {
+        "platoon": 2,
+        "outcome": "SUCCESS",
+        "turns": 4
+      },
+      {
+        "platoon": 3,
+        "outcome": "SUCCESS",
+        "turns": 6
+      }
+    ]
+  },
+  "locations": [
+    {
+      "id": "r1c1",
+      "name": "1.1 Farm / Hill",
+      "row": 1,
+      "col": 1,
+      "terrain": "farm",
+      "terrain_card": "normandy_1_1_8",
+      "elevation": 2,
+      "hills": [
+        "normandy_2_3_8"
+      ],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "burst": 0,
+      "known": true,
+      "building": true,
+      "covers": [
+        {
+          "id": "fox_r1c1_0",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        },
+        {
+          "id": "fox_r1c1_1",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        }
+      ],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r1c2",
+      "name": "1.2 Orchard",
+      "row": 1,
+      "col": 2,
+      "terrain": "orchard",
+      "terrain_card": "normandy_1_2_7",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 1,
+      "cover_limit": 2,
+      "cover_draw": 3,
+      "burst": -1,
+      "known": true,
+      "building": false,
+      "covers": [
+        {
+          "id": "fox_r1c2_0",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        },
+        {
+          "id": "fox_r1c2_1",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        }
+      ],
+      "trafficability": "Unmarked",
+      "mines": false
+    },
+    {
+      "id": "r1c3",
+      "name": "1.3 Hedgerow / Bocage",
+      "row": 1,
+      "col": 3,
+      "terrain": "hedgerow",
+      "terrain_card": "normandy_3_1_3",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "white",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [
+        {
+          "id": "fox_r1c3_0",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        },
+        {
+          "id": "fox_r1c3_1",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        }
+      ],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r1c4",
+      "name": "1.4 Farm",
+      "row": 1,
+      "col": 4,
+      "terrain": "farm",
+      "terrain_card": "normandy_1_2_8",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "burst": 0,
+      "known": true,
+      "building": true,
+      "covers": [
+        {
+          "id": "fox_r1c4_0",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        },
+        {
+          "id": "fox_r1c4_1",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        }
+      ],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r1c5",
+      "name": "1.5 Woods",
+      "row": 1,
+      "col": 5,
+      "terrain": "woods",
+      "terrain_card": "normandy_1_2_3",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "burst": -1,
+      "known": true,
+      "building": false,
+      "covers": [
+        {
+          "id": "fox_r1c5_0",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        },
+        {
+          "id": "fox_r1c5_1",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        }
+      ],
+      "trafficability": "No",
+      "mines": false
+    },
+    {
+      "id": "r2c1",
+      "name": "2.1 Village",
+      "row": 2,
+      "col": 1,
+      "terrain": "village",
+      "terrain_card": "normandy_1_3_4",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 3,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "burst": 0,
+      "known": true,
+      "building": true,
+      "covers": [],
+      "mines": true,
+      "trafficability": "Slow"
+    },
+    {
+      "id": "r2c2",
+      "name": "2.2 Orchard",
+      "row": 2,
+      "col": 2,
+      "terrain": "orchard",
+      "terrain_card": "normandy_2_3_1",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 1,
+      "cover_limit": 2,
+      "cover_draw": 3,
+      "burst": -1,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "Unmarked",
+      "mines": false
+    },
+    {
+      "id": "r2c3",
+      "name": "2.3 Hedgerow / Bocage",
+      "row": 2,
+      "col": 3,
+      "terrain": "hedgerow",
+      "terrain_card": "normandy_2_2_1",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "white",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "white",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [
+        {
+          "id": "fox_r2c3_0",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        },
+        {
+          "id": "fox_r2c3_1",
+          "type": "Foxholes",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        }
+      ],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r2c4",
+      "name": "2.4 Hedgerow / Bocage",
+      "row": 2,
+      "col": 4,
+      "terrain": "hedgerow",
+      "terrain_card": "normandy_2_3_5",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "white",
+        "SE": "dark",
+        "S": "white",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r2c5",
+      "name": "2.5 Woods",
+      "row": 2,
+      "col": 5,
+      "terrain": "woods",
+      "terrain_card": "normandy_2_1_3",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "burst": -1,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "No",
+      "mines": false
+    },
+    {
+      "id": "r3c1",
+      "name": "3.1 Orchard",
+      "row": 3,
+      "col": 1,
+      "terrain": "orchard",
+      "terrain_card": "normandy_2_2_6",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 1,
+      "cover_limit": 2,
+      "cover_draw": 3,
+      "burst": -1,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "mines": true,
+      "trafficability": "Unmarked"
+    },
+    {
+      "id": "r3c2",
+      "name": "3.2 Farm",
+      "row": 3,
+      "col": 2,
+      "terrain": "farm",
+      "terrain_card": "normandy_2_1_2",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "burst": 0,
+      "known": true,
+      "building": true,
+      "covers": [],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r3c3",
+      "name": "3.3 Church",
+      "row": 3,
+      "col": 3,
+      "terrain": "church",
+      "terrain_card": "normandy_2_2_8",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 3,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "burst": 0,
+      "known": true,
+      "building": true,
+      "covers": [],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r3c4",
+      "name": "3.4 Orchard",
+      "row": 3,
+      "col": 4,
+      "terrain": "orchard",
+      "terrain_card": "normandy_1_2_4",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 1,
+      "cover_limit": 2,
+      "cover_draw": 3,
+      "burst": -1,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "Unmarked",
+      "mines": false
+    },
+    {
+      "id": "r3c5",
+      "name": "3.5 Open Fields",
+      "row": 3,
+      "col": 5,
+      "terrain": "open",
+      "terrain_card": "normandy_1_1_6",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "white",
+        "NE": "white",
+        "E": "white",
+        "SE": "white",
+        "S": "white",
+        "SW": "white",
+        "W": "white",
+        "NW": "white"
+      },
+      "protection": 0,
+      "cover_limit": 1,
+      "cover_draw": 2,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "Unmarked",
+      "mines": false
+    },
+    {
+      "id": "r4c1",
+      "name": "4.1 Gully / Draw",
+      "row": 4,
+      "col": 1,
+      "terrain": "gully",
+      "terrain_card": "normandy_2_1_5",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "white",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "white",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [
+        {
+          "id": "fort_12",
+          "type": "Foxholes",
+          "value": 1,
+          "known": false,
+          "enemy_original": true,
+          "capacity": null
+        }
+      ],
+      "trafficability": "No",
+      "mines": false
+    },
+    {
+      "id": "r4c2",
+      "name": "4.2 Hedgerow / Bocage",
+      "row": 4,
+      "col": 2,
+      "terrain": "hedgerow",
+      "terrain_card": "normandy_3_1_5",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "white",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r4c3",
+      "name": "4.3 Village",
+      "row": 4,
+      "col": 3,
+      "terrain": "village",
+      "terrain_card": "normandy_2_2_2",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 3,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "burst": 0,
+      "known": true,
+      "building": true,
+      "covers": [],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r4c4",
+      "name": "4.4 Farm",
+      "row": 4,
+      "col": 4,
+      "terrain": "farm",
+      "terrain_card": "normandy_1_2_5",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "burst": 0,
+      "known": true,
+      "building": true,
+      "covers": [],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r4c5",
+      "name": "4.5 Hedgerow / Bocage",
+      "row": 4,
+      "col": 5,
+      "terrain": "hedgerow",
+      "terrain_card": "normandy_1_1_4",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "white",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "white",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "Slow",
+      "mines": false
+    },
+    {
+      "id": "r5c1",
+      "name": "5.1 Woods",
+      "row": 5,
+      "col": 1,
+      "terrain": "woods",
+      "terrain_card": "normandy_1_3_3",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "burst": -1,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "No",
+      "outside_boundary": true,
+      "mines": false
+    },
+    {
+      "id": "r5c3",
+      "name": "5.3 Orchard / Hill",
+      "row": 5,
+      "col": 3,
+      "terrain": "orchard",
+      "terrain_card": "normandy_1_2_2",
+      "elevation": 2,
+      "hills": [
+        "normandy_3_1_6"
+      ],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 1,
+      "cover_limit": 2,
+      "cover_draw": 3,
+      "burst": -1,
+      "known": true,
+      "building": false,
+      "covers": [
+        {
+          "id": "fort_21",
+          "type": "Foxholes",
+          "value": 1,
+          "known": false,
+          "enemy_original": true,
+          "capacity": null
+        }
+      ],
+      "trafficability": "Unmarked",
+      "outside_boundary": true,
+      "mines": false
+    },
+    {
+      "id": "r6c4",
+      "name": "6.4 Open Fields",
+      "row": 6,
+      "col": 4,
+      "terrain": "open",
+      "terrain_card": "normandy_1_2_6",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "white",
+        "NE": "white",
+        "E": "white",
+        "SE": "white",
+        "S": "white",
+        "SW": "white",
+        "W": "white",
+        "NW": "white"
+      },
+      "protection": 0,
+      "cover_limit": 1,
+      "cover_draw": 2,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "Unmarked",
+      "outside_boundary": true,
+      "mines": false
+    },
+    {
+      "id": "r5c4",
+      "name": "5.4 Hedgerow / Bocage",
+      "row": 5,
+      "col": 4,
+      "terrain": "hedgerow",
+      "terrain_card": "normandy_1_3_5",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [
+        {
+          "id": "cover_30",
+          "type": "Cover",
+          "value": 1,
+          "known": true,
+          "discovered": true
+        }
+      ],
+      "trafficability": "Slow",
+      "outside_boundary": true,
+      "mines": false
+    },
+    {
+      "id": "r6c5",
+      "name": "6.5 Open Fields",
+      "row": 6,
+      "col": 5,
+      "terrain": "open",
+      "terrain_card": "normandy_1_1_1",
+      "elevation": 1,
+      "hills": [],
+      "borders": {
+        "N": "white",
+        "NE": "white",
+        "E": "white",
+        "SE": "white",
+        "S": "white",
+        "SW": "white",
+        "W": "white",
+        "NW": "white"
+      },
+      "protection": 0,
+      "cover_limit": 1,
+      "cover_draw": 2,
+      "burst": 0,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "Unmarked",
+      "outside_boundary": true,
+      "mines": false
+    },
+    {
+      "id": "r7c6",
+      "name": "7.6 Orchard / Hill",
+      "row": 7,
+      "col": 6,
+      "terrain": "orchard",
+      "terrain_card": "normandy_1_3_1",
+      "elevation": 2,
+      "hills": [
+        "normandy_1_1_2"
+      ],
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "protection": 1,
+      "cover_limit": 2,
+      "cover_draw": 3,
+      "burst": -1,
+      "known": true,
+      "building": false,
+      "covers": [],
+      "trafficability": "Unmarked",
+      "outside_boundary": true,
+      "mines": false
+    }
+  ],
+  "terrain_deck": [
+    {
+      "id": "normandy_2_3_4",
+      "terrain": "gully",
+      "name": "Gully / Draw",
+      "protection": 2,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "white",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "white",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "open_protection": 1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 3,
+        "column": 4
+      }
+    },
+    {
+      "id": "normandy_2_1_4",
+      "terrain": "woods",
+      "name": "Woods",
+      "protection": 2,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": -1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 1,
+        "column": 4
+      }
+    },
+    {
+      "id": "normandy_3_1_1",
+      "terrain": "woods",
+      "name": "Woods",
+      "protection": 2,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": -1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 3,
+        "row": 1,
+        "column": 1
+      }
+    },
+    {
+      "id": "normandy_2_1_7",
+      "terrain": "woods",
+      "name": "Woods",
+      "protection": 2,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": -1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 1,
+        "column": 7
+      }
+    },
+    {
+      "id": "normandy_1_1_5",
+      "terrain": "gully",
+      "name": "Gully / Draw",
+      "protection": 2,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "white",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "white",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "open_protection": 1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 1,
+        "row": 1,
+        "column": 5
+      }
+    },
+    {
+      "id": "normandy_2_1_8",
+      "terrain": "hill",
+      "name": "Hill",
+      "protection": 0,
+      "cover_limit": 0,
+      "cover_draw": 0,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "trafficability": "Unmarked",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 1,
+        "column": 8
+      }
+    },
+    {
+      "id": "normandy_2_3_6",
+      "terrain": "hill",
+      "name": "Hill",
+      "protection": 0,
+      "cover_limit": 0,
+      "cover_draw": 0,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "trafficability": "Unmarked",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 3,
+        "column": 6
+      }
+    },
+    {
+      "id": "normandy_3_1_2",
+      "terrain": "hedgerow",
+      "name": "Hedgerow / Bocage",
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "white",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "open_protection": 1,
+      "trafficability": "Slow",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 3,
+        "row": 1,
+        "column": 2
+      }
+    },
+    {
+      "id": "normandy_1_2_1",
+      "terrain": "hill",
+      "name": "Hill",
+      "protection": 0,
+      "cover_limit": 0,
+      "cover_draw": 0,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "trafficability": "Unmarked",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 1,
+        "row": 2,
+        "column": 1
+      }
+    },
+    {
+      "id": "normandy_2_2_4",
+      "terrain": "orchard",
+      "name": "Orchard",
+      "protection": 1,
+      "cover_limit": 2,
+      "cover_draw": 3,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": -1,
+      "trafficability": "Unmarked",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 2,
+        "column": 4
+      }
+    },
+    {
+      "id": "normandy_1_3_2",
+      "terrain": "village",
+      "name": "Village",
+      "protection": 3,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "trafficability": "Slow",
+      "multi_story": true,
+      "tower": false,
+      "building": true,
+      "terrain_source": {
+        "sheet": 1,
+        "row": 3,
+        "column": 2
+      }
+    },
+    {
+      "id": "normandy_1_3_8",
+      "terrain": "marsh",
+      "name": "Marsh",
+      "protection": 1,
+      "cover_limit": 1,
+      "cover_draw": 2,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 1,
+        "row": 3,
+        "column": 8
+      }
+    },
+    {
+      "id": "normandy_1_1_3",
+      "terrain": "woods",
+      "name": "Woods",
+      "protection": 2,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": -1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 1,
+        "row": 1,
+        "column": 3
+      }
+    },
+    {
+      "id": "normandy_2_3_7",
+      "terrain": "hedgerow",
+      "name": "Hedgerow / Bocage",
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "trafficability": "Slow",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 3,
+        "column": 7
+      }
+    },
+    {
+      "id": "normandy_2_3_3",
+      "terrain": "farm",
+      "name": "Farm",
+      "protection": 2,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "trafficability": "Slow",
+      "multi_story": false,
+      "tower": false,
+      "building": true,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 3,
+        "column": 3
+      }
+    },
+    {
+      "id": "normandy_1_3_7",
+      "terrain": "gully",
+      "name": "Gully / Draw",
+      "protection": 2,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "borders": {
+        "N": "white",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "white",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "open_protection": 1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 1,
+        "row": 3,
+        "column": 7
+      }
+    },
+    {
+      "id": "normandy_3_1_4",
+      "terrain": "hedgerow",
+      "name": "Hedgerow / Bocage",
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "white",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "open_protection": 1,
+      "trafficability": "Slow",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 3,
+        "row": 1,
+        "column": 4
+      }
+    },
+    {
+      "id": "normandy_2_3_2",
+      "terrain": "woods",
+      "name": "Woods",
+      "protection": 2,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": -1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 3,
+        "column": 2
+      }
+    },
+    {
+      "id": "normandy_1_3_6",
+      "terrain": "marsh",
+      "name": "Marsh",
+      "protection": 1,
+      "cover_limit": 1,
+      "cover_draw": 2,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 1,
+      "trafficability": "No",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 1,
+        "row": 3,
+        "column": 6
+      }
+    },
+    {
+      "id": "normandy_2_2_7",
+      "terrain": "hedgerow",
+      "name": "Hedgerow / Bocage",
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "white",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "open_protection": 1,
+      "trafficability": "Slow",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 2,
+        "column": 7
+      }
+    },
+    {
+      "id": "normandy_2_1_6",
+      "terrain": "hedgerow",
+      "name": "Hedgerow / Bocage",
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "white",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "open_protection": 1,
+      "trafficability": "Slow",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 1,
+        "column": 6
+      }
+    },
+    {
+      "id": "normandy_2_1_1",
+      "terrain": "cemetery",
+      "name": "Cemetery",
+      "protection": 1,
+      "cover_limit": 1,
+      "cover_draw": 3,
+      "borders": {
+        "N": "white",
+        "NE": "white",
+        "E": "white",
+        "SE": "white",
+        "S": "white",
+        "SW": "white",
+        "W": "white",
+        "NW": "white"
+      },
+      "burst": 0,
+      "trafficability": "Slow",
+      "multi_story": false,
+      "tower": false,
+      "building": true,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 1,
+        "column": 1
+      }
+    },
+    {
+      "id": "normandy_3_1_7",
+      "terrain": "village",
+      "name": "Village",
+      "protection": 3,
+      "cover_limit": 3,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "trafficability": "Slow",
+      "multi_story": false,
+      "tower": false,
+      "building": true,
+      "terrain_source": {
+        "sheet": 3,
+        "row": 1,
+        "column": 7
+      }
+    },
+    {
+      "id": "normandy_2_2_3",
+      "terrain": "orchard",
+      "name": "Orchard",
+      "protection": 1,
+      "cover_limit": 2,
+      "cover_draw": 3,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": -1,
+      "trafficability": "Unmarked",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 2,
+        "column": 3
+      }
+    },
+    {
+      "id": "normandy_2_2_5",
+      "terrain": "open",
+      "name": "Open Fields",
+      "protection": 0,
+      "cover_limit": 1,
+      "cover_draw": 2,
+      "borders": {
+        "N": "white",
+        "NE": "white",
+        "E": "white",
+        "SE": "white",
+        "S": "white",
+        "SW": "white",
+        "W": "white",
+        "NW": "white"
+      },
+      "burst": 0,
+      "trafficability": "Unmarked",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 2,
+        "row": 2,
+        "column": 5
+      }
+    },
+    {
+      "id": "normandy_1_1_7",
+      "terrain": "hedgerow",
+      "name": "Hedgerow / Bocage",
+      "protection": 2,
+      "cover_limit": 2,
+      "cover_draw": 4,
+      "borders": {
+        "N": "dark",
+        "NE": "dark",
+        "E": "dark",
+        "SE": "dark",
+        "S": "dark",
+        "SW": "dark",
+        "W": "dark",
+        "NW": "dark"
+      },
+      "burst": 0,
+      "open_protection": 1,
+      "trafficability": "Slow",
+      "multi_story": false,
+      "tower": false,
+      "building": false,
+      "terrain_source": {
+        "sheet": 1,
+        "row": 1,
+        "column": 7
+      }
+    }
+  ]
+}

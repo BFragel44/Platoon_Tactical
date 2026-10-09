@@ -46,9 +46,13 @@ export function applyMissionDebrief(record,mission){
   if(casualty){next.steps[id].disposition=casualty.evacuated?'EVACUATED_UNRESOLVED':'CASUALTY_UNRESOLVED';
    for(const personId of step.person_ids)next.people[personId].disposition=next.steps[id].disposition;}
   else if(prisoner){next.steps[id].disposition='PRISONER_UNRESOLVED';for(const personId of step.person_ids)next.people[personId].disposition='PRISONER_UNRESOLVED';}
+  else if([...(mission.attempt_history??[]).flatMap(a=>a.prisoners??[]),...(mission.prisoners??[])].some(group=>group.guard?.id===id))next.steps[id].disposition='GUARD_UNRESOLVED';
   const deployed=Object.values(mission.units??{}).find(unit=>unit.faction==='friendly'&&unit.steps?.some(current=>current.id===id));
   const current=deployed?.steps.find(current=>current.id===id);
   if(current?.experience)next.steps[id].experience=current.experience;
+  // Surviving generic teams cannot silently refill their original formation after
+  // a different step reconstituted it. Keep people and step identities unresolved.
+  if(current&&deployed.kind==='LAT'&&next.steps[id].disposition==='ACTIVE')next.steps[id].disposition='FORMATION_UNRESOLVED';
   if(current&&next.steps[id].disposition==='ACTIVE'&&next.formations[deployed.id]&&deployed.kind===next.formations[deployed.id].kind&&!next.formations[deployed.id].step_ids.includes(id)){
    for(const formation of Object.values(next.formations))formation.step_ids=formation.step_ids.filter(member=>member!==id);
    next.formations[deployed.id].step_ids.push(id);next.steps[id].formation_id=deployed.id;
@@ -85,7 +89,7 @@ export function debriefAndSave(storage,mission,key=CAMPAIGN_KEY){
 
 // Explicit standalone runs replace only their own slot, retaining a backup.
 export function startStandaloneRoster(storage,record,key){
- if(!['platoon-normandy-cerisy-standalone','platoon-normandy-st-georges-standalone'].includes(key))throw new Error('Standalone replacement requires the Cerisy slot or St. Georges slot.');
+ if(!['platoon-normandy-cerisy-standalone','platoon-normandy-st-georges-standalone','platoon-normandy-hill-192-standalone'].includes(key))throw new Error('Standalone replacement requires the Cerisy slot, St. Georges slot or Hill 192 slot.');
  const value=JSON.stringify(assertRecord(record)),previous=storage.getItem(key);
  if(previous!==null)storage.setItem(`${key}-previous`,previous);
  storage.setItem(key,value);return copy(record);

@@ -20,6 +20,7 @@ function prepareAttempt(state,choices,patrol){
  const secured=patrol?values(state.locations).filter(l=>l.row===1||l.id===plan.cop).map(l=>l.id):values(state.locations).filter(l=>secureStatus(state,l.id).secured).map(l=>l.id);
  if(!secured.length)throw new Error('No secured card remains for reattempt deployment.');
  const s=structuredClone(state),assignments=choices?.reconstitute??{},promotions=choices?.promote??{},placements=choices?.positions??{},covers=choices?.covers??{};
+ if(state.mission_rules.hill192&&Object.keys(placements).some(id=>state.units[id]?.removed==='RESERVE'))throw new Error('Undeployed Hill 192 reserves remain unavailable during the reattempt.');
  const patrolPoints=patrol?state.achievements.filter(a=>a.platoon===state.patrol.plan.platoon&&!a.spent).reduce((sum,a)=>sum+a.points,0):null;
  if(patrol){
   for(const u of values(s.units))if(friendly(u)&&u.removed==='RESERVE'&&u.steps.length)u.removed=null;
@@ -46,6 +47,7 @@ function prepareAttempt(state,choices,patrol){
  const consumed=new Set(),newHQ=new Set();
  for(const [targetId,donorIds] of Object.entries(assignments)){
   const target=s.units[targetId];
+  if(state.mission_rules.hill192&&target?.removed==='RESERVE')throw new Error('Undeployed Hill 192 reserves cannot be reconstituted.');
   if(!target||!friendly(target)||target.attachment||!['SQUAD','HQ','STAFF','MG','HMG','AT','MORTAR'].includes(target.kind)||!Array.isArray(donorIds)||!donorIds.length||target.steps.length+donorIds.length>target.max_steps)throw new Error(`Invalid reconstitution for ${targetId}.`);
   if(patrol&&state.units[targetId]?.platoon!==state.patrol.plan.platoon)throw new Error('Reconstitute only the completed patrol platoon.');
   const hadSteps=target.steps.length>0;
@@ -66,6 +68,7 @@ function prepareAttempt(state,choices,patrol){
   const owner=ownerOf(stepId),step=owner?.steps.find(t=>t.id===stepId);
   if(!owner||!friendly(owner)||['FO','LAT'].includes(owner.kind)||newHQ.has(owner.id)||!['Line','Veteran'].includes(to))throw new Error(`Step ${stepId} cannot be promoted.`);
   if(patrol&&state.units[owner.id]?.platoon!==state.patrol.plan.platoon)throw new Error('Only the completed patrol platoon is eligible for promotion.');
+  if(state.mission_rules.hill192&&owner.removed==='RESERVE')throw new Error('Undeployed Hill 192 reserves are not eligible for attempt experience.');
   const from=step.experience??owner.experience;
   if(rank[to]!==rank[from]+1)throw new Error(`Promotion must raise ${stepId} by one level.`);
   const cost=to==='Line'?1:3;if(points<cost)throw new Error('Not enough attempt experience.');
@@ -102,7 +105,7 @@ function prepareAttempt(state,choices,patrol){
  s.attempt_history.push({number:s.attempt_number??1,outcome:patrol?s.patrol_history.at(-1).outcome:s.status,turns:s.turn,score:s.achievements.reduce((sum,a)=>sum+a.points,0),event_count:s.events.length,casualties:structuredClone(s.casualties),prisoners:structuredClone(s.prisoners)});
  s.attempt_number=patrol?state.attempt_number+1:2;s.attempt_points_spent=(patrol?patrolPoints:s.achievements.reduce((sum,a)=>sum+a.points,0))-points;
  if(patrol)for(const a of s.achievements.filter(a=>a.platoon===state.patrol.plan.platoon))a.spent=true;
- s.casualties=[];s.assets=[];s.prisoners=[];s.markers=[];s.fire=[];s.support=[];s.pending_support=null;s.registered_targets=patrol?{artillery:plan.concentration}:{};s.support_inventory=Object.fromEntries(Object.entries(s.support_agencies??{}).map(([id,agency])=>[id,structuredClone(agency.inventory??{})]));
+ s.casualties=[];s.assets=[];s.prisoners=[];s.markers=[];s.fire=[];s.support=[];s.pending_support=null;s.registered_targets=patrol?{artillery:plan.concentration}:s.mission_rules.hill192?structuredClone(state.registered_targets):{};s.support_inventory=Object.fromEntries(Object.entries(s.support_agencies??{}).map(([id,agency])=>[id,structuredClone(agency.inventory??{})]));
  for(const l of values(s.locations))l.smoke=false;
  // §3.9 step 8: randomly select occupants when they compete for limited cover.
  for(const u of values(s.units))if(!friendly(u)&&['P','L'].includes(u.cohesion))u.removed='REATTEMPT_REMOVED';
@@ -115,7 +118,7 @@ function prepareAttempt(state,choices,patrol){
  for(const u of values(s.units)){
   if(!friendly(u)&&['P','L'].includes(u.cohesion)){u.removed='REATTEMPT_REMOVED';continue;}
   if(!live(u)&&!(patrol&&u.removed==='RESERVE'&&u.steps.length))continue;
-  if(!friendly(u)&&u.cohesion==='F'&&u.named&&['MORTAR','HMG','LMG','MG','FLAK88','SNIPER','SPOTTER','HQ','STAFF','LEADER'].includes(u.kind)){u.cohesion='GOOD';u.experience=u.original_experience;}
+  if(!friendly(u)&&u.cohesion==='F'&&u.named&&['MORTAR','HMG','LMG','MG','FLAK88','PANZERSCHRECK','PAK40','INFANTRY_GUN75','SNIPER','SPOTTER','HQ','STAFF','LEADER'].includes(u.kind)){u.cohesion='GOOD';u.experience=u.original_experience;}
   u.pinned=false;u.exposed=false;u.saved=0;u.fire=null;u.fire_direction=null;u.fire_effect=null;u.indirect=null;u.used=[];
   const original=u.initial_resources;if(original){u.radios=structuredClone(original.radios);u.assets=structuredClone(original.assets);u.ammo=structuredClone(original.ammo);u.out_of_ammo=false;if(original.missions!==undefined){u.missions_remaining=original.missions;u.calls_made=0;}}
   if(u.assets.phone_line)u.assets.phone_line=Math.max(0,u.assets.phone_line-s.phone_lines.filter(line=>line.owner===u.id).length);

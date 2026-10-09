@@ -5,6 +5,19 @@ import {createMission,exportReplay,replayMission,endTurn} from '../src/sim/compa
 
 const storage=()=>{const data=new Map();return {getItem:key=>data.get(key)??null,setItem:(key,value)=>data.set(key,value)};};
 describe('separate campaign roster',()=>{
+ it.each(['guard','generic'])('keeps %s steps unresolved when another step fills their HQ',kind=>{
+  const roster=createCampaignRoster('generic-transfer',keepUpTheFire),s=createMission(keepUpTheFire,'generic-transfer',{}, {mission_instance_id:'generic-run',roster});
+  s.status='DEFEAT';const original=s.units.co.steps.pop(),replacement=s.units.s11.steps.pop();
+  if(kind==='guard')s.prisoners=[{guard:original,prisoners:[]}];else s.units.generic={id:'generic',kind:'LAT',faction:'friendly',steps:[original],experience:'Green'};
+  s.units.co.steps.push(replacement);
+  const next=applyMissionDebrief(roster,s);
+  expect(next.steps[original.id].disposition).toBe(kind==='guard'?'GUARD_UNRESOLVED':'FORMATION_UNRESOLVED');
+  for(const id of next.steps[original.id].person_ids)expect(next.people[id].disposition).toBe('ACTIVE');
+  const redeployed=createMission(keepUpTheFire,'generic-next',{}, {mission_instance_id:'generic-next',roster:next});
+  expect(redeployed.units.co.steps.map(step=>step.id)).toEqual([replacement.id]);
+  expect(next.steps[original.id].person_ids).toEqual(roster.steps[original.id].person_ids);
+ });
+
  it('retains a transferred step in its reconstituted formation after save and redeployment',()=>{
   const roster=createCampaignRoster('transfer',keepUpTheFire);
   const s=createMission(keepUpTheFire,'transfer',{}, {mission_instance_id:'run-transfer',roster});

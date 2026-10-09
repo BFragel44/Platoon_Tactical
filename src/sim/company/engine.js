@@ -1,3 +1,4 @@
+import {hill192DeploymentDefinition} from './hill192Setup.js';
 import {finishPatrolEvents} from './patrolEvents.js';
 import {createPatrolProgress,patrolMoonLight,patrolOutcome,patrolParticipant} from './patrols.js';
 import {visibilityCommandLimits,patrolInitiative} from './visibility.js';
@@ -42,7 +43,7 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 27;
+export const RULES_VERSION = 29;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 function phaseDescription(s){
   if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(s.phase))return s.turn===1?'No higher-HQ event check on turn 1.':'Draw for a higher-HQ event; resolve this turn’s mission table and any command obligations.';
@@ -53,6 +54,7 @@ function phaseDescription(s){
 const index = a => Object.fromEntries(a.map(v=>[v.id,structuredClone(v)]));
 export function createMission(definition,seed,setup={},deployment=null,execution={}) {
   if(definition.readiness?.playable===false)throw new Error(`${definition.name} is not playable yet: ${definition.readiness.missing.join('; ')}.`);
+  definition=hill192DeploymentDefinition(definition,setup);
   if(definition.rules?.standaloneRoster&&!deployment)deployment={mission_instance_id:execution.mission_instance_id??globalThis.crypto.randomUUID(),roster:createCampaignRoster(definition.rules.baselineCompanyId??'normandy_cerisy_standalone_company',definition)};
   return initializeMission(definition,seed,setup,deployment,execution);
 }
@@ -60,10 +62,10 @@ export function createMission(definition,seed,setup={},deployment=null,execution
 export function previewMissionSetup(definition,seed,setup={}) {
   const s=initializeMission(definition,seed,setup);
   const view=getPlayerView(s);
-  return {mission_id:definition.id,mission_version:definition.version,seed:String(seed),setup:structuredClone(setup),
+  return {mission_id:definition.id,mission_version:definition.version,seed:String(seed),setup:structuredClone(setup),map:structuredClone(s.boundaries),
     setup_options:structuredClone(definition.unit_options?{mortar_mode:['section','teams'],command_network:['radio','phones']}:{}),
     playable:definition.readiness?.playable!==false,assumptions:structuredClone(definition.readiness?.assumptions??[]),missing:structuredClone(definition.readiness?.missing??[]),
-    ...(s.patrol?{patrol:structuredClone(s.patrol.plan)}:{}),locations:view.locations,units:view.units.map(({id,name,kind,platoon,location,steps,experience,assets,radios})=>({id,name,kind,platoon,location,steps,experience,assets,radios})),objectives:view.objectives,signal_plan:structuredClone(s.signal_plan),phase_lines:structuredClone(s.phase_lines)};
+    ...(s.mission_rules.hill192?{hill192:{forward_defense:s.forward_defense,concentration:s.registered_targets.artillery,source:structuredClone(s.battlefield_source),engineers_available:s.engineers_available}}:{}),...(s.patrol?{patrol:structuredClone(s.patrol.plan)}:{}),locations:view.locations,units:view.units.map(({id,name,kind,platoon,location,steps,experience,assets,radios,capabilities})=>({id,name,kind,platoon,location,steps,experience,assets,radios,capabilities})),objectives:view.objectives,signal_plan:structuredClone(s.signal_plan),phase_lines:structuredClone(s.phase_lines)};
 }
 function initializeMission(definition,seed,setup={},deployment=null,execution={}) {
   const scenario=materializeScenario(definition,seed,setup);
@@ -118,7 +120,8 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
       const id=`person_${++person}`;s.personnel[id]={id,name:`${String.fromCharCode(65+(person%26))}. ${surnames[(person-1)%surnames.length]}`,origin:u.id,status:'ACTIVE'};return id;
     })}));u.initial_resources={radios:structuredClone(u.radios),assets:structuredClone(u.assets),ammo:structuredClone(u.ammo??{})};s.units[u.id]=u;
   }
-  for(const l of values(s.locations)){l.covers=[];l.smoke=false;}
+  for(const l of values(s.locations)){l.covers=scenario.rules?.hill192?structuredClone(l.covers??[]):[];l.smoke=false;}
+  if(scenario.rules?.hill192){s.next_id=Math.max(s.next_id,...values(s.locations).flatMap(l=>l.covers.map(c=>Number(/^cover_(\d+)$/.exec(c.id)?.[1]??0)+1)));s.battlefield_source=structuredClone(scenario.battlefield_source??null);s.engineers_available=!!scenario.engineers_available;s.forward_defense=scenario.forward_defense;s.registered_targets.artillery=scenario.concentration;for(const l of values(s.locations).filter(l=>!l.outside_boundary&&(l.row===1||l.id===scenario.forward_defense))){for(let i=l.covers.filter(c=>c.type==='Foxholes').length;i<2;i++)l.covers.push({id:`hill_fox_${l.id}_${i}`,type:'Foxholes',value:1,known:true,discovered:true});}}
   if(scenario.patrol_plan){
    s.patrol=createPatrolProgress(s.locations,scenario.patrol_plan);s.patrol_history=[];s.registered_targets.artillery=scenario.patrol_plan.concentration;
    s.visibility={light:patrolMoonLight(randomNumber(s,4,'Patrol moon visibility')),weather:0};

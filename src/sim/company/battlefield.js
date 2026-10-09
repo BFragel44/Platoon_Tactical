@@ -99,7 +99,7 @@ export function communicationReason(s,issuer,u,rally=false) {
   return `${issuer.name} at ${s.locations[issuer.location].name}${issuer.cover?' under cover':''} cannot reach ${u.name} at ${s.locations[u.location].name}${u.cover?' under cover':''}. Same-area voice needs matching cover and unpinned units (rally excepted); CO radios need an uncovered, working Company HQ link. Observer radios only reach fire-support agencies.`;
 }
 export const vofOf = u => u.out_of_ammo&&(u.vof||['F','A'].includes(u.cohesion))?'S':u.mission_weapon&&u.cohesion==='A'?'A':u.cohesion==='F'?(u.fire_team_vof??'S'):u.cohesion==='A'?'S':u.vof_by_steps?.[u.steps.length]??u.vof;
-export const rangeOf = u => u.out_of_ammo?1:u.cohesion==='A'?0:u.cohesion==='F'?1:u.range;
+export const rangeOf = u => u.out_of_ammo?1:u.cohesion==='A'?0:u.cohesion==='F'?1:(u.basic_range??u.range);
 export function chain(issuer,u,type) {
   if (issuer.id === u.id || ['SHIFT_FIRE','CEASE_FIRE'].includes(type)) return true;
   if(issuer.command_role==='higher_hq')return true;

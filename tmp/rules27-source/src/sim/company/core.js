@@ -1,0 +1,101 @@
+import {recordPatrolMovement} from './patrols.js';
+import data from './actionDeckData.json' with { type: 'json' };
+import { drawRandom } from '../rng.js';
+import {skillOptions} from './skills.js';
+
+export const values = map => Object.values(map).sort((a,b) => a.id.localeCompare(b.id));
+export const live = u => u && u.steps.length > 0 && !u.removed;
+export const friendly = u => u.faction === 'friendly';
+export const good = u => live(u) && !u.pinned && u.cohesion === 'GOOD';
+export const expMod = u => ({ Green: -1, Line: 0, Veteran: 1 }[u.experience] ?? 0);
+export const visible = (s,u) => friendly(u) || s.knowledge.spotted[u.id];
+export function emit(s, type, text, details = {}, hidden = false) {
+  const event = { id: `event_${s.events.length+1}`, sequence: s.events.length+1, turn: s.turn,
+    phase: s.phase, impulse: s.impulse?.id ?? null, type, text, ...details, hidden };
+  s.events.push(event);
+  if(type==='UNIT_MOVED'&&s.patrol&&s.units[details.actor])s.patrol=recordPatrolMovement(s.patrol,s.units[details.actor],details.from,details.target,s.locations);
+  return event;
+}
+export function shuffle(s, items) {
+  const result = [...items];
+  for (let i = result.length-1; i > 0; i--) {
+    const draw = drawRandom(s.rng); s.rng = draw.rng;
+    const j = Math.floor(draw.value * (i+1)); [result[i],result[j]] = [result[j],result[i]];
+  }
+  return result;
+}
+export const cards = Object.fromEntries(data.cards.map(({id, fields:f}) => [id, {
+  id, activated:f[0], initiative:f[1], word:f[2], spot:f[3].includes('10683'),
+  grenade:f[3].includes('1F4A3'), infiltrate:f[3].includes('1FA96'),
+  burst:f[3].includes('1F4A5'), multi:f[3].split('1F4A5').length > 2,
+  jam:f[3] === 'Jam!', short:f[3] === 'Short!', hq:!!f[4], at:f[5],
+  hit:{ Veteran:f[6], Line:f[7], Green:f[8] }, combat:f.slice(9,20), random:f.slice(20,31),
+}]));
+export function newDeck(s) { return { order:shuffle(s, data.cards.map(c => c.id)), discard:[], reshuffles:0, draws:0 }; }
+// Finish the entire attempt, even after success. Reshuffle marker is not a draw.
+export function draw(s, count, purpose, hidden = false) {
+  const batch = []; let reshuffle = false;
+  for (let i = 0; i < count;) {
+    if (!s.deck.order.length) {
+      s.deck.order = shuffle(s, s.deck.discard); s.deck.discard = []; s.deck.reshuffles++;
+      reshuffle = false;
+    }
+    const id = s.deck.order.shift(); s.deck.discard.push(id); s.deck.draws++;
+    if (id === 51) { reshuffle = true; continue; }
+    batch.push(cards[id]); i++;
+  }
+  emit(s,'CARDS_DRAWN',`${purpose}: ${batch.map(c => c.id).join(', ')}.`,
+    { purpose, card_ids: batch.map(c=>c.id) }, hidden);
+  if (reshuffle) {
+    s.deck.order = shuffle(s, [...s.deck.order,...s.deck.discard]); s.deck.discard = []; s.deck.reshuffles++;
+    emit(s,'DECK_SHUFFLED','Action deck reshuffled after completing the draw batch.',{},hidden);
+  }
+  return batch;
+}
+export function randomNumber(s, n, purpose, hidden = false) {
+  if (n <= 1) return 1;
+  if (n > 12) throw new Error('Action card random range exceeds 12');
+  return draw(s,1,purpose,hidden)[0].random[n-2];
+}
+export function pick(s, items, purpose, hidden=false) { if(items.length>12){const chosen=shuffle(s,items)[0];emit(s,'RANDOM_SELECTION',`${purpose}: seeded selection from ${items.length} candidates.`,{},hidden);return chosen;}return items[randomNumber(s,items.length,purpose,hidden)-1]; }
+export function attempt(s,u, count, icon, purpose, hidden = !visible(s,u),checkCards=null,automatic=!s.impulse,grenadeReturn=false) {
+  const leader=s.mission_rules?.leaderBonus&&u.faction==='enemy'&&values(s.units).some(v=>v.kind==='LEADER'&&v.faction==='enemy'&&live(v)&&!v.pinned&&v.cohesion==='GOOD'&&v.location===u.location&&v.cover===u.cover);
+  let skill=s.active_skill;
+  if(!skill&&automatic&&friendly(u)&&s.automatic_skills?.[u.id]){
+   const assigned=s.automatic_skills[u.id],reserved=s.skills.find(p=>p.id===assigned);
+   // Auto Grenade waits for this unit's free response (§7.10.5), not other attempts.
+   const action=reserved?.type==='AUTO_GRENADE'?'SKILL_GRENADE_RETURN':'SKILL_EXTRA_AUTOMATIC';
+   if(action==='SKILL_EXTRA_AUTOMATIC'||grenadeReturn){
+    const p=skillOptions(s,u,action).find(p=>p.id===assigned);
+    delete s.automatic_skills[u.id];
+    if(p){s.skills.find(v=>v.id===p.id).used=true;skill={actor:u.id,extra:action==='SKILL_EXTRA_AUTOMATIC',icon:action==='SKILL_GRENADE_RETURN'?'grenade':undefined,applied:false};emit(s,'SKILL_USED',`${u.name}: ${p.type==='AUTO_GRENADE'?'Auto Grenade on free return':'Extra Draw on automatic attempt'}.`,{actor:u.id,holder:p.holder,skill_id:p.id,skill:p.type,automatic:true});}
+   }
+  }
+  const applies=skill&&!skill.applied&&skill.actor===u.id&&(skill.extra||skill.icon===icon);
+  const batch=draw(s,Math.max(1,count+expMod(u)+(leader?1:0))+(applies&&skill.extra?1:0),purpose,hidden);
+  const successes=batch.filter(c => c[icon] || c.word.toLowerCase() === icon).length;
+  if(checkCards?.(batch)===false){if(applies)skill.applied=true;return 0;}
+  if(applies){skill.applied=true;return skill.extra?successes:Math.max(1,successes);}
+  return successes;
+}
+export function result(before,next,extra={}) { return { state:next, events:next.events.slice(before.events.length), ...extra }; }
+
+// Rule 5.1.6: assets and casualty loads use independent infantry capacities.
+export function transportReason(s,u,extraAssets=0) {
+  if(!s.mission_rules?.specialEnemies)return null;
+  const assets=u.radios.length+Object.values(u.assets).reduce((n,q)=>n+q,0)+extraAssets;
+  if(assets>6*u.steps.length)return 'Over transport capacity: each step can carry six assets. Drop equipment before moving.';
+  if(s.casualties.filter(c=>c.carrier===u.id).length>u.steps.length)return 'Over transport capacity: each step can carry one casualty. Unload before moving.';
+  return null;
+}
+
+// Removal without combat does not destroy carried radios or silently delete loads.
+export function dropLoad(s,u,reason='removed') {
+ for(const net of u.radios)s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
+ for(const [key,quantity] of Object.entries(u.assets))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
+ if(s.mission_rules?.ammo==='tracked')for(const [key,quantity] of Object.entries(u.ammo??{}))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'AMMO',key,quantity,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
+ for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.carrier=null;c.location=u.location;c.cover=u.cover;}
+ u.radios=[];u.assets={};
+ if(s.mission_rules?.ammo==='tracked'){u.ammo={};u.out_of_ammo=true;}
+ emit(s,'ASSETS_DROPPED',`${visible(s,u)?u.name:'Enemy formation'}: carried load left at its current position (${reason}).`,{actor:visible(s,u)?u.id:null,location:u.location,reason},!visible(s,u));
+}
