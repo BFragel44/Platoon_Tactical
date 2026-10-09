@@ -4,9 +4,9 @@ import {stGermain} from '../src/scenarios/stGermain.js';
 import {createMission,replayMission,getPlayerView,submitCommand,selectHQ,advancePhase} from '../src/sim/company/engine.js';
 import {checkpoint,SAVE_KEY} from '../src/ui/localRecovery.js';
 const candidate={...stGermain,readiness:{playable:true}},cases={initial:checkpoint(createMission(candidate,'st-germain-browser'))};
-const files=readdirSync('output/st-germain-playtests-v2-r32').filter(f=>f.endsWith('.json'));
+const files=readdirSync('output/st-germain-playtests-v2-r33').filter(f=>f.endsWith('.json'));
 if(files.length){
- const record=JSON.parse(readFileSync(`output/st-germain-playtests-v2-r32/${files[0]}`,'utf8')).replay;
+ const record=JSON.parse(readFileSync(`output/st-germain-playtests-v2-r33/${files[0]}`,'utf8')).replay;
  const prefix=i=>replayMission(candidate,{...record,operations:record.operations.slice(0,i),attempt_records:record.attempt_records.slice(0,1+record.operations.slice(0,i).filter(o=>o.op==='preparePatrol').length)});
  for(const [key,op]of [['combat','resolveCombat'],['support','resolveSupportChoice'],['preparation','preparePatrol']]){const i=record.operations.findIndex(o=>o.op===op);if(i>=0)cases[key]=checkpoint(prefix(i));}
  cases.finish=checkpoint(replayMission(candidate,record));

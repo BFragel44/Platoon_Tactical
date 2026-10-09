@@ -59,6 +59,15 @@ export function randomNumber(s, n, purpose, hidden = false) {
   return draw(s,1,purpose,hidden)[0].random[n-2];
 }
 export function pick(s, items, purpose, hidden=false) { if(items.length>12){const chosen=shuffle(s,items)[0];emit(s,'RANDOM_SELECTION',`${purpose}: seeded selection from ${items.length} candidates.`,{},hidden);return chosen;}return items[randomNumber(s,items.length,purpose,hidden)-1]; }
+export function exhortDraw(s,u,purpose,hidden=false){
+ const exhort=s.active_exhort;
+ if(!friendly(u)||!exhort||exhort.used||!exhort.actors.includes(u.id))return [];
+ exhort.used=true;s.impulse.commands--;s.impulse.spent++;
+ if(s.impulse.hq==='general'&&(s.mission_rules?.reattempts||s.patrol)){s.impulse.origin_spent??={};s.impulse.origin_spent[exhort.issuer]=(s.impulse.origin_spent[exhort.issuer]??0)+1;}
+ s.units[exhort.issuer].used.push(`${s.impulse.id}:EXHORT`);
+ emit(s,'EXHORT_ISSUED',`${s.units[exhort.issuer].name}: exhort failed ${purpose}; one additional card.`,{actor:exhort.issuer,recipient:u.id,purpose});
+ return draw(s,1,`Exhort: ${purpose}`,hidden);
+}
 export function attempt(s,u, count, icon, purpose, hidden = !visible(s,u),checkCards=null,automatic=!s.impulse,grenadeReturn=false) {
   const leader=s.mission_rules?.leaderBonus&&u.faction==='enemy'&&values(s.units).some(v=>v.kind==='LEADER'&&v.faction==='enemy'&&live(v)&&!v.pinned&&v.cohesion==='GOOD'&&v.location===u.location&&v.cover===u.cover);
   let skill=s.active_skill;
@@ -74,9 +83,13 @@ export function attempt(s,u, count, icon, purpose, hidden = !visible(s,u),checkC
   }
   const applies=skill&&!skill.applied&&skill.actor===u.id&&(skill.extra||skill.icon===icon);
   const batch=draw(s,Math.max(1,count+expMod(u)+(leader?1:0))+(applies&&skill.extra?1:0),purpose,hidden);
-  const successes=batch.filter(c => c[icon] || c.word.toLowerCase() === icon).length;
+  let successes=batch.filter(c => c[icon] || c.word.toLowerCase() === icon).length;
   if(checkCards?.(batch)===false){if(applies)skill.applied=true;return 0;}
-  if(applies){skill.applied=true;return skill.extra?successes:Math.max(1,successes);}
+  if(applies){skill.applied=true;if(!skill.extra)successes=Math.max(1,successes);}
+  if(!successes&&!automatic){
+   const extra=exhortDraw(s,u,purpose,hidden);
+   if(checkCards?.(extra)!==false)successes=extra.filter(c=>c[icon]||c.word.toLowerCase()===icon).length;
+  }
   return successes;
 }
 export function result(before,next,extra={}) { return { state:next, events:next.events.slice(before.events.length), ...extra }; }

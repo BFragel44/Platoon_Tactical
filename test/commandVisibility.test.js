@@ -21,7 +21,7 @@ describe('friendly command visibility',()=>{
  it('retains voice for degraded formations, rejects eliminated HQs and uses phone networks',()=>{
   const s=createMission(candidate,'phones-visible',{command_network:'phones'});s.units.hq1.location=s.units.co.location;
   expect(linkStyle(communicationChannels(s,s.units.co,s.units.hq1))).toBe('phone');
-  s.units.hq1.cohesion='F';expect(communicationChannels(s,s.units.co,s.units.hq1)).toEqual(['Visual / verbal']);
+  s.units.hq1.cohesion='F';expect(communicationChannels(s,s.units.co,s.units.hq1)).toEqual(['Visual / verbal','CO field-phone network · intact line']);
   s.units.co.removed='ELIMINATED';expect(communicationChannels(s,s.units.co,s.units.hq1)).toEqual([]);
  });
  it('preserves simplified mission communication',()=>{

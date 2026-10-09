@@ -1,6 +1,6 @@
 // Recovered physical equipment keeps its resupply allocation on the new carrier.
 export function transferEquipmentResupply(s,recipient,asset){
- if(!s.mission_rules?.reattempts||!['RADIO','EQUIPMENT'].includes(asset.type))return;
+ if(!s.mission_rules?.missionIdentity||!['RADIO','EQUIPMENT'].includes(asset.type))return;
  const source=s.units[asset.source_unit];
  if(!source?.initial_resources||source.id===recipient.id)return;
  recipient.initial_resources??={radios:[],assets:{},ammo:{}};

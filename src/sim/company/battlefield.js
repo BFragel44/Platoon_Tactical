@@ -73,7 +73,8 @@ export function communicationChannels(s,issuer,u,rally=false) {
   }
   const channels=[];
   if (issuer.location === u.location && issuer.cover === u.cover && (rally || (!issuer.pinned && !u.pinned))) channels.push('Visual / verbal');
-  if (issuer.cohesion !== 'GOOD' || u.cohesion !== 'GOOD') return channels;
+    const networkReady=v=>s.mission_rules?.specialEnemies?['GOOD','A','F'].includes(v.cohesion):v.cohesion==='GOOD';
+    if (!networkReady(issuer) || !networkReady(u)) return channels;
   if(s.mission_rules?.communications==='phones'){
    const hub=commandHub(s);
    const ready=v=>live(v)&&v.radios.includes('CO_PHONE')&&live(hub)&&hub.radios.includes('CO_PHONE')&&phoneConnected(s,v.location,hub.location);
@@ -83,7 +84,7 @@ export function communicationChannels(s,issuer,u,rally=false) {
   // Fire-direction networks connect observers to off-map agencies, not command HQs.
   if (!issuer.radios.includes('CO') || !u.radios.includes('CO')) return channels;
   const hub=commandHub(s);
-  const linked=v=>live(v)&&v.cohesion==='GOOD'&&v.radios.includes('CO')&&!v.cover&&
+    const linked=v=>live(v)&&networkReady(v)&&v.radios.includes('CO')&&!v.cover&&
     live(hub)&&hub.cohesion==='GOOD'&&hub.radios.includes('CO')&&!hub.cover&&communicationLos(s,v.location,hub.location);
   if(linked(issuer)&&linked(u))channels.push('CO radio via Company HQ · LOS');
   return channels;

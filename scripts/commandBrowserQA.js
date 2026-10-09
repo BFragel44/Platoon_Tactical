@@ -1,0 +1,14 @@
+import {readFileSync,writeFileSync} from 'node:fs';
+import {companyAssault} from '../src/scenarios/companyAssault.js';
+import {createMission,advancePhase,selectHQ,submitCommand} from '../src/sim/company/engine.js';
+import {checkpoint,SAVE_KEY} from '../src/ui/localRecovery.js';
+let s=createMission(companyAssault,'company-1');
+for(let i=0;i<4;i++)s=advancePhase(s).state;
+s=submitCommand(s,{type:'ACTIVATE',unit_id:'co',issuer_id:'co',target_id:'hq1'}).state;
+s=advancePhase(s).state;s=selectHQ(s,'hq1').state;
+const detached=submitCommand(s,{type:'DETACH_FIRE_TEAM',unit_id:'s11',issuer_id:'hq1'});if(!detached.accepted)throw Error(detached.reason);
+writeFileSync('tmp/command-browser-checkpoint.json',JSON.stringify(checkpoint(detached.state)));
+const rewrite=s=>s.replaceAll("from './","from '/src/ui/").replaceAll("import './","import '/src/ui/").replaceAll("from '../","from '/src/").replaceAll("import '../","import '/src/");
+writeFileSync('tmp/command-company-qa.js',rewrite(readFileSync('src/ui/companyMain.js','utf8')));
+writeFileSync('tmp/command-browser-qa.html',`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Command audit isolated QA</title></head><body><div id="app"></div><script type="module">import cp from './command-browser-checkpoint.json';if(!sessionStorage.getItem('command-audit-ready')){localStorage.setItem('${SAVE_KEY}',JSON.stringify({schema:1,latest:cp,turnStart:cp}));sessionStorage.setItem('command-audit-ready','1');}await import('./command-company-qa.js');</script></body></html>`);
+console.log('Command audit browser checkpoint prepared');

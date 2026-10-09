@@ -2,9 +2,10 @@ import {emit,visible} from './core.js';
 
 export const AMMO_CAPACITY={MG:6,MTR:2,RKT:3,GUN:3};
 export function ammoLoadReason(s,u,extra={}){
- if(s.mission_rules?.ammo!=='tracked'||!u.ammo)return null;
+ if(s.mission_rules?.ammo!=='tracked')return null;
  if(u.kind==='MORTAR'&&u.steps.length>1)return null; // Section has its own ammo bearers.
- for(const [type,quantity] of Object.entries(u.ammo)){
+ for(const type of new Set([...Object.keys(u.ammo??{}),...Object.keys(extra)])){
+  const quantity=u.ammo?.[type]??0;
   const maximum=(AMMO_CAPACITY[type]??3)*u.steps.length;
   if(!Object.values(extra).some(Boolean)&&quantity>maximum)continue; // Excess is left on the departure card.
   if(quantity+(extra[type]??0)>maximum)return `Over ${type} ammunition capacity (${maximum}); drop or transfer ammunition before moving.`;
@@ -48,7 +49,7 @@ export function pickUpAmmunition(s,u,asset){
  const quantity=Math.min(asset.quantity,available);
  if(!quantity)throw new Error(`No ${asset.key} ammunition carrying capacity remains.`);
  u.ammo??={};u.ammo[asset.key]=(u.ammo[asset.key]??0)+quantity;
- if(s.mission_rules?.reattempts){
+ if(s.mission_rules?.missionIdentity){
   const source=s.units[asset.source_unit];
   u.initial_resources??={radios:[],assets:{},ammo:{}};
   if(source?.initial_resources&&source.id!==u.id){

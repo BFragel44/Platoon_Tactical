@@ -1,6 +1,6 @@
 import {eligibleEngineer} from './engineers.js';
 import {placeIllumination} from './visibility.js';
-import {values,live,friendly,visible,good,emit,draw,randomNumber,pick,dropLoad} from './core.js';
+import {values,live,friendly,visible,good,emit,draw,randomNumber,pick,dropLoad,exhortDraw} from './core.js';
 import {resolveNormandyEvent} from './normandyEvents.js';
 import {occupants,adjacent,los,distance,spot,refresh,coverOf} from './battlefield.js';
 
@@ -93,6 +93,7 @@ export function supportRequest(s,u,agencyId,ammo,target){
  const extra=s.active_skill?.actor===u.id&&s.active_skill.extra&&!s.active_skill.applied;
  const batch=draw(s,Math.max(1,base+registered+({Green:-1,Line:0,Veteran:1}[u.experience]))+(extra?1:0),`${u.name}: ${agency.name} ${ammo}`);
  if(extra)s.active_skill.applied=true;
+  if(!batch.some(c=>c.short||c.burst))batch.push(...exhortDraw(s,u,`${agency.name} ${ammo}`));
  let destination=target;const short=batch.some(c=>c.short),success=short||batch.some(c=>c.burst);
  if(short)destination=shortRoundDestination(s,u,target);
  if(success&&ammo==='ILLUM'){placeIllumination(s,destination,agencyId,u.id);s.support_inventory[agencyId][ammo]--;s.registered_targets[agencyId]=destination;}

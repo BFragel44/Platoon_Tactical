@@ -16,7 +16,7 @@ describe('St. Germain authored foundation — Normandy pp.32–35',()=>{
   expect(missionCatalog.some(m=>m.id===stGermain.id)).toBe(false);
   expect(()=>createMission(stGermain,'gate')).toThrow('not playable yet');
   expect(previewMissionSetup(stGermain,'gate').playable).toBe(false);
-  expect(RULES_VERSION).toBe(32);
+  expect(RULES_VERSION).toBe(33);
  });
  it('uses the audited content-2 identity and isolated company slot without M4 import',()=>{
   expect(stGermain.id).toBe('normandy_5');expect(stGermain.version).toBe(2);
