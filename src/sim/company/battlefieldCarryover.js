@@ -6,7 +6,7 @@ const fields=['id','name','row','col','terrain','terrain_card','elevation','hill
 export function validateScoutedBattlefield(record){
  if(record?.schema!==BATTLEFIELD_SCHEMA)throw new Error('Unsupported battlefield schema. Preserve the original export.');
  const source=record.source;
- if(source?.scenario!=='normandy_3'||source.content_version!==1||![27,28,29].includes(source.rules_version))throw new Error('Unsupported M3 battlefield source version. Preserve the original export.');
+ if(source?.scenario!=='normandy_3'||source.content_version!==1||![27,28,29,30,31,32].includes(source.rules_version))throw new Error('Unsupported M3 battlefield source version. Preserve the original export.');
  if(!source.mission_instance_id||!source.seed||!['SUCCESS','DEFEAT'].includes(source.outcome)||!Number.isInteger(source.attempt)||source.attempt<1)throw new Error('Incomplete terminal M3 provenance.');
  if(!Array.isArray(source.patrols)||source.patrols.length!==3||new Set(source.patrols.map(p=>p.platoon)).size!==3||source.patrols.some(p=>![1,2,3].includes(p.platoon)||!['SUCCESS','DEFEAT'].includes(p.outcome)))throw new Error('Only a completed three-patrol M3 battlefield can be loaded.');
  if(!Array.isArray(record.locations)||record.locations.length<20)throw new Error('Incomplete scouted battlefield.');

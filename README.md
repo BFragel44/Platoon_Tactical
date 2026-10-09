@@ -17,3 +17,5 @@ Use Node 22 or newer. If PowerShell strips CLI flags, launch Vite directly: `nod
 The normal button resolves the current segment or completes an HQ impulse. Select subordinate HQs when prompted. Orders resolve immediately. Fast-forward is diagnostic only. The UI exports reproducible operations and a player-perspective AAR.
 
 [Rules and manual playtest guide](docs/M0_RULES_AND_PLAYTEST.md) is authoritative. [Validation status](docs/COMPANY_PLAYTEST_RESULTS.md) distinguishes completed checks from outstanding gameplay acceptance. The previous three-fireteam prototype and tests remain as historical regression fixtures; `npm run playtest:legacy` runs its old comparison.
+
+[Improvements and additions for later](docs/FOR_LATER.md) records the agreed post-Normandy usability and 3D presentation work, plus ideas explicitly on hold.

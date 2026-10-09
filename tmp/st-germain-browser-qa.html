@@ -1,0 +1,5 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>St. Germain isolated browser QA</title></head><body><div id="app"></div><script type="module">
+import cases from './st-germain-browser-cases.json';
+const key=new URLSearchParams(location.search).get('case')||'initial';
+if(sessionStorage.getItem('m5-qa-case')!==key){const cp=cases[key];if(!cp)throw Error('Unavailable case '+key);localStorage.setItem('platoon-company-recovery',JSON.stringify({schema:1,latest:cp,turnStart:cp}));localStorage.setItem('platoon-normandy-st-germain-standalone',JSON.stringify({schema:1,...cp.replay.roster_snapshot,applied_missions:{}}));sessionStorage.setItem('m5-qa-case',key);}
+await import('./st-germain-company-qa.js');</script></body></html>

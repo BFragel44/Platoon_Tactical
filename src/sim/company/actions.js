@@ -24,7 +24,7 @@ export const ACTIONS = {
   ACTIVATE:'Activate HQ / staff', MOVE:'Move', PLATOON_MOVE:'Move platoon', INFILTRATE:'Infiltrate', PLATOON_INFILTRATE:'Infiltrate platoon',
   INFILTRATE_WITHIN:'Infiltrate within card', SEEK_COVER_UPPER:'Seek cover — enter upper story if found', SEEK_COVER:'Seek cover', ENTER_COVER:'Move within card', SPOT:'Spot position', SHIFT_FIRE:'Shift fire', CEASE_FIRE:'Cease fire on this card',
   CONCENTRATE:'Concentrate fire', GRENADE:'Grenade / close assault', RALLY:'Remove pin', RECOVER:'Recover cohesion',
-  DEPLOY_FIRE_TEAM:'Deploy named Fire Team', RECONSTITUTE:'Reconstitute squad', RECONSTITUTE_HQ:'Reconstitute HQ', DETACH:'Detach assault team',
+  DEPLOY_FIRE_TEAM:'Deploy named Fire Team', RECONSTITUTE:'Reconstitute squad', RECONSTITUTE_HQ:'Reconstitute HQ', DETACH:'Detach assault team', DETACH_FIRE_TEAM:'Detach fire team',
   CLEAR_MINE_PATH:'Mark path through mines', HANDHELD_ILLUM:'Deploy handheld illumination', CALL_MORTAR_ILLUM:'Call mortar illumination', CALL_ARTILLERY_ILLUM:'Call artillery illumination', CALL_CANNON:'Call cannon HE',CALL_CANNON_WP:'Call cannon WP', CALL_MORTAR_WP:'Call mortar WP', CALL_ARTILLERY_WP:'Call artillery WP', WP:'Deploy WP smoke', RIFLE_GRENADE:'Fire rifle grenade', CALL_MORTAR:'Call 81mm fire', CALL_ARTILLERY_TOT:'Call artillery time-on-target', CALL_ARTILLERY:'Call 105mm fire', INDIRECT:'Direct mortar section',
   SMOKE:'Deploy screening smoke', SIGNAL_ADVANCE:'Signal: cross phase line 2', SIGNAL_CEASE:'Signal: cease fire',
   PYRO_RSP:'Signal: red star parachute', PYRO_RSC:'Signal: red star cluster', PYRO_GSP:'Signal: green star parachute', PYRO_GSC:'Signal: green star cluster',
@@ -34,9 +34,9 @@ export const ACTIONS = {
 export const costOf = type => ['SKILL_GENERAL','SKILL_SPAWN_A','SKILL_SPAWN_F','SKILL_EXTRA_AUTOMATIC','SKILL_GRENADE_RETURN'].includes(type)?0:type.startsWith('PLATOON_') ? 2 : 1;
 const hq = u => ['HQ','STAFF'].includes(u.kind);
 const genericInit = s => s.impulse?.hq === 'general';
-const HQ_ORIGIN_ACTIONS=['ACTIVATE','RECONSTITUTE','RECONSTITUTE_HQ','CREATE_RUNNER','DISPATCH_RUNNER','DISMISS_RUNNER','SIGNAL_ADVANCE','SIGNAL_CEASE'];
+const HQ_ORIGIN_ACTIONS=['ACTIVATE','RECONSTITUTE','RECONSTITUTE_HQ','DETACH','DETACH_FIRE_TEAM','CREATE_RUNNER','DISPATCH_RUNNER','DISMISS_RUNNER','SIGNAL_ADVANCE','SIGNAL_CEASE'];
 const skillActor=(s,u,type,issuerId)=>['RECONSTITUTE','RECONSTITUTE_HQ'].includes(type)||!genericInit(s)&&['RALLY','RECOVER'].includes(type)?s.units[issuerId]??u:u;
-const actionKey = (u,type,target) => type==='CLEAR_MINE_PATH'?'INFILTRATE_WITHIN':type==='SEEK_COVER_UPPER'?'SEEK_COVER':type==='WP_ATTACK'?'GRENADE':type.startsWith('CALL_')&&u.mission_weapon?'CALL_FIRE':type === 'ACTIVATE' ? `${type}_${target}` : type === 'RECOVER' ? `${type}_${u.cohesion}` : type;
+const actionKey = (u,type,target) => type==='DETACH_FIRE_TEAM'?'DETACH':type==='CLEAR_MINE_PATH'?'INFILTRATE_WITHIN':type==='SEEK_COVER_UPPER'?'SEEK_COVER':type==='WP_ATTACK'?'GRENADE':type.startsWith('CALL_')&&u.mission_weapon?'CALL_FIRE':type === 'ACTIVATE' ? `${type}_${target}` : type === 'RECOVER' ? `${type}_${u.cohesion}` : type;
 const areaTargets = (s,u) => values(s.units).filter(t=>live(t)&&t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]));
 function targetsAt(s,u,id) { return areaTargets(s,u).filter(t=>t.location===id); }
 export function eligibleTargets(s,u,type) {
@@ -125,7 +125,7 @@ export function orderReason(s,c) {
   if(restricted&&!type.startsWith('SKILL_PARALYZED')&&!['ACTIVATE','RALLY','RECOVER','MOVE','SEEK_COVER','ENTER_COVER','DROP_CASUALTY'].includes(type)) return 'Pinned, paralyzed or litter teams cannot perform this action.';
   if(u.cohesion==='L'&&!['RALLY','RECOVER','MOVE','INFILTRATE','INFILTRATE_WITHIN','SEEK_COVER','ENTER_COVER','PICKUP_RADIO','PICKUP_CASUALTY','DROP_CASUALTY'].includes(type))return 'Litter teams must recover before performing this action.';
   if(u.cohesion==='P'&&['SEEK_COVER','ENTER_COVER'].includes(type)) return 'A paralyzed team must recover before moving within its card.';
-  if(['ACTIVATE','RECONSTITUTE','RECONSTITUTE_HQ','SIGNAL_ADVANCE','SIGNAL_CEASE'].includes(type) && genericInit(s) && (!issuer||!hq(issuer)||(type==='RECONSTITUTE_HQ'?issuer.cohesion!=='GOOD':!good(issuer))||!chain(issuer,u,type)||!communication(s,issuer,u))) return 'This action requires an eligible HQ in communication even during general initiative.';
+  if(['ACTIVATE','RECONSTITUTE','RECONSTITUTE_HQ','DETACH','DETACH_FIRE_TEAM','SIGNAL_ADVANCE','SIGNAL_CEASE'].includes(type) && genericInit(s) && (!issuer||!hq(issuer)||(type==='RECONSTITUTE_HQ'?issuer.cohesion!=='GOOD':!good(issuer))||!chain(issuer,u,type)||!communication(s,issuer,u))) return 'This action requires an eligible HQ in communication even during general initiative.';
   if(type==='ACTIVATE') {
     const t=s.units[target];
     if(c.issuer_id!==u.id||!(u.command_role==='higher_hq'||canActivateSubordinates(u))||!(u.command_role==='higher_hq'?s.phase==='BN_ACTIVATION':s.phase==='CO_ACTIVATION')) return 'Only the active higher or company HQ can activate subordinates in its activation impulse.';
@@ -196,7 +196,7 @@ export function orderReason(s,c) {
   if(type.startsWith('SIGNAL_')&&s.mission_rules?.signals===false)return 'Pyrotechnic signals are not available in this mission.';
   if(type==='SMOKE'&&(!good(u)||!u.assets.smoke)) return 'No screening smoke available on this good-order unit.';
   if(type.startsWith('SIGNAL_')&&(!good(u)||!u.assets[type==='SIGNAL_ADVANCE'?'advance':'cease'])) return 'This unit has no remaining asset for that signal.';
-  if(type==='DETACH'&&(!good(u)||!((u.kind==='SQUAD'&&u.steps.length>=3)||(u.kind==='MG'&&u.steps.length===2)))) return 'Detach from a good-order squad of at least three steps or a two-step weapon team.';
+  if(['DETACH','DETACH_FIRE_TEAM'].includes(type)&&(!good(u)||!((u.kind==='SQUAD'&&u.steps.length>=3&&u.steps.length<=4)||(['MG','AT','MORTAR'].includes(u.kind)&&u.steps.length===2)))) return 'Detach from a good-order three- or four-step squad or a two-step weapon team.';
   if(type==='RECONSTITUTE') {
     const squad=s.units[target],ids=c.contributor_ids;
     if(!squad||squad.kind!=='SQUAD'||live(squad)||squad.faction!==u.faction) return 'Choose a previously eliminated squad counter to restore.';
@@ -411,7 +411,7 @@ export function execute(s,c) {
     }
     emit(s,'SIGNAL_DEPLOYED',`${u.name} deployed ${key.replaceAll('_',' ')} for ${order}.`,{actor:u.id,location:c.target_id,device:key,order,seen:seen.map(v=>v.id),moved});
   }
-  else if(type==='DETACH'){const step=u.steps.pop();splitTeam(s,u,'A',step);}
+  else if(['DETACH','DETACH_FIRE_TEAM'].includes(type)){const step=u.steps.pop();splitTeam(s,u,type==='DETACH_FIRE_TEAM'?'F':'A',step);}
   else if(type==='RECONSTITUTE') {
     const group=c.contributor_ids.map(id=>s.units[id]);
     if(attempt(s,issuer,2,'rally','Reconstitute squad')) {

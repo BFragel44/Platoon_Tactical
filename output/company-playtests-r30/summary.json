@@ -1,0 +1,56 @@
+[
+  {
+    "seed": "company-1",
+    "policy": "direct",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 31,
+    "casualty_steps": 9,
+    "contacts_remaining": 6
+  },
+  {
+    "seed": "company-1",
+    "policy": "support",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 55,
+    "casualty_steps": 5,
+    "contacts_remaining": 4
+  },
+  {
+    "seed": "company-1",
+    "policy": "recovery",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 53,
+    "casualty_steps": 7,
+    "contacts_remaining": 5
+  },
+  {
+    "seed": "company-2",
+    "policy": "direct",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 47,
+    "casualty_steps": 7,
+    "contacts_remaining": 4
+  },
+  {
+    "seed": "company-2",
+    "policy": "support",
+    "outcome": "SUCCESS",
+    "turn": 10,
+    "orders": 36,
+    "casualty_steps": 8,
+    "contacts_remaining": 0
+  },
+  {
+    "seed": "company-2",
+    "policy": "recovery",
+    "outcome": "DEFEAT",
+    "turn": 10,
+    "orders": 53,
+    "casualty_steps": 10,
+    "contacts_remaining": 1
+  }
+]

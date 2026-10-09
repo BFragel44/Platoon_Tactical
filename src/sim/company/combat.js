@@ -37,7 +37,7 @@ function loseAssets(s,u,casualtyLoss=true) {
 }
 function mortarBreakdownTeam(s,u,step,cohesion){
  const id=`mortar_${s.next_id++}`,ammo={MTR:u.ammo?.MTR??0};
- const child={...structuredClone(u),id,name:`${u.name} surviving mortar team`,kind:'MORTAR',named:true,steps:[step],max_steps:1,vof:'G',fire_team_vof:'S',ammo,cohesion,experience:cohesion==='F'?'Green':u.original_experience,pinned:true,removed:null,fire:null,indirect:null,radios:[],assets:{},used:[],saved:0,initial_resources:{radios:[],assets:{},ammo:{MTR:u.initial_resources?.ammo?.MTR??ammo.MTR}}};
+ const child={...structuredClone(u),id,name:`${u.name} surviving mortar team`,kind:'MORTAR',named:true,steps:[step],max_steps:1,vof:'G',fire_team_vof:u.fire_team_vof??'S',ammo,cohesion,experience:cohesion==='F'?'Green':u.original_experience,pinned:true,removed:null,fire:null,indirect:null,radios:[],assets:{},used:[],saved:0,initial_resources:{radios:[],assets:{},ammo:{MTR:u.initial_resources?.ammo?.MTR??ammo.MTR}}};
  delete child.temporary_pdf;s.units[id]=child;
  if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[id]={id};
  return child;

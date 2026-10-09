@@ -1,0 +1,37 @@
+// Visually reviewed Normandy pp.32–35. Authored foundation only; execution stays gated.
+const force=(kind,cover=null,extra={})=>({kind,cover,...extra});
+export const stGermainContent={
+ id:'normandy_5',name:'Normandy 5 — St. Germain d’Elle—La Croix Rouge—Le Soulaire Defensive',version:2,
+ source:'FoF Deluxe Normandy Campaign pp. 32–35',
+ map:{columns:6,rows:4,staging:false},turn_limit:10,patrols:3,
+ phase_sequence:'offensive',enemy_tactics:'deliberate_defense',enemy_experience:'Veteran',
+ visibility:{type:'moon',random_light:[2,3,4,5]},
+ objectives:{primary_row:4,route_rows:[2,3,4],route_points:4,return_crossing:[2,1],clear_required:false},
+ contact_rows:{1:null,2:['B','C'],3:['B','C'],4:'A'},question_side_rows:[2,3],cop_contact:false,
+ placement:{sides:8,front:[1,2,3,4],left_front:[5,6],right_front:[7,8]},
+ defenses:{row1_foxholes_per_card:2,cop_foxholes_max:2,mlr_between:[1,2]},
+ attachments:[{id:'fo',role:'artillery_observer',experience:'Line',steps:1,radios:['ARTY']},{id:'mtrfo',role:'mortar_observer',experience:'Line',steps:1,radios:['MTR']},
+  {id:'hmg1',name:'1/1 HMG',kind:'HMG',experience:'Line',steps:1,ammo:{MG:6}},{id:'hmg2',name:'2/1 HMG',kind:'HMG',experience:'Line',steps:1,ammo:{MG:6}}],
+ package_tables:{A:[3,4,4,5,8,8,9,10,11,12],B:[1,1,2,2,2,5,6,6,7,7],C:[1,1,2,2,2,3,5,5,6,7]},
+ packages:{
+  1:{mines:true,units:[]},
+  2:{alternatives:[{incoming:-4,incoming_agency:'enemy_artillery',units:[]},{incoming:-3,incoming_agency:'enemy_mortar',units:[]}]},
+  3:{units:[force('LMG','Foxholes',{ammo:6})],point_blank_chance:'2/10'},
+  4:{units:[force('SQUAD','Foxholes'),force('HMG','Foxholes',{ammo:8})],spotted:true},
+  5:{units:[force('SQUAD',null)],exposed:true,no_fire:true,spotted:true},
+  6:{illumination:'mortar',units:[force('LMG','Foxholes',{ammo:6})],spotted:true},
+  7:{illumination:'mortar',units:[force('SQUAD',null)],exposed:true,no_fire:true,spotted:true},
+  8:{units:[force('SQUAD','Foxholes'),force('SQUAD','Foxholes')],close_chance:'2/10',optional:{if_available:true,units:[force('LEADER','Foxholes',{same_as_previous:true})]}},
+  9:{units:[force('SQUAD','Trench'),force('SQUAD','Trench'),force('HMG','Bunker',{ammo:8,same_as_any:true})]},
+  10:{units:[force('SQUAD','Deep Bunker',{steps:2}),force('LEADER','Deep Bunker',{same_as_previous:true})],no_fire:true,spotted:true,placement_draw:{sides:5,point_blank:[1,2,3],close:[4,5]}},
+  11:{units:[force('SQUAD',null)],no_fire:true,spotted:true,infiltration:true},
+  12:{units:[force('LMG','Foxholes',{ammo:6}),force('MORTAR','Foxholes',{ammo:6,same_as_previous:true})]},
+ },
+ friendly_event_tables:{early:['COMM','COMM','LOST','LOST','HOLD_PATROL','HOLD_PATROL','RAIN','NO_MORTAR','ADVANCE_ROUTE','ADVANCE_ROUTE'],late:['COMM','COMM','COMM','LOST','HOLD_PATROL','HOLD_PATROL','RAIN','NO_MORTAR','NO_MORTAR','ADVANCE_ROUTE']},
+ enemy_event_tables:{early:['EVAC','DISPLACE_MORTAR','DISPLACE_LEADER','DISPLACE_HMG','RALLY','RALLY','FALL_BACK','FALL_BACK','SHIFTING_LINES','SHIFTING_LINES'],late:['EVAC','EVAC','DISPLACE_MORTAR','DISPLACE_LEADER','DISPLACE_HMG','RALLY','RALLY','FALL_BACK','FALL_BACK','SHIFTING_LINES']},
+ support:{
+  artillery:{HE:-5,WP:-4,draws:{artillery_observer:3,mortar_observer:2,company_commander:2},inventory:{HE:4,WP:1,ILLUM:6},battalion:true},
+  mortar:{HE:-3,WP:-3,draws:{artillery_observer:2,mortar_observer:3,company_commander:2},inventory:{HE:3,WP:1,ILLUM:4}},
+  cannon:{HE:-4,WP:-4,draws:{artillery_observer:3,mortar_observer:3,company_commander:2},inventory:{HE:3,WP:1}},
+ },
+};

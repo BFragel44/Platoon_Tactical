@@ -89,7 +89,7 @@ export function debriefAndSave(storage,mission,key=CAMPAIGN_KEY){
 
 // Explicit standalone runs replace only their own slot, retaining a backup.
 export function startStandaloneRoster(storage,record,key){
- if(!['platoon-normandy-cerisy-standalone','platoon-normandy-st-georges-standalone','platoon-normandy-hill-192-standalone'].includes(key))throw new Error('Standalone replacement requires the Cerisy slot, St. Georges slot or Hill 192 slot.');
+ if(!['platoon-normandy-cerisy-standalone','platoon-normandy-st-georges-standalone','platoon-normandy-hill-192-standalone','platoon-normandy-st-germain-standalone'].includes(key))throw new Error('Standalone replacement requires a supported standalone Normandy slot.');
  const value=JSON.stringify(assertRecord(record)),previous=storage.getItem(key);
  if(previous!==null)storage.setItem(`${key}-previous`,previous);
  storage.setItem(key,value);return copy(record);

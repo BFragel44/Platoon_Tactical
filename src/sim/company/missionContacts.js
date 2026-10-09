@@ -5,6 +5,7 @@ import {values,live,friendly,emit,draw,pick,randomNumber,attempt} from './core.j
 import {occupants,los,distance,refresh,spot,basicFireTargets,overheadAllowed,unitLos} from './battlefield.js';
 import {checkMines,discoveredCover} from './missionFeatures.js';
 import {grenade} from './actions.js';
+const fortificationValue=(s,type)=>s.mission_rules?.cover_values?.[type]??({Cover:1,Foxholes:1,Trench:2,Bunker:3,'Deep Bunker':3,Pillbox:4}[type]);
 
 export function contactDirection(s,origin){
  if(s.mission_rules?.enemyActivity==='normandy'){
@@ -113,7 +114,7 @@ export function placePackage(s,pc,p){
  if(p.point_blank_chance)p={...p,point_blank:randomNumber(s,10,'Enemy point-blank placement',true)<=2};
  if(p.mines){if(s.locations[pc.location].mines)return false;s.locations[pc.location].mines=true;emit(s,'MINEFIELD_FOUND',`Mines discovered at ${s.locations[pc.location].name}.`,{location:pc.location});for(const u of occupants(s,pc.location))checkMines(s,u,{discovery:true});}
  if(p.incoming_options){const incoming=pick(s,p.incoming_options,'Enemy incoming agency',true);p={...p,incoming:incoming.value,incoming_agency:incoming.agency};}
- const used=[];
+ const used=[],placedCovers=new Map();
  for(const spec of p.units??[]){
   const pool=availableCounters(s,spec.kind);if(!pool.length)return false;
   const profile=pick(s,pool,'Enemy counter selection',true),noFire=!!p.no_fire||(spec.kind==='SPOTTER'||spec.kind==='LEADER'),range=p.close_range?1:noFire?3:profile.range;
@@ -122,10 +123,10 @@ export function placePackage(s,pc,p){
   if(p.point_blank){
    location=origin;
    const type=spec.cover??'Foxholes';cover=origin.covers.find(c=>c.type===type&&c.enemy_original);
-   if(!cover){cover={id:`fort_${s.next_id++}`,type,value:{Cover:1,Foxholes:1,Trench:2,Bunker:3,'Deep Bunker':3,Pillbox:4}[type],known:false,enemy_original:true,capacity:['Bunker','Deep Bunker'].includes(type)?3:type==='Pillbox'?2:null};origin.covers.push(cover);}
+   if(!cover){cover={id:`fort_${s.next_id++}`,type,value:fortificationValue(s,type),known:false,enemy_original:true,capacity:['Bunker','Deep Bunker'].includes(type)?3:type==='Pillbox'?2:null};origin.covers.push(cover);}
   }
   if(spec.same_as_previous||spec.same_as_any){location=s.locations[spec.same_as_any?pick(s,used,'Strongpoint supporting position',true):used.at(-1)];if(!location)return false;
-   cover=['Trench','Foxholes','Deep Bunker'].includes(spec.cover)?location.covers.find(c=>c.type===spec.cover):{id:`fort_${s.next_id++}`,type:spec.cover,value:spec.cover==='Bunker'?3:1,known:false,enemy_original:true,capacity:['Bunker','Deep Bunker'].includes(spec.cover)?3:null};
+   cover=['Trench','Foxholes','Deep Bunker'].includes(spec.cover)?placedCovers.get(location.id)??location.covers.find(c=>c.type===spec.cover):{id:`fort_${s.next_id++}`,type:spec.cover,value:fortificationValue(s,spec.cover),known:false,enemy_original:true,capacity:['Bunker','Deep Bunker'].includes(spec.cover)?3:null};
    if(!cover)return false;if(!location.covers.includes(cover))location.covers.push(cover);
    if(spec.cover==='Bunker')cover.arc=[Math.sign(origin.row-location.row),Math.sign(origin.col-location.col)];}
   const candidates=state=>contactPlacements(state,pc,profile,used,range,noFire,!!p.no_fire,spec.cover,actualCovers).filter(l=>!rejected.has(l.id));
@@ -138,7 +139,7 @@ export function placePackage(s,pc,p){
     const far=Math.max(...ray.map(l=>distance(l,origin))),l=pick(s,ray.filter(l=>distance(l,origin)===far),'Enemy contact position',true);
     const before=new Set(l.covers.map(c=>c.id));cover=null;
     if(spec.cover){
-     const value={Cover:1,Foxholes:1,Trench:2,Bunker:3,'Deep Bunker':3,Pillbox:4}[spec.cover];
+     const value=fortificationValue(s,spec.cover);
      if(l.building&&spec.cover!=='Deep Bunker'){const building=discoveredCover(s,l,false,true);if(building.value>=value)cover=building;else l.covers=l.covers.filter(c=>c.id!==building.id&&c.parent!==building.id);}
      if(!cover){cover={id:`fort_${s.next_id++}`,type:spec.cover,value,known:false,enemy_original:true,capacity:spec.cover==='Pillbox'?2:['Bunker','Deep Bunker'].includes(spec.cover)?3:null};l.covers.push(cover);}
      if(['Bunker','Pillbox','Deep Bunker'].includes(cover.type))cover.arc=[Math.sign(origin.row-l.row),Math.sign(origin.col-l.col)];
@@ -153,7 +154,7 @@ export function placePackage(s,pc,p){
     }
    }
   }
-  const l=location;if((spec.same_as_previous||spec.same_as_any)&&!noFire&&!canPlaceFire(s,profile,l.id,pc.location,spec.cover,cover))return false;used.push(l.id);
+  const l=location;if((spec.same_as_previous||spec.same_as_any)&&!noFire&&!canPlaceFire(s,profile,l.id,pc.location,spec.cover,cover))return false;used.push(l.id);placedCovers.set(l.id,cover);
   const spotterAgency=p.incoming_agency??'enemy_mortar',spotterRules=profile.kind==='SPOTTER'?s.mission_rules?.enemy_spotters?.[spotterAgency.replace('enemy_','')]:null;
   const id=`enemy_${s.next_id++}`,u={...structuredClone(profile),id,counter_id:profile.id,contact_type:pc.type,max_steps:profile.steps,platoon:null,faction:'enemy',location:l.id,cohesion:'GOOD',experience:s.mission_rules?.enemyExperience??'Line',original_experience:s.mission_rules?.enemyExperience??'Line',ammo:spec.ammo!==undefined?{[profile.ammo_key??(profile.kind==='MORTAR'?'MTR':profile.kind==='FLAK88'?'GUN':'MG')]:spec.ammo}:structuredClone(profile.ammo??{}),spotter_agency:spotterAgency,missions_remaining:spotterRules?.missions??profile.missions??null,subsequent_draws:spotterRules?.subsequent_draws??profile.subsequent_draws,calls_made:0,
    steps:Array.from({length:spec.steps??profile.steps},(_,i)=>({id:`${id}_step${i+1}`,personnel:[]})),named:profile.kind!=='SQUAD',pinned:false,exposed:!!p.exposed,cover:cover?.id??null,
