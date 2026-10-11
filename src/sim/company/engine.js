@@ -1,3 +1,5 @@
+import {vehicleHQRecord,vehicleHQs} from './vehicleCommand.js';
+import {enterVireVehiclePhase,prepareVireInfantryCombat,resolveVireInfantryCombat,cleanupVireVehicles,exportVireAdapterReplay} from './vireIntegration.js';
 import {hill192DeploymentDefinition} from './hill192Setup.js';
 import {finishPatrolEvents} from './patrolEvents.js';
 import {createPatrolProgress,patrolMoonLight,patrolOutcome,patrolParticipant} from './patrols.js';
@@ -18,7 +20,7 @@ import {revealTerrain,terrainProjection} from './missionKnowledge.js';
 import {higherEvent,scoreMission,secureStatus,applySupportChoice} from './missionFeatures.js';
 import { createRng } from '../rng.js';
 import { values, live, good, friendly, expMod, visible, emit, newDeck, draw, result, randomNumber } from './core.js';
-import { refresh, hasFire, combatModifier, observeRecord, occupants, incoming, temporaryMortarFire, seesCard, explainUnitCard, communication, communicationReason, spottingLocations } from './battlefield.js';
+import { refresh, hasFire, combatModifier, observeRecord, occupants, incoming, temporaryMortarFire, seesCard, explainUnitCard, communication, communicationReason, spottingLocations, fireSource } from './battlefield.js';
 import { submitCommand as order, commandOptions } from './actions.js';
 import { resolveContacts, eligibleContacts, prepareCombat, resolvePreparedCombat, enemyActivity, capture, retreat } from './combat.js';
 export const PHASES = [
@@ -46,6 +48,7 @@ export const PHASES = [
 export const RULES_VERSION = 33;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 function phaseDescription(s){
+  if(s.vire_runtime?.normal_phase_enabled&&s.phase==='AT_COMBAT')return 'Complete vehicle actions, reactions and immediate HITs, then finish end-of-phase VOF before advancing.';
   if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(s.phase))return s.turn===1?'No higher-HQ event check on turn 1.':'Draw for a higher-HQ event; resolve this turn’s mission table and any command obligations.';
   if(s.mission_rules.communications==='simplified'&&s.phase==='BN_ACTIVATION')return 'BN activates an unpinned command-side Company HQ unless this turn’s communications event prevents activation.';
   if(s.objectives&&s.phase==='CLEANUP')return 'Remove temporary markers, evacuate transported and unloaded CCP casualties, update fire and check mission objectives. Position achievements are scored when the mission ends.';
@@ -53,7 +56,8 @@ function phaseDescription(s){
 }
 const index = a => Object.fromEntries(a.map(v=>[v.id,structuredClone(v)]));
 export function createMission(definition,seed,setup={},deployment=null,execution={}) {
-  if(definition.readiness?.playable===false)throw new Error(`${definition.name} is not playable yet: ${definition.readiness.missing.join('; ')}.`);
+  const development=(definition.id==='normandy_6'&&definition.rules?.vire&&execution.development==='vire')||(definition.id==='normandy_7'&&definition.rules?.tinchebray&&execution.development==='tinchebray');
+  if(definition.readiness?.playable===false&&!development)throw new Error(`${definition.name} is not playable yet: ${definition.readiness.missing.join('; ')}.`);
   definition=hill192DeploymentDefinition(definition,setup);
   if(definition.rules?.standaloneRoster&&!deployment)deployment={mission_instance_id:execution.mission_instance_id??globalThis.crypto.randomUUID(),roster:createCampaignRoster(definition.rules.baselineCompanyId??'normandy_cerisy_standalone_company',definition)};
   return initializeMission(definition,seed,setup,deployment,execution);
@@ -137,13 +141,13 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
   return s;
 }
 export function eligibleHQs(s) {
-  return values(s.units).filter(u=>friendly(u)&&live(u)&&['HQ','STAFF'].includes(u.kind)&&!s.completed.includes(u.id)&&
+  return values(s.units).concat(s.vire_runtime?.normal_phase_enabled?vehicleHQs(s):[]).filter(u=>friendly(u)&&live(u)&&['HQ','STAFF'].includes(u.kind)&&!s.completed.includes(u.id)&&
     (s.phase==='SUBORDINATE_ACTIVATION'?!isCompanyCommander(u)&&s.activated.includes(u.id):
       s.phase==='PLATOON_INITIATIVE'?u.kind==='HQ'&&!isCompanyCommander(u)&&!s.activated.includes(u.id):
       s.phase==='STAFF_INITIATIVE'?u.kind==='STAFF'&&u.command_role!=='higher_hq'&&!s.activated.includes(u.id):false)).map(u=>u.id);
 }
 function startImpulse(s,id,activation=false) {
-  const u=s.units[id];let allowance,cardId=null,base=1,modifiers={};
+  const u=s.units[id]??vehicleHQRecord(s,id);let allowance,cardId=null,base=1,modifiers={};
   if(id==='general'){const card=draw(s,1,'General initiative')[0];cardId=card.id;base=card.initiative;allowance=s.patrol?patrolInitiative(base):base;}
   else if(u.command_role==='higher_hq')allowance=6;
   else if(u.kind==='STAFF'&&!activation)allowance=1;
@@ -152,7 +156,7 @@ function startImpulse(s,id,activation=false) {
     cardId=card.id;base=activation?card.activated:card.initiative;
     const pressure=incoming(s,u).map(f=>f.value);
     if(s.markers.some(m=>m.location===u.location&&m.type==='GRENADE'&&(m.target===u.id||u.cover&&m.cover===u.cover)))pressure.push(-3);
-    if(s.fire.some(f=>f.target===u.location&&s.units[f.source]?.vof==='S!'&&!s.units[f.source].pinned))pressure.push(-3);
+    if(s.fire.some(f=>f.target===u.location&&fireSource(s,f.source)?.vof==='S!'&&!fireSource(s,f.source).pinned))pressure.push(-3);
     if(s.support.some(f=>f.status==='ACTIVE'&&f.location===u.location))pressure.push(-3);
     const worst=pressure.length?Math.min(...pressure):null;
     const fireMod=worst===null||worst===2?0:worst===0?-1:worst===-1?-2:-3;
@@ -161,14 +165,15 @@ function startImpulse(s,id,activation=false) {
   }
   s.impulse={id:`t${s.turn}_i${++s.impulse_number}`,hq:id,commands:allowance+(u?.saved??0),allowance,spent:0,card_id:cardId,base,modifiers,reserve_used:u?.saved??0};
   if(id==='general'&&(s.mission_rules?.reattempts||s.patrol))s.impulse.hq_limit_only=true;
-  if(u)u.saved=0;
+  if(u){u.saved=0;if(s.vire_runtime?.vehicles[id])s.vire_runtime.vehicles[id].saved=0;}
   if(isCompanyCommander(u)&&s.command_obligation){const paid=Math.min(s.command_obligation,s.impulse.commands,visibilityCommandLimits(s.visibility).spend);s.command_obligation-=paid;s.impulse.commands-=paid;s.impulse.spent+=paid;emit(s,'HQ_OBLIGATION',`Company HQ spent ${paid} commands on its higher-HQ obligation.`,{paid,remaining:s.command_obligation});if(!s.command_obligation){const event=s.hq_events.findLast(e=>e.turn===s.turn&&['COMM','SITREP'].includes(e.code));if(event)event.completed=true;}}
   emit(s,'IMPULSE_STARTED',`${u?.name??'General initiative'}: ${s.impulse.commands} commands available; ${s.impulse.hq_limit_only?`HQ orders retain their ${visibilityCommandLimits(s.visibility).spend===6?'six':'four'}-command limit`:`maximum ${visibilityCommandLimits(s.visibility).spend===6?'six':'four'} may be spent`}.`,{hq:id,allowance,total:s.impulse.commands});
 }
 function finishImpulse(s) {
   const i=s.impulse;if(!i)return;
   if(i.hq!=='general') {
-    const u=s.units[i.hq];u.saved=u.command_role==='higher_hq'?0:live(u)&&!['P','L'].includes(u.cohesion)?Math.min(visibilityCommandLimits(s.visibility,u.experience).saved,i.commands):0;
+    const u=s.units[i.hq]??vehicleHQRecord(s,i.hq);u.saved=u.command_role==='higher_hq'?0:live(u)&&!['P','L'].includes(u.cohesion)?Math.min(visibilityCommandLimits(s.visibility,u.experience).saved,i.commands):0;
+    if(s.vire_runtime?.vehicles[u.id])s.vire_runtime.vehicles[u.id].saved=u.saved;
     s.completed.push(u.id);emit(s,'IMPULSE_ENDED',`${u.name} saved ${u.saved} commands.`,{hq:u.id,saved:u.saved});
   }else emit(s,'IMPULSE_ENDED','General initiative ended; unused commands discarded.');
   s.impulse=null;
@@ -176,6 +181,7 @@ function finishImpulse(s) {
 function enter(s) {
   s.segment_progress=null;if(s.phase==='BN_ACTIVATION')s.offmap_bn_commands=visibilityCommandLimits(s.visibility).spend;
   emit(s,'PHASE_ENTERED',phaseInfo(s.phase)[1],{description:phaseDescription(s)});
+  if(s.phase==='AT_COMBAT'&&s.vire_runtime?.normal_phase_enabled)enterVireVehiclePhase(s);
   if(s.phase==='CONTACTS'&&s.mission_contacts){
     for(const pc of values(s.contacts).filter(pc=>!pc.resolved&&!pc.question_side))pc.revealed=true;
     s.contact_queue=contactQueue(s,eligibleContacts(s));
@@ -183,7 +189,7 @@ function enter(s) {
   if(s.phase==='COMBAT_EFFECTS') {
     const start=s.events.length;
     damagePhoneLines(s);
-    const resolutions=prepareCombat(s);
+    const resolutions=s.vire_runtime?.normal_phase_enabled?prepareVireInfantryCombat(s):prepareCombat(s);
     s.segment_progress={phase:s.phase,status:resolutions.length?'awaiting_resolution':'reviewing',index:0,total:resolutions.length,events_after:start};
     if(!resolutions.length)emit(s,'COMBAT_REVIEW','No formations are affected by fire. Continue to cleanup.');
   }
@@ -206,7 +212,7 @@ export function resolveCombat(state,resolutionId) {
   if(state.status!=='ACTIVE'||state.phase!=='COMBAT_EFFECTS')return {state,events:[],accepted:false,reason:'Combat can only resolve during segment 3.7.4.'};
   if(!current||progress.status!=='awaiting_resolution'||current.id!==resolutionId||!current.target_visible)
     return {state,events:[],accepted:false,reason:'Resolve the currently displayed combat exposure once.'};
-  const s=structuredClone(state);resolvePreparedCombat(s,resolutionId);s.segment_progress.status='reviewing_result';
+  const s=structuredClone(state);(s.vire_runtime?.normal_phase_enabled?resolveVireInfantryCombat:resolvePreparedCombat)(s,resolutionId);s.segment_progress.status='reviewing_result';
   s.replay.push({op:'resolveCombat',id:resolutionId});return result(state,s,{accepted:true});
 }
 function endMission(s,status,text) { s.status=status;s.impulse=null;scoreMission(s,{final:true});emit(s,'MISSION_ENDED',text,{outcome:status}); }
@@ -242,8 +248,10 @@ function nextContact(s) {
 export function advancePhase(state,options={}) {
   if(Object.keys(options).some(k=>!['friendlyRemainder','eventChoice'].includes(k))||options.friendlyRemainder&&!['F','A'].includes(options.friendlyRemainder))return {state,events:[],accepted:false,reason:'Invalid segment choice.'};
   if(state.pending_support)return {state,events:[],accepted:false,reason:'Choose ordinary or battalion fire before advancing.'};
-  if(state.pending_event&&!options.eventChoice)return {state,events:[],accepted:false,reason:'Choose ammunition and a Row 1 resupply card.'};
+  if(state.pending_event&&!options.eventChoice)return {state,events:[],accepted:false,reason:state.pending_event.code==='TANK_SUPPORT'?'Choose Row 1 entry cards for all five M5 tanks.':'Choose ammunition and a Row 1 resupply card.'};
   if(state.status!=='ACTIVE')return {state,events:[]};
+  if(state.vire_runtime?.normal_phase_enabled&&state.vire_runtime.pending_hits.some(h=>!h.resolved))return {state,events:[],accepted:false,reason:'Resolve immediate vehicle crew/passenger HITs first.'};
+  if(state.vire_runtime?.normal_phase_enabled&&state.phase==='AT_COMBAT'&&!state.vire_runtime.phase_complete)return {state,events:[],accepted:false,reason:'Complete vehicle actions, reactions, HITs and end-of-phase VOF first.'};
   const pending=state.phase==='COMBAT_EFFECTS'&&state.pending_combat?.[state.segment_progress?.index];
   if(pending?.status==='PENDING'&&pending.target_visible)
     return {state,events:[],accepted:false,reason:'Resolve the displayed combat exposure before continuing.'};
@@ -252,7 +260,7 @@ export function advancePhase(state,options={}) {
   if(eligibleHQs(s).length)return {state,events:[],reason:'Select each eligible HQ and complete its impulse before advancing.'};
   const phase=s.phase;
   if(s.mission_rules.events&&['FRIENDLY_EVENTS','ENEMY_EVENTS'].includes(phase)){if(s.turn===1)emit(s,'PHASE_SKIPPED','No higher HQ event check on turn one.');else higherEvent(s,phase==='FRIENDLY_EVENTS'?'friendly':'enemy',options.eventChoice);if(s.pending_event)return result(state,s,{accepted:true});}
-  else if(['FRIENDLY_EVENTS','DEFENSIVE_EVENTS','DEFENSIVE_ACTIVITY','ENEMY_EVENTS','AT_COMBAT'].includes(phase))emit(s,'PHASE_SKIPPED',phaseInfo(phase)[2]);
+  else if(['FRIENDLY_EVENTS','DEFENSIVE_EVENTS','DEFENSIVE_ACTIVITY','ENEMY_EVENTS','AT_COMBAT'].includes(phase)&&!(phase==='AT_COMBAT'&&s.vire_runtime?.normal_phase_enabled))emit(s,'PHASE_SKIPPED',phaseInfo(phase)[2]);
   if(phase==='BN_ACTIVATION') {
     const commander=companyCommander(s);
     const visitor=higherCommander(s);
@@ -280,11 +288,12 @@ export function advancePhase(state,options={}) {
     }
   }
   if(phase==='PINNED_RECOVERY')for(const u of values(s.units).filter(u=>live(u)&&u.pinned&&!hasFire(s,u.location))){u.pinned=false;emit(s,'AUTOMATIC_RECOVERY',`${u.name} is free of fire and unpins.`,{actor:u.id,location:u.location,faction:u.faction},!visible(s,u));}
+  if(phase==='PINNED_RECOVERY')for(const v of values(s.vire_runtime?.vehicles??{}).filter(v=>v.status==='ACTIVE'&&v.pinned&&!hasFire(s,v.location))){v.pinned=false;emit(s,'AUTOMATIC_RECOVERY',`${v.name} is free of fire and unpins.`,{actor:v.id,location:v.location,faction:v.faction},v.faction==='enemy'&&!s.knowledge.spotted[v.id]&&!s.knowledge.spotted[v.source_unit]);}
   if(phase==='COMBAT_EFFECTS'&&s.segment_progress.status!=='reviewing') {
     let index=s.segment_progress.index;
     if(s.pending_combat[index]?.status==='RESOLVED')index++;
     while(index<s.pending_combat.length&&!s.pending_combat[index].target_visible) {
-      resolvePreparedCombat(s,s.pending_combat[index].id);index++;
+      (s.vire_runtime?.normal_phase_enabled?resolveVireInfantryCombat:resolvePreparedCombat)(s,s.pending_combat[index].id);index++;
     }
     s.segment_progress.index=index;
     if(index<s.pending_combat.length)s.segment_progress.status='awaiting_resolution';
@@ -296,6 +305,7 @@ export function advancePhase(state,options={}) {
     return result(state,s);
   }
   if(phase==='CLEANUP') {
+    if(s.vire_runtime?.normal_phase_enabled)cleanupVireVehicles(s);
     finishPatrolEvents(s);
     if(s.mission_rules.events==='normandy'){
       const turnEvents=s.events.filter(e=>e.turn===s.turn&&e.type==='UNIT_MOVED'&&e.faction==='friendly');
@@ -306,9 +316,9 @@ export function advancePhase(state,options={}) {
     }
     for(const u of values(s.units))if(u.temporary_pdf)delete u.temporary_pdf;
     for(const u of values(s.units))if(u.hold_fire_until_cleanup)delete u.hold_fire_until_cleanup;
-    s.markers=[];for(const l of values(s.locations))l.smoke=false;
+    s.markers=(s.mission_rules.vire||s.mission_rules.tinchebray)?s.markers.filter(m=>m.type==='BURNING_WRECK'||m.type==='SNIPER'&&s.vire_runtime?.vehicles[m.target]?.status==='ACTIVE'):[];for(const l of values(s.locations))l.smoke=s.markers.some(m=>m.type==='BURNING_WRECK'&&m.location===l.id);
     for(const u of values(s.units)){u.exposed=false;u.mine_hit=false;u.used=[];u.indirect=null;if(!friendly(u)&&u.fire&&!occupants(s,u.fire).some(friendly)){u.fire=null;u.fire_direction=null;u.fire_effect=null;}}
-    for(const c of s.casualties.filter(c=>friendly(c)&&(s.objectives?c.location===s.objectives.ccp&&!c.carrier&&c.transported:s.locations[c.location].staging)&&!c.evacuated)){c.evacuated=true;emit(s,'CASUALTY_EVACUATED','A casualty step was evacuated from the designated evacuation area.',{step_id:c.step.id,personnel:c.step.personnel});}
+    for(const c of s.casualties.filter(c=>friendly(c)&&(s.objectives?c.location===s.objectives.ccp&&!c.carrier&&c.transported:s.locations[c.location]?.staging)&&!c.evacuated)){c.evacuated=true;emit(s,'CASUALTY_EVACUATED','A casualty step was evacuated from the designated evacuation area.',{step_id:c.step.id,personnel:c.step.personnel});}
     refresh(s);s.pending_combat=[];checkObjective(s);emit(s,'TURN_ENDED',`Turn ${s.turn} complete.`,{outcome:s.status});
     if(s.status==='ACTIVE'){s.turn++;s.bn_blocked=false;s.command_obligation=0;s.support_unavailable=[];s.forward_row_blocked=null;s.activated=[];s.completed=[];
       if(s.counterattack_ends_after&&s.turn>s.counterattack_ends_after){s.enemy_tactics=s.mission_rules.tactics??'deliberate_defense';s.counterattack_ends_after=null;emit(s,'COUNTER_ATTACK_ENDED',`Enemy tactics returned to ${s.enemy_tactics.replaceAll('_',' ')}.`);}
@@ -322,6 +332,7 @@ export function advancePhase(state,options={}) {
   s.phase=PHASES[PHASES.findIndex(p=>p[0]===phase)+1][0];enter(s);return result(state,s);
 }
 export function endTurn(state) {
+  if(state.vire_runtime?.normal_phase_enabled)return {state,events:[],accepted:false,reason:'Vehicle missions require explicit phase stepping and vehicle decisions.'};
   let s=state,guard=0;const turn=s.turn;
   while(s.status==='ACTIVE'&&s.turn===turn&&guard++<100) {
     if(s.pending_support)s=resolveSupportChoice(s,{locations:[]}).state;
@@ -335,7 +346,7 @@ export function endTurn(state) {
 }
 export function abortMission(state) {if(state.status!=='ACTIVE')return {state,events:[]};const s=structuredClone(state);s.replay.push({op:'abortMission'});endMission(s,'ABORTED','Commander aborted the company assault.');return result(state,s);}
 export function declineReattempt(state){
- if(!state.mission_rules?.reattempts||state.status!=='DEFEAT'||state.attempt_number!==1||state.reattempt_declined)return {state,events:[],accepted:false,reason:'No reattempt decision is available.'};
+ if(!state.mission_rules?.reattempts||state.status!=='DEFEAT'||(state.mission_rules.tinchebray?state.attempt_number>2:state.attempt_number!==1)||state.reattempt_declined)return {state,events:[],accepted:false,reason:'No reattempt decision is available.'};
  const s=structuredClone(state);s.reattempt_declined=true;s.replay.push({op:'declineReattempt'});emit(s,'REATTEMPT_DECLINED',`Commander ended ${s.mission_name} after the first attempt.`);return result(state,s,{accepted:true});
 }
 export function getVisibleEvents(s,faction='friendly',after=0) {
@@ -351,7 +362,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
   if(faction!=='friendly')throw new TypeError('Only the player perspective is available');
   const visibleHistory=getVisibleEvents(s);
   // Incoming fire already reported to the player remains known when its card empties.
-  const knownSupport=s.support.filter(f=>s.units[f.source]?.faction==='friendly'||occupants(s,f.location).some(friendly)||s.units[f.source]&&s.knowledge.spotted[f.source]||f.status==='ACTIVE'&&visibleHistory.some(e=>['INCOMING_FIRE','SUPPORT_ACTIVE'].includes(e.type)&&e.location===f.location&&e.value===f.value));
+  const knownSupport=s.support.filter(f=>fireSource(s,f.source)?.faction==='friendly'||occupants(s,f.location).some(friendly)||fireSource(s,f.source)&&s.knowledge.spotted[f.source]||f.status==='ACTIVE'&&visibleHistory.some(e=>['INCOMING_FIRE','SUPPORT_ACTIVE'].includes(e.type)&&e.location===f.location&&e.value===f.value));
   const units=values(s.units).filter(friendly).map(u=>({...structuredClone(u),steps:u.steps.length,
     activated:s.activated.includes(u.id),impulse_completed:s.completed.includes(u.id),
     los_explanations:Object.fromEntries(values(s.locations).map(l=>{const trace=explainUnitCard(s,u,l.id);const publicTrace=explainUnitCard({...s,support:knownSupport},u,l.id);return [l.id,l.known===false?{visible:false,reason:'Terrain not yet revealed.'}:{visible:trace.visible,reason:trace.visible===publicTrace.visible?publicTrace.reason:'No LOS: battlefield conditions block this view.'}];})),
@@ -359,7 +370,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     communication:issuerId==='general'?'General initiative':communication(s,s.units[issuerId],u),
     communication_reason:communicationReason(s,s.units[issuerId],u),
     attempted:[...new Set(u.used.filter(k=>k.startsWith(`${s.impulse?.id}:`)).map(k=>k.slice(s.impulse.id.length+1)))],
-    personnel:u.steps.flatMap(v=>v.personnel),incoming:incoming(s,u).map(f=>({origin:f.origin,value:f.value,source:visible(s,s.units[f.source])?f.source:null})),
+    personnel:u.steps.flatMap(v=>v.personnel),incoming:incoming(s,u).map(f=>({origin:f.origin,value:f.value,source:visible(s,fireSource(s,f.source))?f.source:null})),
     combat:(()=>{const c=combatModifier(s,u);return c?{ncm:c.ncm,total:c.total,parts:structuredClone(c.parts),modifiers:structuredClone(c.modifiers)}:null;})(),options:live(u)?commandOptions(s,u,issuerId):[]}));
   for(const u of units) {
     u.skills=(s.skills??[]).filter(p=>p.holder===u.id&&!p.used).map(p=>({id:p.id,label:SKILLS[p.type].label}));
@@ -394,8 +405,8 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     hq_events:structuredClone(s.hq_events??[]).map(({side,code,turn,lead,completed,choice,placements,waypoint,ignored})=>({side,code,turn,lead,completed,choice,placements,...(waypoint!==undefined?{waypoint,ignored}:{})})),mission_name:s.mission_name,objectives:s.objectives?Object.fromEntries(['primary','secondary','attack','ccp'].map(k=>[k,{location:s.objectives[k],...secureStatus(s,s.objectives[k])}])):null,achievements:structuredClone(s.achievements),achievement_tally:achievementTally(s),
     contacts:values(s.contacts).filter(c=>!c.returning||s.knowledge.suspected[c.location]).map(c=>({id:c.id,location:c.location,type:(c.counterattack||c.question_side)&&!c.revealed&&!c.resolved?'?':c.type,resolved:c.resolved,counterattack:!!c.counterattack})),
     enemies:knownEnemy,suspected:spottingLocations(s),historical_reports:Object.keys(s.knowledge.suspected),
-    fire:[...s.fire,...temporaryMortarFire(s)].filter(f=>friendly(s.units[f.source])||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>({...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:visible(s,s.units[f.source])?f.source:null,friendly:friendly(s.units[f.source])})),
-    markers:s.markers.filter(m=>m.type==='ILLUMINATION'||occupants(s,m.location).some(u=>friendly(u)||s.knowledge.spotted[u.id])).map(m=>({type:m.type,location:m.location,value:m.value,critical:!!m.critical,...(m.weapon?{weapon:m.weapon}:{}),...(m.type==='ILLUMINATION'?{center:m.center,adjacent:m.adjacent,delivery:m.delivery}:{})})),phone_lines:structuredClone(s.phone_lines),runners:structuredClone(s.runners),
+    fire:[...s.fire,...temporaryMortarFire(s)].filter(f=>friendly(fireSource(s,f.source))||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>({...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:visible(s,fireSource(s,f.source))?f.source:null,friendly:friendly(fireSource(s,f.source))})),
+    markers:s.markers.filter(m=>m.type==='ILLUMINATION'||occupants(s,m.location).some(u=>friendly(u)||s.knowledge.spotted[u.id])).map(m=>({type:m.type,location:m.location,value:m.value,critical:!!m.critical,...(m.source&&fireSource(s,m.source)&&visible(s,fireSource(s,m.source))?{source:m.source,origin:m.origin??fireSource(s,m.source).location}:{}),...(m.target&&s.units[m.target]&&visible(s,s.units[m.target])?{target:m.target}:{}),...(m.cover&&terrainProjection(s.locations[m.location]).covers?.some(c=>c.id===m.cover)?{cover:m.cover}:{}),...(m.weapon?{weapon:m.weapon}:{}),...(m.type==='ILLUMINATION'?{center:m.center,adjacent:m.adjacent,delivery:m.delivery}:{})})),phone_lines:structuredClone(s.phone_lines),runners:structuredClone(s.runners),
     support:knownSupport.map(f=>({location:f.location,status:f.status,value:f.value,...(f.agency?{agency:f.agency==='cannon'?'cannon':f.agency.includes('mortar')?'mortar':'artillery',ammo:f.ammo??'HE'}:{})})),support_inventory:structuredClone(s.support_inventory),
     personnel:values(s.personnel),casualties:s.casualties.filter(c=>c.faction==='friendly').map(c=>({...structuredClone(c),label:`${c.origin_name??'Friendly formation'} casualty step`,carrier_name:c.carrier?s.units[c.carrier]?.name:null})),
     assets:s.assets.filter(a=>!a.destroyed&&a.faction==='friendly').map(a=>({...structuredClone(a),label:a.type==='RADIO'?`${a.net} radio`:`${String(a.key??'Equipment').replaceAll('_',' ')}${a.type==='AMMO'?' ammunition':''}${a.quantity>1?` ×${a.quantity}`:''}`,carrier_name:a.carrier?s.units[a.carrier]?.name:null})),
@@ -407,8 +418,8 @@ export function getAfterActionReport(s) {
   return {record_type:'AAR',ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,scenario_version:s.scenario_version,mission_instance_id:s.mission_instance_id??null,attempts:structuredClone(s.attempt_history??[]),seed:s.seed,setup:structuredClone(s.setup),achievements:structuredClone(s.achievements),score:s.achievements.reduce((n,a)=>n+a.points,0),outcome:s.status,turns:s.turn,events,orders:events.filter(e=>e.type==='COMMAND_ISSUED'),casualties:events.filter(e=>e.type==='CASUALTY'),
     formations:events.filter(e=>['FORMATION_CHANGED','FORMATION_RECONSTITUTED','HQ_RECONSTITUTED','COHESION_CHANGED','UNIT_CAPTURED'].includes(e.type)),objectives:events.filter(e=>['OBJECTIVE_CHECK','MISSION_ENDED'].includes(e.type))};
 }
-export function exportReplay(s) { return {ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
-function replayOperation(s,op) {
+export function exportReplay(s) { if(s.vire_runtime)return exportVireAdapterReplay(s.vire_runtime.initial_state,s);return {ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
+export function replayOperation(s,op) {
   if(op.op==='resolveSupportChoice')return resolveSupportChoice(s,op.choice);
   if(op.op==='submitCommand')return submitCommand(s,op.command);
   if(op.op==='selectHQ')return selectHQ(s,op.id);

@@ -15,6 +15,9 @@ export function validateNormandyContent(definition){
    const d=entry.mine_followup,numbers=d.branches?.flatMap(b=>b.numbers??[])??[];
    if(!entry.mines||!Number.isInteger(d.sides)||d.sides<1||numbers.length!==d.sides||new Set(numbers).size!==d.sides||numbers.some(n=>!Number.isInteger(n)||n<1||n>d.sides)||d.branches.some(b=>!Array.isArray(b.units)))throw new Error(`Invalid Normandy package ${number} mine follow-up.`);
   }
+  if(entry.additional_mines){const d=entry.additional_mines;
+   if(!definition.rules.tinchebray||!Number.isInteger(d.sides)||d.sides<2||d.sides>10||!Array.isArray(d.numbers)||!d.numbers.length||new Set(d.numbers).size!==d.numbers.length||d.numbers.some(n=>!Number.isInteger(n)||n<1||n>d.sides))throw new Error(`Invalid Normandy package ${number} additional mines.`);
+  }
   const variants=entry.mine_followup?entry.mine_followup.branches:entry.alternatives??[entry];
   for(const variant of variants){
    for(const spec of [...(variant.units??[]),...(variant.optional?.units??[])])if(!kinds.includes(spec.kind)||!counters.some(c=>c.kind===spec.kind)||!COVERS.has(spec.cover??null))throw new Error(`Unsupported Normandy package ${number} profile or cover: ${spec.kind}.`);

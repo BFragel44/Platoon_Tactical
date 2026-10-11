@@ -10,7 +10,7 @@ import {validateNormandyContent} from '../src/sim/company/normandyContent.js';
 const fixture={...stGermain,readiness:{playable:true}};
 const fresh=()=>createMission(fixture,'patrol-integration',{},null,{mission_instance_id:'patrol-fixture'});
 describe('St. Germain integrated setup and execution boundary',()=>{
- it('preserves the gated scenario and retains explicit rejection for gated definitions',()=>{expect(()=>createMission(stGermain,'gated')).toThrow('not playable');expect(()=>createMission({...stGermain,readiness:{...stGermain.readiness,playable:false,missing:['Acceptance pending']}},'gated')).toThrow('not playable');});
+ it('allows accepted M5 and retains explicit rejection for gated definitions',()=>{expect(createMission(stGermain,'accepted').scenario_id).toBe('normandy_5');expect(()=>createMission({...stGermain,readiness:{...stGermain.readiness,playable:false,missing:['Acceptance pending']}},'gated')).toThrow('not playable');});
  it('validates all authored profiles without altering accepted Cerisy',()=>{
   const original=structuredClone(cerisy);expect(()=>validateNormandyContent(stGermain)).not.toThrow();
   const bad=structuredClone(stGermain);bad.enemy_counters[0].vof='UNKNOWN';expect(()=>validateNormandyContent(bad)).toThrow('Unsupported');expect(cerisy).toEqual(original);

@@ -32,3 +32,16 @@ export function hastyActivityTable({same,covered,outOfAmmo,noLOS,under,validPDF,
  if(trading)return stronger?['NONE','ATTACK']:['NONE','NONE','ATTACK','ATTACK','FALL_BACK'];
  return ['NONE'];
 }
+
+// Printed Delay Defense column, first matching Good Order row.
+export function delayActivityTable({same,covered,outOfAmmo,noLOS,under,validPDF,differentDirection,heavy,stronger,trading}){
+ if(same)return covered?['NONE','FALL_BACK','FALL_BACK','ATTACK']:['NONE','COVER','FALL_BACK','FALL_BACK','ATTACK'];
+ if(outOfAmmo)return ['FALL_BACK'];
+ if(!under&&noLOS)return ['HIDE'];
+ if(!under&&validPDF)return ['NONE','NONE','ATTACK'];
+ if(under&&!covered)return ['NONE','COVER','FALL_BACK','FALL_BACK','ATTACK'];
+ if(differentDirection)return ['NONE','ATTACK','SHIFT','FALL_BACK','FALL_BACK'];
+ if(heavy&&validPDF)return ['NONE','NONE','ATTACK'];
+ if(trading)return stronger?['NONE','NONE','ATTACK']:['NONE','ATTACK','FALL_BACK'];
+ return ['NONE'];
+}

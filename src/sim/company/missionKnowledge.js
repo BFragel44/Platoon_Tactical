@@ -1,3 +1,4 @@
+import {friendlyVireVehiclesAt} from './vireUnits.js';
 import {borders} from './terrain.js';
 import {values,live,friendly,emit} from './core.js';
 import {explainLos,unitLos} from './battlefield.js';
@@ -7,6 +8,7 @@ import {explainLos,unitLos} from './battlefield.js';
 export function revealTerrain(s,{setup=false}={}) {
  if(!s.mission_rules?.hiddenTerrain)return;
  const origins=setup?values(s.locations).filter(l=>l.staging).map(l=>l.id):values(s.units).filter(u=>friendly(u)&&live(u)&&!s.locations[u.location].staging);
+ if(!setup&&(s.mission_rules?.vire||s.mission_rules?.tinchebray))origins.push(...values(s.locations).flatMap(l=>friendlyVireVehiclesAt(s,l.id).map(v=>({...v,steps:v.crew,cohesion:'GOOD',cover:null}))));
  const locations=setup?Object.fromEntries(values(s.locations).map(l=>[l.id,{...l,staging:false}])):s.locations;
  const geometry={...s,locations};
  for(const l of values(s.locations))if(!l.known&&(setup&&l.row===1||origins.some(origin=>setup?explainLos(geometry,origin,l.id).visible:unitLos(s,origin,l.id)))){

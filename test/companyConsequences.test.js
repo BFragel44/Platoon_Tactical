@@ -4,7 +4,7 @@ import {createMission,getPlayerView,getAfterActionReport,abortMission,submitComm
 import {applyHit} from '../src/sim/company/combat.js';
 import {eligibleTargets,commandOptions} from '../src/sim/company/actions.js';
 import {refresh,spot} from '../src/sim/company/battlefield.js';
-import {selectedOrder,combatArt,completeCombatStage,supportContext} from '../src/ui/orderPresentation.js';
+import {selectedOrder,combatArt,completeCombatStage,supportContext,availableOrderMenu,unavailableOrderReference} from '../src/ui/orderPresentation.js';
 import {pdfDirections} from '../src/ui/fireMarkers.js';
 const fresh=()=>createMission(companyAssault,'company-1');
 const impulse=s=>{s.phase='CO_ACTIVATION';s.impulse={id:'fixture',hq:'co',commands:6,spent:0};return s;};
@@ -90,4 +90,11 @@ describe('Trustworthy orders and visible consequences',()=>{
   const before=structuredClone(first);getPlayerView(first);getPlayerView(first);expect(first).toEqual(before);
   const second=advancePhase(first).state;expect(getPlayerView(second).contact_review.location).toBe('r1c4');expect(getPlayerView(second).contact_review.events.filter(e=>e.type==='CONTACT_EVALUATED')).toHaveLength(1);
  });
+});
+
+it('keeps unusable orders out of the menu while preserving their reasons and stale player intent',()=>{
+ const options=[{type:'MOVE',label:'Move',cost:1,available:true,targets:[]},{type:'ACTIVATE',label:'Activate HQ',cost:1,available:false,reason:'No active HQ impulse',targets:[]}];
+ const menu=availableOrderMenu(options,'ACTIVATE');expect(menu).toContain('value="MOVE"');expect(menu).not.toContain('value="ACTIVATE"');expect(menu).toContain('Choose an available order');
+ const reference=unavailableOrderReference(options);expect(reference).toContain('Activate HQ');expect(reference).toContain('No active HQ impulse');expect(reference).not.toContain('<details open');
+ expect(availableOrderMenu(options.map(o=>({...o,available:false})),'MOVE')).toContain('No orders available');expect(selectedOrder(options,'ACTIVATE','').reason).toBe('No active HQ impulse');
 });

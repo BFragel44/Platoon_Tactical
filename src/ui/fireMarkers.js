@@ -1,3 +1,4 @@
+import {formationLabel} from './unitDetails.js';
 import manifest from '../markers/manifest.json';
 // Pure presentation of the already filtered player projection. Never reads simulation secrets.
 export function fireMarkers(view,location) {
@@ -16,12 +17,22 @@ export function fireMarkers(view,location) {
   if(location.mines||mineTriggered)markers.push({label:mineTriggered?'MINES −4 · triggered':'MINES · Draw 3',detail:mineTriggered?'Mine attacks resolve against triggered units during combat; those units cannot move again this turn. Cleanup resets the marker to Draw 3; the minefield remains.':'Persistent minefield. Entering or moving within this card requires a three-card mine check for each unit. Leaving does not. Cleanup does not remove the minefield.'});
   for(const m of view.markers.filter(m=>m.location===location.id&&m.type!=='MINES'))markers.push({
     art:m.type==='GRENADE'?(m.critical?'critical-grenade':'grenade'):m.type==='GRENADE_MISS'?'grenade-miss':m.type==='CONCENTRATE'?'concentrated':null,
-    label:(m.weapon?`${m.weapon} `:'')+m.type.replaceAll('_',' ')+(m.critical?' · critical':''),detail:'Targeted effects resolve during mutual combat. Inspect formation combat results for applicable modifiers; this marker does not reveal a hidden source.'});
+    label:(m.weapon?`${m.weapon} `:'')+m.type.replaceAll('_',' ')+(m.critical?' · critical':''),
+    ...targetedMarker(view,location,m),detail:targetedMarker(view,location,m).detail+' Targeted effects resolve during mutual combat; no hidden attacker or target identity is revealed.'});
   for(const f of view.support.filter(f=>f.location===location.id))markers.push({art:`${f.status==='PENDING'?'pending':'incoming'}${f.value}`,
     label:`${f.status==='PENDING'?'Pending':'Incoming'} ${f.agency?`${f.agency} ${f.ammo} `:''}${f.value}`,detail:(f.status==='PENDING'?'Activates at the next fire mission update.':'Active indirect fire remains on this card even if occupants leave; removed at the next fire mission update. Terrain burst and occupied cover modify its effects.')+(f.ammo==='WP'?' Active WP also provides +1 screening against basic fire; it does not protect against incoming or grenade effects.':'')});
   if(location.smoke)markers.push({label:`SMOKE +${location.smoke_value??2}`,detail:'Screening smoke blocks sight through or out of this card and modifies basic fire.'});
   const affected=[...view.units,...view.enemies].filter(u=>u.location===location.id&&u.steps&&!u.removed).map(u=>u.name).join(', ');
   return markers.map(m=>({...m,art:manifest.markers[m.art]?.file?m.art:null,detail:`${m.detail} Visible occupants: ${affected||'none'}.`}));
+}
+function targetedMarker(view,location,m){
+ if(!['GRENADE','GRENADE_MISS','CONCENTRATE'].includes(m.type))return {detail:'Inspect formation combat results for applicable modifiers.'};
+ if(m.type==='GRENADE_MISS')return {annotation:'Card-wide miss',detail:'Grenade miss penalty applies to this card; it is not a successful attack on a particular formation.'};
+ const units=[...view.units,...view.enemies],source=units.find(u=>u.id===m.source),target=units.find(u=>u.id===m.target),cover=location.covers?.find(c=>c.id===m.cover);
+ const short=u=>u.kind==='LAT'?`${u.cohesion}${u.name.match(/\d+/)?.[0]??''}`:formationLabel(u);
+ const area=cover?`C${location.covers.indexOf(cover)+1}`:null;
+ const recipient=target?short(target):area??'Unknown target';
+ return {annotation:`${source?short(source):'Unknown attacker'} → ${recipient}`,detail:`${source?.name??'Unidentified attacker'} → ${target?.name??(cover?`${area} ${cover.type} stack`:'unidentified target')}${m.origin?` from ${view.locations.find(l=>l.id===m.origin)?.name??'known position'}`:''}.`};
 }
 export function pdfDirections(view,location) {
   const groups=new Map();

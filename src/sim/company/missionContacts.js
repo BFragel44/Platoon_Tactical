@@ -1,8 +1,10 @@
+import {checkVehicleMines} from './vehicleHazards.js';
+import {synchronizeVireATUnits,friendlyVireVehiclesAt} from './vireUnits.js';
 import {rangedWeaponTarget} from './rangedWeapons.js';
 import {placeIllumination} from './visibility.js';
 import {expandContactRay} from './missionExpansion.js';
 import {values,live,friendly,emit,draw,pick,randomNumber,attempt} from './core.js';
-import {occupants,los,distance,refresh,spot,basicFireTargets,overheadAllowed,unitLos} from './battlefield.js';
+import {occupants,los,distance,refresh,spot,basicFireTargets,overheadAllowed,unitLos,fireSource} from './battlefield.js';
 import {checkMines,discoveredCover} from './missionFeatures.js';
 import {grenade} from './actions.js';
 const fortificationValue=(s,type)=>s.mission_rules?.cover_values?.[type]??({Cover:1,Foxholes:1,Trench:2,Bunker:3,'Deep Bunker':3,Pillbox:4}[type]);
@@ -31,11 +33,20 @@ function packageVariants(p){
  if(p.optional)return [core,{...core,units:[...core.units,...p.optional.units]}];
  return [core];
 }
-function chosenVariant(s,p){
+function chosenVariant(s,p,pc){
+ if(p.additional_mines){
+  if(!s.mission_rules.tinchebray)throw new Error('Additional mine branches require Tinchebray rules.');
+  const {additional_mines,...rest}=p,n=randomNumber(s,additional_mines.sides,'Additional minefield branch',true);
+  return {...rest,mines:additional_mines.numbers.includes(n)&&!s.locations[pc.location].mines};
+ }
  if(p.mine_followup){const n=randomNumber(s,p.mine_followup.sides,'Mine package follow-up',true),branch=p.mine_followup.branches.find(b=>b.numbers.includes(n));
   if(!branch)throw new Error(`Missing mine follow-up branch ${n}.`);
   const {mine_followup,...rest}=p;return {...rest,units:[...(p.units??[]),...branch.units]};}
- if(p.alternatives)return {...p,...p.alternatives[randomNumber(s,p.alternatives.length,'Enemy package variant',true)-1]};
+ if(p.alternatives){
+  const selected={...p,...p.alternatives[randomNumber(s,p.alternatives.length,'Enemy package variant',true)-1]};
+  if(s.mission_rules.tinchebray){delete selected.alternatives;return chosenVariant(s,selected,pc);}
+  return selected;
+ }
  if(p.optional){const include=p.optional.if_available? p.optional.units.every(spec=>availableCounters(s,spec.kind).length>0):randomNumber(s,2,'Enemy package optional force',true)===1;
   return {...p,units:[...(p.units??[]),...(include?p.optional.units:[])]};}
  return p;
@@ -59,6 +70,7 @@ function placementProbe(s,profile,location,target,coverType=null,actualCover=und
 }
 function canPlaceFire(s,profile,location,target,coverType=null,actualCover=undefined){
  const probe=placementProbe(s,profile,location,target,coverType,actualCover),u=probe.unit;s=probe.state;
+ if((s.mission_rules?.vire||s.mission_rules?.tinchebray)&&friendlyVireVehiclesAt(s,target).length&&['PAK40','FLAK88','PANZERSCHRECK','INFANTRY_GUN75'].includes(profile.kind))return unitLos(s,u,target,profile.range);
  if(occupants(s,location).some(friendly)&&!['Bunker','Pillbox','Deep Bunker'].includes(probe.cover?.type))return false;
  const blockers=values(s.units).filter(t=>live(t)&&t.location!==target&&along(s,location,target,t.location));
  if(blockers.some(t=>!friendly(t)&&!overheadAllowed(s,u,target,t.location)))return false;
@@ -69,7 +81,8 @@ function canPlaceFire(s,profile,location,target,coverType=null,actualCover=undef
 function placementLos(s,profile,location,target,range,observed,coverType,actualCover){
  if(observed)return occupants(s,target).filter(friendly).some(u=>unitLos(s,u,location,range));
  const probe=placementProbe(s,profile,location,target,coverType,actualCover);
- return occupants(s,target).filter(friendly).some(t=>unitLos(probe.state,probe.unit,t,range));
+ const targets=occupants(s,target).filter(friendly).concat((s.mission_rules?.vire||s.mission_rules?.tinchebray)?friendlyVireVehiclesAt(s,target).map(v=>({...v,steps:v.crew,cohesion:'GOOD',cover:null})):[]);
+ return targets.some(t=>unitLos(probe.state,probe.unit,t,range));
 }
 export function contactPlacements(s,pc,profile,used=[],range=profile.range,noFire=false,observed=false,coverType=null,actualCovers=null){
  const origin=s.locations[pc.location];
@@ -77,8 +90,8 @@ export function contactPlacements(s,pc,profile,used=[],range=profile.range,noFir
   !used.some(id=>along(s,id,pc.location,l.id)||along(s,l.id,pc.location,id))&&
   placementLos(s,profile,l.id,pc.location,range,observed,coverType,actualCovers?.get(l.id))&&
   !occupants(s,l.id).some(u=>!friendly(u))&&
-  !s.fire.some(f=>!friendly(s.units[f.source])&&(f.target===l.id||along(s,f.origin,f.target,l.id)))&&
-  !s.support.some(f=>f.status==='ACTIVE'&&f.location===l.id&&s.units[f.source]&&!friendly(s.units[f.source]))&&
+  !s.fire.some(f=>!friendly(fireSource(s,f.source))&&(f.target===l.id||along(s,f.origin,f.target,l.id)))&&
+  !s.support.some(f=>f.status==='ACTIVE'&&f.location===l.id&&fireSource(s,f.source)&&!friendly(fireSource(s,f.source)))&&
   (noFire||canPlaceFire(s,profile,l.id,pc.location,coverType,actualCovers?.get(l.id))));
 }
 // Pure feasibility search: checking exhaustion must not spend cards or create enemies.
@@ -105,14 +118,14 @@ export function packageAvailable(s,pc,p,allocated=[]){
 }
 export function placePackage(s,pc,p){
  const mineFollowup=!!p.mine_followup;
- p=chosenVariant(s,p);
+ p=chosenVariant(s,p,pc);
  // Reject the selected follow-up before publishing mines or creating a partial force.
  if(mineFollowup&&!packageAvailable(s,pc,p))return false;
  if(p.illumination){placeIllumination(s,pc.location,p.illumination);emit(s,'ILLUMINATION_DEPLOYED','Incoming mortar illumination at the contact card.',{location:pc.location,delivery:p.illumination});}
  if(p.placement_draw){const d=p.placement_draw;let n;do{n=randomNumber(s,d.sides,'Enemy placement branch',true);}while(![...(d.point_blank??[]),...(d.close??[]),...(d.max??[])].includes(n));p={...p,point_blank:d.point_blank?.includes(n),close_range:d.close?.includes(n)};}
  if(p.close_chance)p={...p,close_range:randomNumber(s,10,'Enemy close-range placement',true)<=2};
  if(p.point_blank_chance)p={...p,point_blank:randomNumber(s,10,'Enemy point-blank placement',true)<=2};
- if(p.mines){if(s.locations[pc.location].mines)return false;s.locations[pc.location].mines=true;emit(s,'MINEFIELD_FOUND',`Mines discovered at ${s.locations[pc.location].name}.`,{location:pc.location});for(const u of occupants(s,pc.location))checkMines(s,u,{discovery:true});}
+ if(p.mines){if(s.locations[pc.location].mines)return false;s.locations[pc.location].mines=true;emit(s,'MINEFIELD_FOUND',`Mines discovered at ${s.locations[pc.location].name}.`,{location:pc.location});for(const u of occupants(s,pc.location))checkMines(s,u,{discovery:true});if((s.mission_rules.vire||s.mission_rules.tinchebray))for(const v of friendlyVireVehiclesAt(s,pc.location))checkVehicleMines(s,v);}
  if(p.incoming_options){const incoming=pick(s,p.incoming_options,'Enemy incoming agency',true);p={...p,incoming:incoming.value,incoming_agency:incoming.agency};}
  const used=[],placedCovers=new Map();
  for(const spec of p.units??[]){
@@ -169,7 +182,7 @@ export function placePackage(s,pc,p){
   if(p.incoming){const agency=p.incoming_agency??'enemy_mortar';s.support.push({id:`support_${s.next_id++}`,source:id,agency,ammo:'HE',location:pc.location,status:'ACTIVE',value:p.incoming});s.registered_targets[agency]=pc.location;if(u.missions_remaining!==null)u.missions_remaining--;u.calls_made++;emit(s,'INCOMING_FIRE',`Incoming fire at ${s.locations[pc.location].name}.`,{location:pc.location,value:p.incoming,agency});}
  }
  if(p.incoming&&!(p.units?.length)){const agency=p.incoming_agency??'enemy_artillery';s.support.push({id:`support_${s.next_id++}`,source:null,agency,ammo:'HE',location:pc.location,status:'ACTIVE',value:p.incoming});s.registered_targets[agency]=pc.location;emit(s,'INCOMING_FIRE',`Incoming fire at ${s.locations[pc.location].name}.`,{location:pc.location,value:p.incoming,agency});}
- refresh(s);return true;
+ synchronizeVireATUnits(s);refresh(s);return true;
 }
 export function resolveMissionContact(s,pc){
  const count=s.mission_contacts.draws[s.activity]?.[pc.type];

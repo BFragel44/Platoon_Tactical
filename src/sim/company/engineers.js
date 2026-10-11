@@ -6,7 +6,7 @@ export function engineerMineCheck(s,u,cards){
  emit(s,'MINE_CHECK',`${u.name} ${hit?'triggered mines':'avoided the mines'}.`,{actor:u.id,location:u.location,hit});return hit;
 }
 export function markEngineerPath(s,u,infiltrationSuccess){
- if(!s.mission_rules.hill192||!eligibleEngineer(u)||!s.locations[u.location].mines)throw new Error('A good-order two- or three-step engineer squad on a known minefield is required.');
+ if(!(s.mission_rules.hill192||(s.mission_rules.vire||s.mission_rules.tinchebray))||!eligibleEngineer(u)||!s.locations[u.location].mines)throw new Error('A good-order two- or three-step engineer squad on a known minefield is required.');
  // CSR 10: a failed infiltration does not expose the squad, but checks three cards.
  const hit=engineerMineCheck(s,u,infiltrationSuccess?1:3);
  if(infiltrationSuccess&&!hit){s.locations[u.location].mines=false;s.locations[u.location].mine_path_marked=true;}

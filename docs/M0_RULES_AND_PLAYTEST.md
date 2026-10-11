@@ -330,3 +330,36 @@ October 9 core Detach Team: §4.2.3g (third edition p.24) now offers both **Deta
 ## October 9, 2026 — shared command menu audit (rules 33)
 
 See [COMMAND_MENU_AUDIT.md](COMMAND_MENU_AUDIT.md) for the source-to-action checklist covering third-edition pp.22–25 and the applicable Normandy commands. Adds Supplement Squad, optional conditional Exhort, platoon combat orders, conversions, network/CCP/equipment choices and off-map BN restoration. Existing Company Assault and KUTF policies and historical records retain their compatibility boundaries. No vehicles, demolition/flame equipment or connected campaign progression is implied.
+
+
+### October 9: targeted-fire presentation and M5 acceptance
+
+Grenade and concentrated-fire marker captions identify visible attacker → target (or known cover stack); hidden identities remain concealed. Grenade misses are labelled as card-wide penalties. Full enemy names remain inspectable while Fallschirmjäger counter faces use numbered FJ abbreviations. The contact-phase ribbon no longer changes battlefield height. These are presentation changes under rules 33; immutable historical records and strict compatibility checks are preserved. M5 is accepted and available in normal mission selection. Its non-patrol movement prohibition and Route 1→4 sequence remain as published (Normandy pp.34–35).
+
+### October 10 experimental Vire phase bridge
+
+Vehicle adapter 11 can opt into normal explicit phase stepping, vehicle-HQ activation/initiative and one shared infantry/rider Combat Effects snapshot. Core and vehicle transitions share its strict replay/export log; its storage remains isolated. Accepted rules-33 missions have no vehicle runtime and preserve their existing phase/replay behavior. This is not a playable M6 release; remaining scope and evidence are maintained in `VIRE_READINESS.md`.
+
+
+### October 10 gated Vire setup preview
+
+Vire has a materializable fresh twenty-card map plus staging, its own objectives, Delay Defense baseline, published infantry attachments and enemy equipment overrides. A read-only preview validates initial Sherman placements and authors the M5 event force separately; crew-step identities and command assignments are explicit. Optional artillery Jeep radio mounting, live AT/package linkage, vehicle roster persistence and reattempts remain pending. No M6 catalog entry or right-panel change is enabled; live creation still rejects the gated definition. See `VIRE_READINESS.md` for source review and validation evidence.
+
+### October 10 live Vire development integration
+
+The explicit `?vireDev=1` opt-in now starts/restores a fresh standalone Vire mission under adapter 12, content 1 and base rules 33. Live AT packages share actual carrier ammunition, tank-only finishing-card contacts can resolve, Tank Support has five replayable Row-1 choices and finite M5 stock, and separate vehicle recovery/roster slots preserve named crew identities. One vehicle-aware reattempt retains the battlefield and vehicle losses, replenishes surviving resources and restores Delay Defense. Exact mixed replay covers both immutable attempt records; terminal debrief rejects repeated/stale application. Accepted missions and the right panel retain their existing behavior. Normal M6 selection remains gated. See `VIRE_READINESS.md` for controlled-run/browser evidence and the remaining combat, source-audit and presentation gates.
+
+
+### October 10 Vire adapter 13
+
+The gated Vire development setup now supports infantry choices, objectives and Sherman staging, with visible known-tank counters and a styled vehicle controls dialog. Command-phase rally/Cease Fire/Shift Fire, pinned tank activation, automatic pin recovery and discovered-cover dismounts are replayable. Delay Defense recognizes tank-only LOS. Base rules remain 33, content 1; older experimental adapter exports remain available but cannot resume under adapter 13. The complete evidence and outstanding Jeep, source, transport and acceptance gates are recorded in `VIRE_READINESS.md`. Normal M6 selection remains disabled.
+
+### October 10 Vire adapter 14 playtest candidate
+
+Optional company Jeep deployment, ordinary passengers and fixed ARTY-radio mounting now execute and replay, with real mounted-radio support eligibility and automatic observer-aboard activation. Vehicle mines, sniper targeting into the next vehicle phase, smoke, wreck cover and Jeep passenger outcomes have source-focused fixtures. Reaction fire that removes a moving tank closes its action; enemy displacement/evacuation recognizes actual US vehicle occupation. Named crew, isolated saves, finite M5 entry and both immutable attempts remain protected. Shared rules 33 and Vire content 1 are unchanged; older adapter records remain exportable and are strictly rejected for execution. The right-panel layout and accepted missions are preserved. Normal M6 selection remains gated for explicit-phase user acceptance. Final source/fixture/browser evidence and the disclosed package-1 HMG ammo inference are in `VIRE_READINESS.md`. M7 source planning is in `TINCHEBRAY_READINESS.md`.
+
+### October 10 Tinchebray playtest candidate
+
+Standalone M7 is available through `?tinchebrayDev=1`: a fresh company, four M10 tank destroyers, finite event M5 support, six-row map, separate objective rows, Green enemies, eleven published packages and two reattempts. Tinchebray replay envelope 3/content 1 uses shared rules 33 and common vehicle runtime 14; M6's adapter-14 format is preserved. Earlier incomplete M7 envelopes are rejected with original export access. M7 AT synchronization, vehicle-only contact/terrain discovery and nested squad-plus-leader placement now execute correctly. Independent tactical/roster storage, cumulative local XP spending, three immutable attempt records and terminal debrief protection are verified.
+
+The full regression suite passed 114 files / 1,694 tests. Deterministic combat-bearing successful and three-attempt runs replay exactly; isolated Chrome checks cover setup, mounted Jeep, M5 entry, both reattempts, M10 movement/reactions, pending support, observers, reload and narrow layout. Six Company Assault and six KUTF scripted runs replay exactly; production build passes with the existing bundle-size advisory. Complete-run fixtures use authored deterministic battle setups, not exhaustive random-fight coverage. `docs/TINCHEBRAY_READINESS.md` records source and test evidence. Normal M6/M7 selection remains gated for the user's explicit-phase acceptance; connected campaign progression remains deferred.

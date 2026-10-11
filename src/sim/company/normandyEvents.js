@@ -1,3 +1,5 @@
+import {deployVireTankSupport} from './vireDeployment.js';
+import {friendlyVireVehiclesAt} from './vireUnits.js';
 import {hill192CounterattackLocations} from './hill192Setup.js';
 import {applyPatrolEvent} from './patrolEvents.js';
 import {values,live,friendly,emit,draw,randomNumber,pick} from './core.js';
@@ -8,12 +10,14 @@ import {companyCommander} from './commandRoles.js';
 const FRIENDLY_EARLY=['SITREP','COMM','NO_ARTY','CHECKING_UP','HOLD','ADVANCE','ADVANCE_PC','ADVANCE_PC','RESUPPLY','RESUPPLY'];
 const FRIENDLY_LATE=['SITREP','COMM','NO_ARTY','CHECKING_UP','HOLD','ADVANCE','ADVANCE_PC','RESUPPLY','RESUPPLY','RESUPPLY'];
 const ENEMY=['EVAC','DISPLACE_MORTAR','DISPLACE_LEADER','DISPLACE_HMG','RALLY','RALLY','FALL_BACK','FALL_BACK','COUNTER_ATTACK','COUNTER_ATTACK'];
-const leadRow=s=>Math.max(0,...values(s.units).filter(u=>friendly(u)&&live(u)).map(u=>s.locations[u.location].row));
+const leadRow=s=>Math.max(0,...values(s.units).filter(u=>friendly(u)&&live(u)).map(u=>s.locations[u.location].row),...((s.mission_rules?.vire||s.mission_rules?.tinchebray)?values(s.locations).filter(l=>friendlyVireVehiclesAt(s,l.id).length).map(l=>l.row):[]));
+const usOccupied=(s,location)=>occupants(s,location).some(friendly)||!!((s.mission_rules?.vire||s.mission_rules?.tinchebray)&&friendlyVireVehiclesAt(s,location).length);
 export function resolveNormandyEvent(s,side,choice={}){
  let code,event;
  if(s.pending_event){if(s.pending_event.side!==side)throw new Error('Resolve the pending higher HQ event first.');
   code=s.pending_event.code;event=s.hq_events.findLast(e=>e.turn===s.turn&&e.side===side&&e.code===code);
-  if(!choice.ammo_type||!choice.location)throw new Error('Choose ammunition type and Row 1 destination.');
+  if(code==='RESUPPLY'&&(!choice.ammo_type||!choice.location))throw new Error('Choose ammunition type and Row 1 destination.');
+  if(code==='TANK_SUPPORT'&&!choice.vehicle_positions)throw new Error('Choose Row 1 entry cards for the M5 platoon.');
   s.pending_event=null;
  }else{
   if(s.turn===1)return emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event on turn 1.`);
@@ -21,9 +25,14 @@ export function resolveNormandyEvent(s,side,choice={}){
   const table=side==='friendly'?((s.turn<=6?s.mission_rules.friendly_event_tables?.early:s.mission_rules.friendly_event_tables?.late)??(s.turn<=6?FRIENDLY_EARLY:FRIENDLY_LATE)):(s.turn<(s.mission_rules.enemy_late_start??7)?s.mission_rules.enemy_event_tables?.early:s.mission_rules.enemy_event_tables?.late)??ENEMY;
   code=table[randomNumber(s,10,`${side} higher HQ event`)-1];
   event={side,code,turn:s.turn,lead:leadRow(s),completed:false};s.hq_events.push(event);
+  if(code==='TANK_SUPPORT'&&!s.vire_runtime?.tank_support_used&&!choice.vehicle_positions){if(!(s.mission_rules.vire||s.mission_rules.tinchebray)||!s.vire_runtime)throw new Error('Tank Support requires Vire execution.');s.pending_event={side,code,turn:s.turn};emit(s,'HQ_EVENT_CHOICE_REQUIRED','Choose Row 1 entry cards for all five M5 tanks.',{side,code});return event;}
   if(code==='RESUPPLY'&&!choice.ammo_type){s.pending_event={side,code,turn:s.turn};emit(s,'HQ_EVENT_CHOICE_REQUIRED','Choose one ammunition type and a Row 1 resupply card.',{side,code});return event;}
  }
  if(side==='friendly'){
+  if(code==='TANK_SUPPORT'){
+   if(s.vire_runtime.tank_support_used)event.ignored=true;
+   else event.choice={vehicle_positions:deployVireTankSupport(s,choice.vehicle_positions)};
+  }
   if(code==='SITREP')s.command_obligation=3;
   if(code==='COMM'){s.bn_blocked=true;s.command_obligation=2;}
   if(code==='NO_ARTY')s.support_unavailable.push('artillery');
@@ -46,10 +55,10 @@ export function resolveNormandyEvent(s,side,choice={}){
   }
  }else{
   const enemies=values(s.units).filter(u=>!friendly(u)&&live(u));
-  if(code==='EVAC')s.casualties=s.casualties.filter(c=>c.faction!=='enemy'||occupants(s,c.location).some(friendly));
+  if(code==='EVAC')s.casualties=s.casualties.filter(c=>c.faction!=='enemy'||usOccupied(s,c.location));
   if(code.startsWith('DISPLACE_')){
    const kind=code.slice(9);
-   for(const u of enemies.filter(u=>u.kind===kind&&!occupants(s,u.location).some(friendly))){u.removed='DISPLACED';u.fire=null;u.event_acted=s.turn;emit(s,'HQ_EVENT_FORMATION',`${u.name} displaced.`,{actor:u.id,location:u.location,faction:'enemy'},true);}
+   for(const u of enemies.filter(u=>u.kind===kind&&!usOccupied(s,u.location))){u.removed='DISPLACED';u.fire=null;u.event_acted=s.turn;emit(s,'HQ_EVENT_FORMATION',`${u.name} displaced.`,{actor:u.id,location:u.location,faction:'enemy'},true);}
   }
   if(code==='RALLY')for(const u of enemies){
    const pinned=u.pinned;
@@ -63,9 +72,9 @@ export function resolveNormandyEvent(s,side,choice={}){
    else{u.removed='WITHDRAWN';u.event_acted=s.turn;}
   }
   if(code==='COUNTER_ATTACK'){
-   const occupied=values(s.locations).filter(l=>!l.staging&&occupants(s,l.id).some(friendly)&&(!s.mission_rules.hill192||hill192CounterattackLocations(s).includes(l.id)));
+   const occupied=values(s.locations).filter(l=>!l.staging&&(occupants(s,l.id).some(friendly)||(s.mission_rules.vire||s.mission_rules.tinchebray)&&friendlyVireVehiclesAt(s,l.id).length)&&(!(s.mission_rules.vire||s.mission_rules.tinchebray)||l.row===s.boundaries.rows||values(s.contacts).some(pc=>!pc.resolved&&Math.max(Math.abs(s.locations[pc.location].row-l.row),Math.abs(s.locations[pc.location].col-l.col))===1))&&(!s.mission_rules.hill192||hill192CounterattackLocations(s).includes(l.id)));
    // Sixteen physical markers per letter (§8.2.1); resolved markers return to stock.
-   const letters=(s.mission_rules.hill192?['A']:['A','B','C']).flatMap(type=>Array(Math.max(0,16-values(s.contacts).filter(pc=>!pc.resolved&&pc.type===type).length)).fill(type));
+   const letters=(s.mission_rules.hill192||(s.mission_rules.vire||s.mission_rules.tinchebray)?['A']:['A','B','C']).flatMap(type=>Array(Math.max(0,16-values(s.contacts).filter(pc=>!pc.resolved&&pc.type===type).length)).fill(type));
    event.placements=[];
    for(const l of occupied){if(!letters.length)break;const type=pick(s,letters,'Counterattack remaining PC letter',true),index=letters.indexOf(type);letters.splice(index,1);
     const id=`pc_counter_${s.next_id++}`,pc={id,location:l.id,type,resolved:false,counterattack:true,revealed:false};s.contacts[id]=pc;
@@ -80,7 +89,7 @@ export function resolveNormandyEvent(s,side,choice={}){
   }
  }
  applyPatrolEvent(s,side,code,event);
- emit(s,'HQ_EVENT',`${side} higher HQ: ${code.replaceAll('_',' ').toLowerCase()}.`,{side,code,turn:s.turn,...(event.choice??{}),lead:event.lead,...(event.waypoint!==undefined?{waypoint:event.waypoint,ignored:event.ignored}:{}),...(event.placements?{placements:event.placements}:{}),counterattack_ends_after:s.counterattack_ends_after??null});
+ emit(s,'HQ_EVENT',`${side} higher HQ: ${code.replaceAll('_',' ').toLowerCase()}.`,{side,code,turn:s.turn,...(event.choice??{}),lead:event.lead,...(event.ignored!==undefined?{ignored:event.ignored}:{}),...(event.waypoint!==undefined?{waypoint:event.waypoint,ignored:event.ignored}:{}),...(event.placements?{placements:event.placements}:{}),counterattack_ends_after:s.counterattack_ends_after??null});
  refresh(s);
  return event;
 }

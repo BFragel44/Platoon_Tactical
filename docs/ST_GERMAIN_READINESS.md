@@ -1,6 +1,6 @@
 # Normandy 5: St. Germain d’Elle—La Croix Rouge—Le Soulaire Defensive
 
-Status, October 9, 2026: source audit, package execution, isolated terminal persistence, authentic three-patrol variants and browser validation completed. Mission 5 is available through `?stGermainDev=1`; normal selection remains gated pending explicit-phase user acceptance. Shared rules are 33; M5 content is 2. Company Assault, KUTF and accepted Normandy Missions 1–4 retain their storage and original exports. This guide scopes a standalone development candidate, not connected campaign progression. Earlier dated sections below preserve historical validation evidence.
+Status, October 9, 2026: source audit, package execution, isolated terminal persistence, authentic three-patrol variants and browser validation completed. The user accepted the explicit-phase M5 playthrough on October 9. Mission 5 is now available in normal selection; `?stGermainDev=1` remains compatible. Shared rules are 33; M5 content is 2. Company Assault, KUTF and accepted Normandy Missions 1–4 retain their storage and original exports. This guide scopes an accepted standalone mission, not connected campaign progression. Earlier dated sections below preserve historical validation evidence.
 
 ## Authority and reviewed sources
 
@@ -138,7 +138,7 @@ Only platoons that actually patrol can gain patrol experience/promotions; deploy
 - [x] Run existing regressions/build, Company Assault/KUTF scripted checks and accepted M1–M4 version compatibility/export checks. Increment shared rules only for simulation changes; retain strict historical rejection and original exports.
 - [x] Browser-check six-column setup/map, keyboard/narrow layouts, routes/MLR/COP, observers/support/illumination, combat, transitions, recovery and terminal AAR/debrief. Document actual evidence and automation limitations separately.
 - [x] Expose explicit development opt-in after source, focused fixtures and complete runs.
-- [ ] Enable normal selection after the user's explicit-phase M5 acceptance.
+- [x] Enable normal selection after the user's explicit-phase M5 acceptance (October 9 feedback and final validation).
 
 ## First implementation increment
 
@@ -248,3 +248,17 @@ Current complete-run fixtures use separately generated rules-32 records: three M
 The pp.22–25 shared action audit and its implementation/validation evidence are in [COMMAND_MENU_AUDIT.md](COMMAND_MENU_AUDIT.md). Supplement Squad, conditional Exhort, platoon combat orders, network/CCP/equipment controls and remaining team conversions are available subject to their predicates. Optional detachment loads, all-recipient communications, General Initiative exceptions and off-map BN Company HQ restoration were checked. Replays generated separately under rules 33; earlier records remain historical. Mission content stays 2; the normal-selection acceptance gate is unchanged.
 
 Final rules-33 audit verification: 88 files / 1,339 tests, production build, six Company Assault scripted runs, KUTF support run, three M4 runs and three M5 patrol variants passed. Current M5 fixtures were regenerated after applying the limited-visibility BN allowance; immutable historical exports were preserved. Browser DOM verified Supplement, recovery, conditional Exhort and equipment transfer. Visual screenshot capture remained unavailable; details are in the audit.
+
+## October 9 acceptance and final playtest feedback
+
+The user reported M5 good to go apart from presentation feedback. Normal mission selection now includes M5 without a development suffix or query parameter. Other standalone missions and isolated roster slots remain intact.
+
+Re-rendered and visually reviewed Normandy pp.34–35: MSR 1 permits non-patrol units to receive orders and fire but prohibits movement except automatic retreat, including between Row-1 cards below the MLR. MSR 2 explicitly requires Route 1 → 2 → 3 → 4. Both mechanics were already correct and remain unchanged; Mission-menu presentation now explains them.
+
+Fallschirmjäger counter faces use numbered FJ abbreviations (for example 5FJ), retaining the full formation name for inspection. Removed the pending-contact ribbon above the battlefield. Grenade and concentrated-fire markers now label publicly visible attacker → recipient or known cover stack; card-wide grenade misses are distinguished. Hidden source/target/cover identities are redacted in the player projection. Counter dimensions, phase stepping and the right-panel layout are unchanged.
+
+Browser checks on an isolated local origin confirmed normal M5 selection and loading an existing rules-33 contact checkpoint. The battlefield remained 784.55px high before and after contact resolution, with no pending-contact ribbon. A synthetic public-view presentation fixture confirmed both grenade directions and the card-wide miss label; 5FJ used 36px of an unchanged 88px counter, and all three marker images loaded at 44×44px. Browser screenshot capture timed out, so these checks establish DOM/layout measurements rather than a completed visual screenshot review.
+
+Presentation and acceptance changes retain rules 33 / content 2. Authored mission-rule strings in immutable starts remain unchanged, allowing existing complete three-patrol records to replay exactly. Focused marker fixtures cover visible exchanges, concealed identities and cover/miss distinctions. All complete-run fixtures pass; production build and final regression evidence are recorded below.
+
+Final validation: **89 test files / 1,343 tests passed**, including complete three-patrol replay/recovery/debrief runs, command regressions and marker privacy fixtures (`vitest run --pool=threads --maxWorkers=2 --testTimeout=60000`). Production build and `git diff --check` passed.

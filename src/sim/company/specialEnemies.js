@@ -1,3 +1,4 @@
+import {friendlyVireVehiclesAt} from './vireUnits.js';
 import {values,live,good,friendly,visible,draw,pick,emit} from './core.js';
 import {occupants,unitLos,seesCard,distance,coverOf,refresh} from './battlefield.js';
 import {shortRoundDestination} from './missionFeatures.js';
@@ -6,7 +7,7 @@ export function prepareSpecialTargets(s){
  if(!s.mission_rules?.specialEnemies)return;
  s.markers=s.markers.filter(m=>m.type!=='SNIPER');
  for(const u of values(s.units).filter(u=>good(u)&&u.vof==='S!'&&u.fire)){
-  let targets=occupants(s,u.fire).filter(t=>u.location!==u.fire||t.faction!==u.faction);
+  let targets=occupants(s,u.fire).concat((s.mission_rules.vire||s.mission_rules.tinchebray)?friendlyVireVehiclesAt(s,u.fire).map(v=>({...v,steps:v.crew,removed:null,exposed:false})):[]).filter(t=>u.location!==u.fire||t.faction!==u.faction);
   if(targets.some(t=>t.exposed))targets=targets.filter(t=>t.exposed);
   if(!targets.length)continue;
   const t=pick(s,targets,'Sniper target selection',!targets.some(t=>visible(s,t)));
@@ -26,12 +27,13 @@ export function specialActivity(s,u,fallBack){
  if(u.kind!=='SPOTTER')return false;
  if(u.placed_turn===s.turn)return true;
  if(u.missions_remaining===0){if(u.subsequent_draws){u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW','Enemy spotter exhausted its fire missions.',{actor:u.id,location:u.location},!visible(s,u));}return true;}
- const candidates=values(s.locations).filter(l=>!l.staging&&seesCard(s,u,l.id)&&occupants(s,l.id).some(friendly));
+ const candidates=values(s.locations).filter(l=>!l.staging&&seesCard(s,u,l.id)&&(occupants(s,l.id).some(friendly)||(s.mission_rules.vire||s.mission_rules.tinchebray)&&friendlyVireVehiclesAt(s,l.id).length));
  if(!candidates.length)return true;
  const agency=u.spotter_agency??'enemy_mortar',registered=s.registered_targets[agency];
  const steps=l=>occupants(s,l.id).filter(friendly).reduce((n,t)=>n+t.steps.length,0),range=l=>distance(s.locations[u.location],l);
- candidates.sort((a,b)=>Number(b.id===registered)-Number(a.id===registered)||steps(b)-steps(a)||range(a)-range(b));
- const best=candidates[0],equals=candidates.filter(l=>(l.id===registered)===(best.id===registered)&&steps(l)===steps(best)&&range(l)===range(best));
+ const vehicles=l=>(s.mission_rules.vire||s.mission_rules.tinchebray)?Number(friendlyVireVehiclesAt(s,l.id).length>0):0;
+ candidates.sort((a,b)=>Number(b.id===registered)-Number(a.id===registered)||vehicles(b)-vehicles(a)||steps(b)-steps(a)||range(a)-range(b));
+ const best=candidates[0],equals=candidates.filter(l=>(l.id===registered)===(best.id===registered)&&vehicles(l)===vehicles(best)&&steps(l)===steps(best)&&range(l)===range(best));
  let target=pick(s,equals,'Enemy spotter target',true).id;
  const count=s.mission_rules?.ammo==='tracked'&&u.calls_made>0?(u.subsequent_draws??(agency==='enemy_artillery'?3:4)):2+Number(target===registered);
  const cards=draw(s,count+(u.subsequent_draws?Number(target===registered):0),'Enemy spotter call for fire',true),short=cards.some(c=>c.short);

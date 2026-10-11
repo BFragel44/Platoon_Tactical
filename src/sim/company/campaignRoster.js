@@ -47,7 +47,10 @@ export function applyMissionDebrief(record,mission){
    for(const personId of step.person_ids)next.people[personId].disposition=next.steps[id].disposition;}
   else if(prisoner){next.steps[id].disposition='PRISONER_UNRESOLVED';for(const personId of step.person_ids)next.people[personId].disposition='PRISONER_UNRESOLVED';}
   else if([...(mission.attempt_history??[]).flatMap(a=>a.prisoners??[]),...(mission.prisoners??[])].some(group=>group.guard?.id===id))next.steps[id].disposition='GUARD_UNRESOLVED';
-  const deployed=Object.values(mission.units??{}).find(unit=>unit.faction==='friendly'&&unit.steps?.some(current=>current.id===id));
+  const vehicleCrews=(mission.mission_rules?.vire||mission.mission_rules?.tinchebray)?Object.values(mission.vire_runtime?.vehicles??{}).filter(v=>v.faction==='friendly'&&v.crew?.length).map(v=>({...v,kind:'VEHICLE',steps:v.crew})):[];
+  const withdrawn=(mission.mission_rules?.vire||mission.mission_rules?.tinchebray)&&Object.values(mission.vire_runtime?.vehicles??{}).some(v=>v.status==='RETREATED'&&[...(v.crew??[]),...(v.passengers??[])].some(step=>step.id===id));
+  if(withdrawn&&next.steps[id].disposition==='ACTIVE'){next.steps[id].disposition='WITHDRAWN_UNRESOLVED';for(const personId of step.person_ids)next.people[personId].disposition='WITHDRAWN_UNRESOLVED';}
+  const deployed=[...Object.values(mission.units??{}),...vehicleCrews].find(unit=>unit.faction==='friendly'&&unit.steps?.some(current=>current.id===id));
   const current=deployed?.steps.find(current=>current.id===id);
   if(current?.experience)next.steps[id].experience=current.experience;
   // Surviving generic teams cannot silently refill their original formation after
@@ -89,7 +92,7 @@ export function debriefAndSave(storage,mission,key=CAMPAIGN_KEY){
 
 // Explicit standalone runs replace only their own slot, retaining a backup.
 export function startStandaloneRoster(storage,record,key){
- if(!['platoon-normandy-cerisy-standalone','platoon-normandy-st-georges-standalone','platoon-normandy-hill-192-standalone','platoon-normandy-st-germain-standalone'].includes(key))throw new Error('Standalone replacement requires a supported standalone Normandy slot.');
+ if(!['platoon-normandy-cerisy-standalone','platoon-normandy-st-georges-standalone','platoon-normandy-hill-192-standalone','platoon-normandy-st-germain-standalone','platoon-normandy-vire-standalone','platoon-normandy-tinchebray-standalone'].includes(key))throw new Error('Standalone replacement requires a supported standalone Normandy slot.');
  const value=JSON.stringify(assertRecord(record)),previous=storage.getItem(key);
  if(previous!==null)storage.setItem(`${key}-previous`,previous);
  storage.setItem(key,value);return copy(record);

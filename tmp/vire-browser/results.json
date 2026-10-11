@@ -1,0 +1,22 @@
+{
+  "passed": [
+    "startup",
+    "map tank counters",
+    "premission setup submission",
+    "named tank list",
+    "save/reload",
+    "pending five-tank entry",
+    "support recovery",
+    "vehicle reattempt submission",
+    "attempt-2 recovery",
+    "narrow dialog",
+    "mounted Jeep setup/recovery",
+    "live movement and enemy AT reaction",
+    "pending reaction recovery",
+    "enemy AT action",
+    "keyboard open/close",
+    "battalion choice/reload",
+    "both observers and all support agencies"
+  ],
+  "errors": []
+}

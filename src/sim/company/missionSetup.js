@@ -59,12 +59,14 @@ export function materializeScenario(definition,seed,setup={}) {
  scenario.objectives={...scenario.objectives,...setup.objectives};
  const o=scenario.objectives,get=id=>locations.find(l=>l.id===id);
  if(scenario.rules.hill192&&Object.values(o).some(id=>typeof id==='string'&&get(id)?.outside_boundary))throw new Error('Hill 192 tactical controls must stay inside the printed mission boundaries.');
- if(!scenario.rules?.patrols&&(o.primary===o.secondary||get(o.primary)?.row!==scenario.map.rows||get(o.secondary)?.row!==scenario.map.rows))throw new Error('Choose two different objectives in the final row.');
- if(!scenario.rules?.patrols&&(get(o.attack)?.row!==scenario.map.rows-1||![o.primary,o.secondary].some(id=>Math.abs(get(id).col-get(o.attack).col)<=1)))throw new Error('Attack position must be adjacent to an objective in the preceding row.');
+ const objectiveRows=scenario.rules?.objective_rows??{primary_row:scenario.map.rows,secondary_row:scenario.map.rows,attack_row:scenario.map.rows-1};
+ if(!scenario.rules?.patrols&&(o.primary===o.secondary||get(o.primary)?.row!==objectiveRows.primary_row||get(o.secondary)?.row!==objectiveRows.secondary_row))throw new Error(scenario.rules?.objective_rows?'Choose different objectives in their designated mission rows.':'Choose two different objectives in the final row.');
+ const adjacentObjectives=objectiveRows.attack_adjacent_to?[o[objectiveRows.attack_adjacent_to]]:[o.primary,o.secondary];
+ if(!scenario.rules?.patrols&&(get(o.attack)?.row!==objectiveRows.attack_row||!adjacentObjectives.some(id=>Math.abs(get(id).col-get(o.attack).col)<=1)))throw new Error('Attack position must be adjacent to the designated objective in the preceding row.');
  if(!get(o.ccp))throw new Error('Choose a terrain or staging card for the CCP.');
  for(const u of scenario.units){
   const assignment=setup.assignments?.[u.id];
-  if(assignment){if(!(['MG','HMG','AT','MORTAR','FO'].includes(u.kind)||(scenario.rules.patrols||scenario.rules.hill192)&&u.kind==='STAFF'||scenario.rules.hill192&&u.capabilities?.engineer)||![0,1,2,3].includes(assignment.platoon)||assignment.platoon===0&&u.kind!=='FO'&&scenario.rules.enemyActivity!=='normandy')throw new Error('Invalid platoon attachment.');u.platoon=assignment.platoon||null;}
+  if(assignment){if(!(['MG','HMG','AT','MORTAR','FO'].includes(u.kind)||(scenario.rules.patrols||scenario.rules.hill192)&&u.kind==='STAFF'||(scenario.rules.hill192||scenario.rules.engineerAttachments)&&u.capabilities?.engineer)||![0,1,2,3].includes(assignment.platoon)||assignment.platoon===0&&u.kind!=='FO'&&scenario.rules.enemyActivity!=='normandy')throw new Error('Invalid platoon attachment.');u.platoon=assignment.platoon||null;}
   if(setup.positions?.[u.id]){if(scenario.rules?.patrols||scenario.rules?.hill192){if(setup.positions[u.id]==='RESERVE'){u.reserve=true;}else{if(!get(setup.positions[u.id]))throw new Error('Unknown patrol deployment card.');u.location=setup.positions[u.id];}}else{if(!get(setup.positions[u.id])?.staging)throw new Error('Initial units must be in staging.');u.location=setup.positions[u.id];}}
  }
  if(scenario.rules?.hill192)validateHill192Deployment(locations,scenario.units,scenario.forward_defense);

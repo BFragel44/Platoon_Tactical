@@ -124,3 +124,44 @@
 .route-completed{align-self:center;color:#bce0bf;background:#24392e;border:1px solid #719778;padding:4px 6px;font-size:11px;white-space:nowrap}
 .patrol-route-checklist{display:flex;gap:8px 18px;flex-wrap:wrap;list-style:none;padding:0;margin:6px 0 0;font-size:11px}
 .patrol-route-checklist .complete{color:#bce0bf}
+
+/* Targeted fire stays legible beside individual markers without changing counter size. */
+.counter-marker summary{display:flex;flex-direction:column;align-items:flex-start;gap:3px}.marker-annotation{max-width:100px;font-size:10px;line-height:1.2;overflow-wrap:anywhere;color:#eee0b5}.compact-unit-name{overflow-wrap:anywhere}
+.vire-controls-open{position:fixed;right:20px;bottom:20px;z-index:60}
+#vire-controls{width:min(620px,90vw);max-width:90vw;max-height:85vh;overflow:auto;background:#19271e;color:#eee4b5;border:2px solid #b7aa75;padding:20px;box-sizing:border-box}
+#vire-controls::backdrop{background:rgb(0 0 0 / 45%)}
+#vire-controls h2{margin-top:0}
+#vire-controls select,#vire-controls input{max-width:100%}
+#vire-controls button{margin:4px 4px 4px 0}
+#vire-controls label{display:block;margin:8px 0}
+
+/* Vehicle controls do not change the accepted infantry orders pane. */
+.vehicle-counter-grid{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}.vehicle-map-counter{width:94px;min-height:85px;border:2px solid #b9ad72;background:#324838;color:#e9d884;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:5px}.vehicle-map-counter span,.vehicle-map-counter small{font-size:11px}.vehicle-map-counter:focus-visible{outline:3px solid #fff}
+
+.vehicle-orders { border-bottom: 1px solid #71826e; padding-bottom: 1rem; margin-bottom: 1rem; }
+.vehicle-orders [hidden] { display:none !important; }
+.vehicle-orders label { display:block; margin: .5rem 0; }
+.vehicle-orders select,.vehicle-orders input { width:100%; min-width:0; }
+.vehicle-orders button { margin:.25rem 0; }
+.vehicle-phase-guidance { font-size:.85rem; line-height:1.4; }
+.selected-vehicle { outline:3px solid #f2d77d; outline-offset:2px; }
+
+#vire-controls.vehicle-orders { width:100%; max-width:100%; max-height:none; overflow:visible; border:0; border-bottom:1px solid #71826e; padding:0 0 1rem; }
+.company-orders.vehicle-selected > :not(.vehicle-orders):not(.back-to-map):not(.abort):not(.infantry-selector) { display:none; }
+
+/* Keep long order lists from moving the battlefield out of the viewport. */
+@media(min-width:751px){.company-orders{position:sticky;top:var(--command-header-height,180px);max-height:calc(100dvh - var(--command-header-height,180px) - 10px);overflow-y:auto;overscroll-behavior:contain;scrollbar-color:#637457 #17211a;align-self:start;min-height:0;}}
+.vehicle-route-option{outline:2px dashed #9ecb95;outline-offset:-6px;}
+.vehicle-route-add{font-size:11px;padding:5px 8px;margin:4px 0;background:#304c36;}
+.vehicle-route p,.vehicle-no-action{font-size:12px;line-height:1.4;margin:8px 0;}
+.vehicle-transport{margin-top:10px;border-top:1px solid #52664d;padding-top:7px;font-size:12px;}
+.company-orders.vehicle-selected>.infantry-selector{display:none;}
+.vehicle-orders h2{font-size:17px;margin-bottom:7px;}
+.vehicle-orders label{font-size:12px;}
+.vehicle-orders button{font-size:12px;}
+
+.unavailable-orders{margin:8px 0;font-size:11px;}
+.unavailable-orders dl{margin:8px 0;}
+.unavailable-orders dt{font-weight:600;margin-top:8px;}
+.unavailable-orders dd{margin:3px 0 8px;color:#bac4ad;line-height:1.4;}
+.company-orders [hidden]{display:none!important;}

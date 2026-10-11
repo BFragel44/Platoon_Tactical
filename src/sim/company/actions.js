@@ -1,3 +1,4 @@
+import {effectiveRadios} from './vehicleJeep.js';
 import {eligibleEngineer,markEngineerPath} from './engineers.js';
 import {placeIllumination} from './visibility.js';
 import {patrolHoldReason} from './patrolEvents.js';
@@ -15,7 +16,7 @@ import {revealTerrain} from './missionKnowledge.js';
 import {discoveredCover,checkMines,supportRequest} from './missionFeatures.js';
 import { terrainProtection } from './terrain.js';
 import { values, live, good, friendly, visible, expMod, emit, draw, attempt, randomNumber, pick, result } from './core.js';
-import { adjacent, occupants, distance, los, unitLos, seesCard, unitElevation, coverAvailable, enclosedWeaponCover, communication, chain, coverOf, basicValue, canFire, refresh, spot, hasFire, incoming, movementReason, communicationReason, spottingLocations, vofOf, rangeOf } from './battlefield.js';
+import { adjacent, occupants, distance, los, unitLos, seesCard, unitElevation, coverAvailable, enclosedWeaponCover, communication, chain, coverOf, basicValue, canFire, refresh, spot, hasFire, incoming, movementReason, communicationReason, spottingLocations, vofOf, rangeOf, fireSource } from './battlefield.js';
 export const ACTIONS = {
   SUPPLEMENT:'Supplement squad', ASSAULT_TO_FIRE:'Convert Assault Team to Fire Team',
   BN_RECONSTITUTE_CO:'BN HQ: reconstitute Company HQ',
@@ -99,7 +100,7 @@ export function orderReason(s,c) {
   }
   if((type.endsWith('_WP')||['WP','WP_ATTACK','RIFLE_GRENADE'].includes(type))&&!s.support_agencies)return 'This action is not enabled by the mission.';
   if(type==='CLEAR_MINE_PATH'&&u?.exposed)return 'Already exposed: infiltration requires an unexposed formation.';
-  if(type==='CLEAR_MINE_PATH'&&(!s.mission_rules.hill192||!eligibleEngineer(u)||!s.locations[u?.location]?.mines))return 'Requires a good-order two- or three-step engineer squad on a known minefield.';
+  if(type==='CLEAR_MINE_PATH'&&(!(s.mission_rules.hill192||(s.mission_rules.vire||s.mission_rules.tinchebray))||!eligibleEngineer(u)||!s.locations[u?.location]?.mines))return 'Requires a good-order two- or three-step engineer squad on a known minefield.';
   if(!ACTIONS[type]) return 'Unknown order.';
   if(type==='BN_RECONSTITUTE_CO'){
    const co=companyCommander(s),visitors=values(s.units).some(v=>v.command_role==='higher_hq'&&v.removed!=='DEPARTED');
@@ -116,6 +117,7 @@ export function orderReason(s,c) {
     return (type==='DROP_LOAD'&&(u.radios.length||Object.values(u.assets).some(Boolean)||Object.values(u.ammo??{}).some(Boolean))||s.casualties.some(c=>c.carrier===u.id))?null:'No carried items to drop.';
   }
   if(type==='DROP_LOAD')return 'This action is not enabled by the mission.';
+  if(u?.embarked_on&&['MOVE','INFILTRATE','SEEK_COVER','ENTER_COVER','EXIT_COVER','CLIMB'].includes(type))return 'Disembark before maneuvering the passenger independently.';
   if(type==='REPAIR_PHONE_LINE'&&s.mission_rules?.communications!=='phones')return 'Field phones are not in use.';
   if(type.endsWith('_RUNNER')&&!s.mission_rules?.runners)return 'Runners are not available in this mission.';
   if(type.startsWith('PYRO_')&&!s.signal_plan)return 'These signals are not available in this mission.';
@@ -236,13 +238,13 @@ export function orderReason(s,c) {
     if(ammunition==='TOT'&&!definition?.inventory?.TOT)return 'This agency has no TOT capability.';
     if(ammunition==='ILLUM'&&(!s.visibility||!definition?.inventory?.ILLUM))return 'This agency has no illumination capability.';
     if(s.support_inventory?.[agency]?.[ammunition]===0)return `${definition.name} has no ${ammunition} missions remaining.`;
-    if(!net||!u.radios.includes(net))return `This caller needs its working ${net??'fire-direction'} radio network.`;
+    if(!net||!effectiveRadios(s,u).includes(net))return `This caller needs its working ${net??'fire-direction'} radio network.`;
     if(s.support_unavailable.includes(agency))return 'Higher HQ reports this agency unavailable this turn.';
     if(type.endsWith('_ILLUM')?(!s.locations[target]||s.locations[target].staging||s.locations[target].known===false):(!s.locations[target]||!seesCard(s,u,target)||(!type.endsWith('_WP')&&!targetsAt(s,u,target).length)))return 'Need a spotted enemy position within the caller’s LOS.';
   }
   else if(type.startsWith('CALL_')) {
     const agency=type==='CALL_MORTAR'?'MTR':'ARTY';
-    if(!good(u)||!(isCompanyCommander(u)||u.agency_role===(agency==='MTR'?'mtrfo':'artyfo'))||!u.radios.includes(isCompanyCommander(u)?'BN':agency)) return 'This observer needs its working fire-direction radio and good order.';
+    if(!good(u)||!(isCompanyCommander(u)||u.agency_role===(agency==='MTR'?'mtrfo':'artyfo'))||!effectiveRadios(s,u).includes(isCompanyCommander(u)?'BN':agency)) return 'This observer needs its working fire-direction radio and good order.';
     if(!s.locations[target]||!seesCard(s,u,target)||!targetsAt(s,u,target).length) return 'Call for fire requires a spotted enemy position in the observer’s LOS.';
   }
   if(type==='INDIRECT'&&(!good(u)||u.kind!=='MORTAR'||u.steps.length<2||u.exposed||c.target_id===u.location||enclosedWeaponCover(coverOf(s,u))||s.locations[u.location].terrain==='woods'||
@@ -477,7 +479,7 @@ export function execute(s,c) {
   else if(type==='SPOT')spotAttempt(s,u,c.target_id);
   else if(type==='SHIFT_FIRE'||type==='CEASE_FIRE') {
     for(const v of occupants(s,u.location).filter(v=>v.faction===u.faction)){v.fire=type==='SHIFT_FIRE'?c.target_id:null;v.indirect=null;}
-    s.markers=s.markers.filter(m=>m.type!=='CONCENTRATE'||s.units[m.source]?.location!==u.location);
+    s.markers=s.markers.filter(m=>m.type!=='CONCENTRATE'||fireSource(s,m.source)?.location!==u.location);
   }
   else if(type==='GRENADE'||type==='RIFLE_GRENADE'){if(type==='RIFLE_GRENADE')u.assets.rifle_grenade--;grenade(s,u,t);}
   else if(type==='WP_ATTACK'){u.assets.wp--;grenade(s,u,t,false,true);}
@@ -510,6 +512,7 @@ export function execute(s,c) {
     u.assets[key]--;
     const seen=values(s.units).filter(v=>friendly(v)&&live(v)&&(aerial||seesCard(s,v,c.target_id)));
     const moved=[];
+    if(order==='CF')for(const v of Object.values(s.vire_runtime?.vehicles??{}).filter(v=>v.faction==='friendly'&&v.status==='ACTIVE'&&(aerial||seesCard(s,{...v,cover:null},c.target_id)))){v.fire=null;v.fire_direction=null;}
     for(const v of seen){
       if(order==='CF'){v.fire=null;v.indirect=null;continue;}
       const line=order.startsWith('XPL')?(s.phase_lines?.[order.at(-1)]??Number(order.at(-1))):null;
@@ -595,9 +598,9 @@ export function submitCommand(state,command) {
   for(const casualty of s.casualties.filter(c=>c.carrier)){const carrier=s.units[casualty.carrier];casualty.location=carrier.location;casualty.cover=carrier.cover;}
   revealTerrain(s);refresh(s);
   if(['CEASE_FIRE','SHIFT_FIRE'].includes(command.type)){
-    const fires=s.fire.filter(f=>f.origin===u.location&&s.units[f.source].faction===u.faction);
+    const fires=s.fire.filter(f=>f.origin===u.location&&fireSource(s,f.source).faction===u.faction);
     const stopped=beforeFire.map(id=>s.units[id].name).join(', ')||'No active sources';
-    const reopened=[...new Set(fires.map(f=>s.units[f.source].name))].join(', ');
+    const reopened=[...new Set(fires.map(f=>fireSource(s,f.source).name))].join(', ');
     emit(s,'FIRE_ORDER_RESULT',`${command.type==='CEASE_FIRE'?'Card-wide cease fire':'Card-wide shift fire'} at ${s.locations[u.location].name}. Previous sources: ${stopped}. ${fires.length?`${command.type==='CEASE_FIRE'?'Automatic fire reopened':'Fire now directed'} toward ${[...new Set(fires.map(f=>s.locations[f.target].name))].join(', ')} by ${reopened}.`:'Fire stopped; no eligible target caused automatic reopening.'}`,{actor:u.id,location:u.location,affected:beforeFire,reopened:[...new Set(fires.map(f=>f.source))]});
   }
   emit(s,'COMMAND_RESOLVED','Order resolved; fire relationships updated.',{caused_by_event_id:event.id});
@@ -605,7 +608,7 @@ export function submitCommand(state,command) {
   return result(state,s,{accepted:true});
 }
 export function commandOptions(s,u,issuerId) {
-  return Object.entries(ACTIONS).filter(([type])=>(type!=='CLEAR_MINE_PATH'||s.mission_rules.hill192&&u.capabilities?.engineer)&&(!type.endsWith('_TOT')||s.support_agencies?.artillery?.inventory?.TOT)&&(!type.endsWith('_ILLUM')||s.visibility&&(type==='HANDHELD_ILLUM'||s.support_agencies?.[type.includes('MORTAR')?'mortar':'artillery']?.inventory?.ILLUM))&&(!type.includes('CANNON')||s.support_agencies?.cannon)&&(!type.startsWith('SKILL_')||s.skills?.length)&&(type!=='DROP_LOAD'||s.mission_rules?.specialEnemies)&&(type!=='SEEK_COVER_UPPER'||s.mission_rules?.coverTable)&&(s.support_agencies||!['CALL_MORTAR_WP','CALL_ARTILLERY_WP','WP','WP_ATTACK','RIFLE_GRENADE'].includes(type))).map(([type,label])=>{
+  return Object.entries(ACTIONS).filter(([type])=>(type!=='CLEAR_MINE_PATH'||(s.mission_rules.hill192||(s.mission_rules.vire||s.mission_rules.tinchebray))&&u.capabilities?.engineer)&&(!type.endsWith('_TOT')||s.support_agencies?.artillery?.inventory?.TOT)&&(!type.endsWith('_ILLUM')||s.visibility&&(type==='HANDHELD_ILLUM'||s.support_agencies?.[type.includes('MORTAR')?'mortar':'artillery']?.inventory?.ILLUM))&&(!type.includes('CANNON')||s.support_agencies?.cannon)&&(!type.startsWith('SKILL_')||s.skills?.length)&&(type!=='DROP_LOAD'||s.mission_rules?.specialEnemies)&&(type!=='SEEK_COVER_UPPER'||s.mission_rules?.coverTable)&&(s.support_agencies||!['CALL_MORTAR_WP','CALL_ARTILLERY_WP','WP','WP_ATTACK','RIFLE_GRENADE'].includes(type))).map(([type,label])=>{
     const targets=eligibleTargets(s,u,type);
     const targeted=type.endsWith('_ILLUM')||type.startsWith('PYRO_')||['SUPPLEMENT','TRANSFER_EQUIPMENT','SWITCH_NETWORK','PLATOON_CONCENTRATE','PLATOON_GRENADE','DISPATCH_RUNNER','CREATE_RUNNER'].includes(type)||['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','CALL_ARTILLERY_TOT','CALL_MORTAR_WP','CALL_ARTILLERY_WP','CALL_CANNON','CALL_CANNON_WP','RIFLE_GRENADE','INDIRECT','RECONSTITUTE','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
     const checks=((targeted||type==='WP_ATTACK')?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id,contributor_ids:type==='RECONSTITUTE'?[u.id,...reconstructionTeams(s,u,issuerId).filter(t=>t.id!==u.id).slice(0,Math.max(0,(s.units[target_id]?.max_steps??3)-1)).map(t=>t.id)]:undefined})}));

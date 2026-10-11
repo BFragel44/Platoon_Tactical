@@ -1,0 +1,19 @@
+{
+  "passed": true,
+  "checks": [
+    "four M10s",
+    "objective rows",
+    "setup start",
+    "mounted observer Jeep and reload",
+    "separate storage",
+    "five M5 entry and reload",
+    "both reattempt dialogs and reload",
+    "live M10 movement, pending reaction and reload",
+    "enemy AT reaction",
+    "pending battalion support and reload",
+    "both observers and all support agencies",
+    "narrow viewport",
+    "keyboard tab"
+  ],
+  "errors": []
+}

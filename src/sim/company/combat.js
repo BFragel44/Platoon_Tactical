@@ -1,12 +1,13 @@
+import {friendlyVireVehiclesAt} from './vireUnits.js';
 import {rangedWeaponTargets} from './rangedWeapons.js';
 import {prepareSpecialTargets,specialActivity} from './specialEnemies.js';
-import {latActivityTable,hastyActivityTable} from './enemyHierarchy.js';
+import {latActivityTable,hastyActivityTable,delayActivityTable} from './enemyHierarchy.js';
 import {availableCounters} from './missionContacts.js';
 import {expendAmmunition} from './ammunition.js';
 import {resolveMissionContact} from './missionContacts.js';
 import {reconstitutionFirepower,reconstitutionLoads,reconstitutionDonors} from './reconstitution.js';
 import { values, live, good, friendly, visible, emit, draw, attempt, randomNumber, pick, shuffle, dropLoad } from './core.js';
-import { adjacent, occupants, los, unitLos, coverAvailable, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire, movementReason,vofOf } from './battlefield.js';
+import { adjacent, occupants, los, unitLos, coverAvailable, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire, movementReason,vofOf,fireSource } from './battlefield.js';
 import { seekCover, rally, grenade, concentrate, move, splitTeam, infiltrationReason } from './actions.js';
 import { combatResolutionTable, hitEffectTable, resolveCombatOutcome, resolveHitEffect } from './combatProbability.js';
 
@@ -85,7 +86,7 @@ export function applyHit(s,u,letters) {
 }
 const distributionRecord=d=>({total:d.total,counts:{...d.counts},probabilities:{...d.probabilities}});
 const sourceRecord=(s,source,target)=>{
-  const unit=s.units[source?.source_id],known=unit&&visible(s,unit);
+  const unit=fireSource(s,source?.source_id),known=unit&&visible(s,unit);
   return source?{kind:source.kind,source_id:source.source_id??null,origin:source.origin,value:source.value,vof:source.vof,
     ...(known?{steps:unit.steps.length,experience:unit.experience,unit_kind:unit.kind,range:distance(s.locations[unit.location],s.locations[target.location])}:{}),
     faction:unit?.faction??(source.kind==='OFF_MAP_SUPPORT'?'enemy':null),known:!!known,
@@ -171,7 +172,7 @@ function available(s,p,trigger) {
     (!p.trench||s.enemy_pool.trench>=p.trench)&&(!p.bunker||s.enemy_pool.bunker>=p.bunker)&&
     (!p.incoming||!s.support.some(f=>f.source==='enemy'))&&placementCandidates(s,p,trigger).length>0;
 }
-export const eligibleContacts = s => values(s.contacts).filter(pc=>!pc.resolved&&occupants(s,pc.location).some(friendly));
+export const eligibleContacts = s => values(s.contacts).filter(pc=>!pc.resolved&&(occupants(s,pc.location).some(friendly)||(s.mission_rules?.vire||s.mission_rules?.tinchebray)&&friendlyVireVehiclesAt(s,pc.location).length));
 export function resolveContacts(s,contactId=null) {
   if(s.mission_contacts){for(const pc of eligibleContacts(s).filter(pc=>contactId===null||pc.id===contactId))resolveMissionContact(s,pc);return;}
   const counts={NO_CONTACT:{A:0,B:0},CONTACT:{A:7,B:5},ENGAGED:{A:5,B:3},HEAVILY_ENGAGED:{A:3,B:2}};
@@ -298,10 +299,11 @@ export function enemyActivity(s) {
         else if((normandy?(u.tripod||['G','H'].includes(vofOf(u))||ranged.length):['A','G','H'].includes(u.vof))&&attackCard&&occupants(s,attackCard).some(friendly))action='ATTACK';
         else action=choices(['NONE','INFILTRATE','INFILTRATE','ADVANCE']);
       }
-      else if(s.enemy_tactics==='hasty_defense'){
+      else if(['hasty_defense','delay_defense'].includes(s.enemy_tactics)){
+       const activityTable=s.enemy_tactics==='delay_defense'?delayActivityTable:hastyActivityTable;
        const different=incoming(s,u).some(f=>{const here=s.locations[u.location],aim=s.locations[u.fire],origin=s.locations[f.origin];return !aim||Math.sign(aim.row-here.row)!==Math.sign(origin.row-here.row)||Math.sign(aim.col-here.col)!==Math.sign(origin.col-here.col);});
        const opposing=incoming(s,u).map(f=>f.value),valid=!!u.fire&&occupants(s,u.fire).some(friendly);
-       do{action=choices(hastyActivityTable({same,covered,outOfAmmo:u.out_of_ammo&&(u.tripod||['G','H'].includes(u.vof)),noLOS:!values(s.units).some(v=>friendly(v)&&live(v)&&unitLos(s,u,v)),under,validPDF:valid,differentDirection:different,heavy:u.tripod||['G','H'].includes(vofOf(u))||u.kind==='LEADER'&&u.assets.rifle_grenade>0,stronger:opposing.length&&basicValue(u)<Math.min(...opposing),trading:!!u.fire}));
+       do{action=choices(activityTable({same,covered,outOfAmmo:u.out_of_ammo&&(u.tripod||['G','H'].includes(u.vof)),noLOS:!values(s.units).some(v=>friendly(v)&&live(v)&&unitLos(s,u,v))&&!((s.mission_rules?.vire||s.mission_rules?.tinchebray)&&values(s.locations).some(l=>friendlyVireVehiclesAt(s,l.id).length&&unitLos(s,u,l.id))),under,validPDF:valid,differentDirection:different,heavy:u.tripod||['G','H'].includes(vofOf(u))||u.kind==='LEADER'&&u.assets.rifle_grenade>0,stronger:opposing.length&&basicValue(u)<Math.min(...opposing),trading:!!u.fire}));
         if(action==='SHIFT'&&['Bunker','Pillbox','Deep Bunker'].includes(coverOf(s,u)?.type))emit(s,'ENEMY_ACTIVITY_REDRAW','Fortification firing arc cannot shift; redraw enemy activity.',{actor:u.id},!visible(s,u));else break;
        }while(true);
       }

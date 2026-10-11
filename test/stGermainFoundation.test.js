@@ -10,12 +10,12 @@ import {createMission,previewMissionSetup,RULES_VERSION} from '../src/sim/compan
 import {validatePatrolPlan} from '../src/sim/company/patrols.js';
 
 describe('St. Germain authored foundation — Normandy pp.32–35',()=>{
- it('remains gated and absent from normal selection while allowing read-only preparation',()=>{
-  expect(stGermain.readiness.playable).toBe(false);
+ it('is accepted and available in normal selection while preserving setup preview',()=>{
+  expect(stGermain.readiness.playable).toBe(true);
   expect(stGermain.readiness.development_validated).toBe(true);
-  expect(missionCatalog.some(m=>m.id===stGermain.id)).toBe(false);
-  expect(()=>createMission(stGermain,'gate')).toThrow('not playable yet');
-  expect(previewMissionSetup(stGermain,'gate').playable).toBe(false);
+  expect(missionCatalog.some(m=>m.id===stGermain.id)).toBe(true);
+  expect(createMission(stGermain,'accepted').scenario_id).toBe('normandy_5');
+  expect(previewMissionSetup(stGermain,'accepted').playable).toBe(true);
   expect(RULES_VERSION).toBe(33);
  });
  it('uses the audited content-2 identity and isolated company slot without M4 import',()=>{

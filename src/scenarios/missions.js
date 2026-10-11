@@ -1,3 +1,5 @@
+import {vire} from './vire.js';
+import {tinchebray} from './tinchebray.js';
 import {stGeorges} from './stGeorges.js';
 import {stGermain} from './stGermain.js';
 import {hill192} from './hill192.js';
@@ -19,7 +21,11 @@ export const missionCatalog=[{id:companyAssault.id,name:'Company Assault — reg
  {id:cerisy.id,name:cerisyDevelopment?`${cerisy.name} · development playtest`:cerisy.name,scenario:cerisyCandidate,unavailable:cerisyDevelopment||cerisy.readiness.playable?null:cerisy.readiness.missing.join('; ')},
  {id:stGeorges.id,name:stGeorgesDevelopment?`${stGeorges.name} · development playtest`:stGeorges.readiness.playable?stGeorges.name:`${stGeorges.name} · setup preview only`,scenario:stGeorgesCandidate,unavailable:stGeorgesDevelopment||stGeorges.readiness.playable?null:stGeorges.readiness.missing.join('; ')},
  {id:hill192.id,name:hill192.name,scenario:hill192,unavailable:hill192.readiness.playable?null:hill192.readiness.missing.join('; ')}];
-if(stGermainDevelopment)missionCatalog.push({id:stGermain.id,name:`${stGermain.name} · development playtest`,scenario:stGermainCandidate,unavailable:null});
+if(stGermainDevelopment||stGermain.readiness.playable)missionCatalog.push({id:stGermain.id,name:stGermainDevelopment?`${stGermain.name} · development playtest`:stGermain.name,scenario:stGermainCandidate,unavailable:null});
+// Explicit vehicle playtest opt-ins remain gated outside their development URL.
+for(const [flag,scenario]of [['vireDev',vire],['tinchebrayDev',tinchebray]]){
+ if(typeof location!=='undefined'&&new URLSearchParams(location.search).get(flag)==='1')missionCatalog.push({id:scenario.id,name:`${scenario.name} · development playtest`,scenario:{...scenario,readiness:{...scenario.readiness,playable:true}},unavailable:null});
+}
 export const missionById=id=>missionCatalog.find(m=>m.id===id)?.scenario;
 export function playableMissionById(id){
  const entry=missionCatalog.find(m=>m.id===id);

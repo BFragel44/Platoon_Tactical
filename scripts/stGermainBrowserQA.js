@@ -24,7 +24,7 @@ if(!cases.support)for(let n=0;n<40&&!cases.support;n++){
  }
 }
 writeFileSync('tmp/st-germain-browser-cases.json',JSON.stringify(cases));
-writeFileSync('tmp/st-germain-qa-missions.js',`import {missionCatalog as normal} from '/src/scenarios/missions.js';import {stGermain} from '/src/scenarios/stGermain.js';export const missionCatalog=[...normal,{id:stGermain.id,name:stGermain.name+' · isolated QA',scenario:{...stGermain,readiness:{playable:true}}}];export const missionById=id=>missionCatalog.find(m=>m.id===id)?.scenario;export const playableMissionById=missionById;`);
+writeFileSync('tmp/st-germain-qa-missions.js',`import {missionCatalog as normal} from '/src/scenarios/missions.js';import {stGermain} from '/src/scenarios/stGermain.js';export const missionCatalog=[...normal.filter(m=>m.id!==stGermain.id),{id:stGermain.id,name:stGermain.name+' · isolated QA',scenario:{...stGermain,readiness:{playable:true}}}];export const missionById=id=>missionCatalog.find(m=>m.id===id)?.scenario;export const playableMissionById=missionById;`);
 const rewrite=s=>s.replaceAll("from './","from '/src/ui/").replaceAll("import './","import '/src/ui/").replaceAll("from '../","from '/src/").replaceAll("import '../","import '/src/").replace("'/src/scenarios/missions.js'","'/tmp/st-germain-qa-missions.js'");
 writeFileSync('tmp/st-germain-company-qa.js',rewrite(readFileSync('src/ui/companyMain.js','utf8')).replace("'/src/ui/commandHeader.js'","'/tmp/st-germain-header-qa.js'"));
 writeFileSync('tmp/st-germain-header-qa.js',rewrite(readFileSync('src/ui/commandHeader.js','utf8')));

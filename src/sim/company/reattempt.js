@@ -1,3 +1,4 @@
+import {prepareVireReattemptInput,finishVireReattempt} from './vireReattempt.js';
 import {validatePatrolPlan,createPatrolProgress,nextPatrolPlatoons,patrolMoonLight} from './patrols.js';
 import {addPatrolContact} from './patrolEvents.js';
 import {values,live,friendly,emit,result,shuffle,pick,randomNumber} from './core.js';
@@ -12,9 +13,11 @@ const rank={Green:0,Line:1,Veteran:2};
 export function prepareReattempt(state,choices){return prepareAttempt(state,choices,false);}
 export function preparePatrol(state,choices){return prepareAttempt(state,choices,true);}
 function prepareAttempt(state,choices,patrol){
+ const originalState=state;
+ if((state.mission_rules?.vire||state.mission_rules?.tinchebray)&&!patrol)state=prepareVireReattemptInput(state,choices);
  if(patrol){if(!state.patrol||state.status!=='PATROL_COMPLETE'||state.patrol_history.length>=3)throw new Error('No next patrol is available.');}
  else if(!state.mission_rules?.reattempts||state.status!=='DEFEAT'||(state.attempt_number??1)>state.mission_rules.reattempts)throw new Error('No mission reattempt is available.');
- if(!choices||Object.keys(choices).some(k=>!['reconstitute','promote','positions','covers','phone_lines','skills','phase_lines','redistribute',...(patrol?['patrol','assignments']:[])].includes(k)))throw new Error('Unknown reattempt preparation choice.');
+ if(!choices||Object.keys(choices).some(k=>!['reconstitute','promote','positions','covers','phone_lines','skills','phase_lines','redistribute',...((state.mission_rules?.vire||state.mission_rules?.tinchebray)?['vehicle_positions']:[]),...(patrol?['patrol','assignments']:[])].includes(k)))throw new Error('Unknown reattempt preparation choice.');
  const plan=patrol?validatePatrolPlan(state.locations,choices.patrol):null;
  if(patrol&&(!nextPatrolPlatoons(state.patrol_history).includes(plan.platoon)||plan.cop!==state.patrol.plan.cop))throw new Error('Choose an unused platoon and retain the mission Combat Outpost.');
  const secured=patrol?values(state.locations).filter(l=>l.row===1||l.id===plan.cop).map(l=>l.id):values(state.locations).filter(l=>secureStatus(state,l.id).secured).map(l=>l.id);
@@ -62,7 +65,9 @@ function prepareAttempt(state,choices,patrol){
   target.removed=null;target.cohesion='GOOD';target.pinned=false;
   if(['HQ','STAFF'].includes(target.kind)&&target.steps.length===donorIds.length){target.experience='Green';newHQ.add(targetId);}
  }
- let points=patrol?patrolPoints:s.achievements.reduce((sum,a)=>sum+a.points,0);
+ const previouslySpent=s.mission_rules.tinchebray?(s.attempt_points_spent_total??0):0;
+ let points=(patrol?patrolPoints:s.achievements.reduce((sum,a)=>sum+a.points,0))-previouslySpent;
+ const availableAttemptPoints=points;
  const ownerOf=id=>values(s.units).find(u=>u.steps.some(step=>step.id===id));
  for(const [stepId,to] of Object.entries(promotions)){
   const owner=ownerOf(stepId),step=owner?.steps.find(t=>t.id===stepId);
@@ -103,7 +108,8 @@ function prepareAttempt(state,choices,patrol){
  points=buySkills(s,choices?.skills??[],points,{retain:patrol});
  s.attempt_history??=[];
  s.attempt_history.push({number:s.attempt_number??1,outcome:patrol?s.patrol_history.at(-1).outcome:s.status,turns:s.turn,score:s.achievements.reduce((sum,a)=>sum+a.points,0),event_count:s.events.length,casualties:structuredClone(s.casualties),prisoners:structuredClone(s.prisoners)});
- s.attempt_number=patrol?state.attempt_number+1:2;s.attempt_points_spent=(patrol?patrolPoints:s.achievements.reduce((sum,a)=>sum+a.points,0))-points;
+ s.attempt_number=(state.attempt_number??1)+1;s.attempt_points_spent=(patrol?patrolPoints:s.achievements.reduce((sum,a)=>sum+a.points,0))-points;
+ if(s.mission_rules.tinchebray){s.attempt_points_spent=availableAttemptPoints-points;s.attempt_points_spent_total=previouslySpent+s.attempt_points_spent;}
  if(patrol)for(const a of s.achievements.filter(a=>a.platoon===state.patrol.plan.platoon))a.spent=true;
  s.casualties=[];s.assets=[];s.prisoners=[];s.markers=[];s.fire=[];s.support=[];s.pending_support=null;s.registered_targets=patrol?{artillery:plan.concentration}:s.mission_rules.hill192?structuredClone(state.registered_targets):{};s.support_inventory=Object.fromEntries(Object.entries(s.support_agencies??{}).map(([id,agency])=>[id,structuredClone(agency.inventory??{})]));
  for(const l of values(s.locations))l.smoke=false;
@@ -153,6 +159,7 @@ function prepareAttempt(state,choices,patrol){
  }
  s.replay.push({op:patrol?'preparePatrol':'reattempt',choices:structuredClone(choices)});
  if(patrol)emit(s,'PATROL_PREPARED',`Patrol ${s.attempt_number} begins with platoon ${plan.platoon}.`,{attempt:s.attempt_number,platoon:plan.platoon,points_spent:s.attempt_points_spent});
- else emit(s,'MISSION_REATTEMPTED',`${s.mission_name} reattempt begins with retained terrain, contacts and experience awards.`,{attempt:2,points_spent:s.attempt_points_spent});
- refresh(s);recordAttemptStart(s,choices);return result(state,s,{accepted:true});
+ else emit(s,'MISSION_REATTEMPTED',`${s.mission_name} reattempt begins with retained terrain, contacts and experience awards.`,{attempt:s.attempt_number,points_spent:s.attempt_points_spent});
+ if((s.mission_rules?.vire||s.mission_rules?.tinchebray))finishVireReattempt(s,choices);
+ refresh(s);recordAttemptStart(s,choices);return result(originalState,s,{accepted:true});
 }

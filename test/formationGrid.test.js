@@ -14,3 +14,5 @@ it('omits unknown cover information and makes spotted enemy details inspectable 
  const html=formationGrid(l,[],[{id:'enemy',name:'Spotted LMG',kind:'LMG',steps:1,cohesion:'GOOD',cover:'secret'}]);
  expect(html).not.toContain('Secret bunker');expect(html).not.toContain('data-unit="enemy"');expect(html).toContain('tabindex="0"');expect(html).toContain('Spotted LMG');
 });
+
+it('abbreviates the Fallschirmjäger counter face while keeping its full inspection name',()=>{const html=formationGrid({id:'l',name:'Village',elevation:0,covers:[]},[],[{id:'e',name:'5/Fallschirmjäger',kind:'SQUAD',cohesion:'GOOD',steps:2}]);expect(html).toContain('<strong>5FJ</strong>');expect(html).toContain('5/Fallschirmjäger');});

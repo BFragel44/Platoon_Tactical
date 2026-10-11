@@ -42,3 +42,7 @@ If revisited, distinguish a visual card reveal of an existing calculated outcome
 ## Maintaining this file
 
 Add future ideas here with their status: agreed but deferred, proposal, or explicitly on hold. When work starts, link its implementation/readiness document and record the decision. Do not treat suggestions as accepted requirements or silently pull deferred work into current mission tasks.
+
+## Vehicle usability follow-up — agreed October 11, 2026
+
+M6 passed the user's playtest. Vehicles still need a broader usability pass in the next project phase, alongside the planned 3D/audio/SFX presentation. Refine activation and command visibility, map-led movement, reactions/Quick Shots and crew-HIT prompts, target selection, transport/cargo context and action-result feedback as one coherent flow. Keep the battlefield visible and avoid redundant controls, internal location IDs and empty procedures. Preserve legal command costs, communications, meaningful player decisions, hidden information, deterministic replays and explicit phase stepping. This backlog item is not authorization to begin that redesign now or acceptance of M7.

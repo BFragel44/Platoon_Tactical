@@ -1,3 +1,4 @@
+import {friendlyVireVehiclesAt} from './vireUnits.js';
 import {eligibleEngineer} from './engineers.js';
 import {placeIllumination} from './visibility.js';
 import {values,live,friendly,visible,good,emit,draw,randomNumber,pick,dropLoad,exhortDraw} from './core.js';
@@ -22,11 +23,11 @@ export function discoveredCover(s,l,known=true,enemy=false) {
 }
 export function checkMines(s,u,{discovery=false}={}){
  if(!s.locations[u.location].mines||!live(u))return;
- const hit=draw(s,discovery&&s.mission_rules.hill192&&eligibleEngineer(u)?1:3,`${visible(s,u)?u.name:'Enemy'}: mine check`,!visible(s,u)).some(c=>c.burst||c.short);
+ const hit=draw(s,discovery&&(s.mission_rules.hill192||(s.mission_rules.vire||s.mission_rules.tinchebray))&&eligibleEngineer(u)?1:3,`${visible(s,u)?u.name:'Enemy'}: mine check`,!visible(s,u)).some(c=>c.burst||c.short);
  if(hit){u.mine_hit=true;s.markers.push({type:'MINES',location:u.location,target:u.id,value:-4});}
  emit(s,'MINE_CHECK',`${visible(s,u)?u.name:'Enemy'} ${hit?'triggered mines; cannot move again this turn':'avoided the mines'}.`,{actor:visible(s,u)?u.id:null,location:u.location,hit},!visible(s,u));
 }
-export function secureStatus(s,id){const units=occupants(s,id),cleared=!values(s.contacts).some(c=>c.location===id&&!c.resolved)&&!units.some(u=>!friendly(u));return {cleared,secured:cleared&&units.some(friendly)};}
+export function secureStatus(s,id){const units=occupants(s,id),cleared=!values(s.contacts).some(c=>c.location===id&&!c.resolved)&&!units.some(u=>!friendly(u));return {cleared,secured:cleared&&(units.some(friendly)||!!(s.mission_rules?.vire||s.mission_rules?.tinchebray)&&friendlyVireVehiclesAt(s,id).length>0)};}
 export function scoreMission(s,{final=false}={}){
  if(!s.objectives)return;
  if(s.patrol){scorePatrol(s,{final});return;}

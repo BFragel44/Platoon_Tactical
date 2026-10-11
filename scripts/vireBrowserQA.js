@@ -1,0 +1,54 @@
+// Isolated browser storage; never touches an accepted player's browser profile.
+import {createRequire} from 'node:module';
+import {mkdirSync,writeFileSync} from 'node:fs';
+import {createVireDevelopmentMission} from '../src/sim/company/vireMission.js';
+import {advancePhase} from '../src/sim/company/engine.js';
+import {cards} from '../src/sim/company/core.js';
+import {placePackage} from '../src/sim/company/missionContacts.js';
+import {vire} from '../src/scenarios/vire.js';
+import {synchronizeVireATUnits} from '../src/sim/company/vireUnits.js';
+import {supportRequest} from '../src/sim/company/missionFeatures.js';
+import {importVireAdapterReplay} from '../src/sim/company/vireIntegration.js';
+import {vireCheckpoint,VIRE_SAVE_KEY} from '../src/ui/vireRecovery.js';
+const require=createRequire(import.meta.url),{chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const fresh=()=>createVireDevelopmentMission('vire-browser-qa',{}, {},{mission_instance_id:'vire-browser-qa'});
+const seal=s=>{delete s.vire_runtime.initial_state;s.vire_runtime.initial_state=structuredClone(s);return s;};
+const bundle=s=>{const cp=vireCheckpoint(s);return {schema:1,latest:cp,turnStart:cp};};
+let pending=fresh();pending.turn=2;pending.phase='FRIENDLY_EVENTS';const card=Object.values(cards).find(c=>c.hq&&c.random[8]===4);pending.deck.order=Array(100).fill(card.id);seal(pending);pending=advancePhase(pending).state;
+const defeat=fresh();defeat.status='DEFEAT';defeat.turn=10;seal(defeat);
+const browser=await chromium.launch({headless:true,channel:process.env.QA_BROWSER||'chrome'}),context=await browser.newContext({viewport:{width:1440,height:1000}}),page=await context.newPage();
+const errors=[];page.on('pageerror',e=>errors.push(e.message));const check=(v,message)=>{if(!v)throw Error(message);};
+const base=process.env.QA_URL||'http://localhost:5173';mkdirSync('tmp/vire-browser',{recursive:true});
+try{
+ await page.goto(base+'/?vireDev=1');await page.locator('#vire-controls-open').waitFor();
+ check(await page.locator('[data-vehicle]').count()===5,'Map tank counters missing');await page.locator('#vire-controls-open').click();check(await page.locator('#vire-controls').isVisible(),'Vehicle dialog missing');
+ check(await page.locator('#vire-controls').innerText().then(t=>t.includes('M4_SHERMAN75')),'Initial tanks missing');await page.screenshot({path:'tmp/vire-browser/initial.png'});
+ await page.locator('#vire-setup').click();check(await page.locator('[name^="vehicle-position-"]').count()===5,'Setup tank choices missing');await page.locator('[name="jeep-use"]').check();await page.locator('[name="jeep-arty"]').check();await page.locator('[name="jeep-passengers"]').selectOption('artyfo');await page.screenshot({path:'tmp/vire-browser/setup.png'});await page.locator('[name="start-mission"]').click();await page.locator('#mission-setup-form').waitFor({state:'hidden'});await page.reload();await page.locator('#vire-controls-open').waitFor();
+ check(await page.evaluate(k=>!!JSON.parse(localStorage.getItem(k)).latest.replay.initial_state.roster_snapshot,VIRE_SAVE_KEY),'Roster missing after recovery');check(await page.locator('[data-vehicle="company_jeep"]').count()===1,'Mounted Jeep missing after setup/reload');
+ await page.evaluate(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:VIRE_SAVE_KEY,value:bundle(pending)});await page.reload();await page.locator('#vire-controls-open').click();
+ check(await page.locator('[data-vire-entry]').count()===5,'Five tank entry choices missing');await page.screenshot({path:'tmp/vire-browser/support.png'});
+ await page.locator('[data-vire-support]').click();await page.locator('#vire-controls-open').waitFor();
+ check(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)).latest.replay.operations.length>0,VIRE_SAVE_KEY),'Tank entry not persisted');await page.reload();await page.locator('#vire-controls-open').click();
+ check((await page.locator('#vire-controls li').allTextContents()).filter(t=>t.includes('M5_LIGHT37')).length===5,'M5 recovery lost tanks');await page.locator('#vire-controls-close').click();
+ await page.evaluate(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:VIRE_SAVE_KEY,value:bundle(defeat)});await page.reload();await page.locator('#result-reattempt').click();
+ check(await page.locator('[name^="vehicle-position-"]').count()===5,'Vehicle reattempt choices missing');await page.screenshot({path:'tmp/vire-browser/reattempt.png'});
+ await page.locator('#reattempt-form button[type="submit"]').click();await page.locator('#reattempt-form').waitFor({state:'hidden'});
+ check(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)).latest.attempt===2,VIRE_SAVE_KEY),'Reattempt not persisted');await page.reload();await page.locator('#vire-controls-open').waitFor();
+ const combat=fresh();for(const l of Object.values(combat.locations)){l.borders=Object.fromEntries(['N','S','E','W','NE','NW','SE','SW'].map(k=>[k,'white']));l.elevation=0;l.protection=0;l.burst=0;l.smoke=false;l.known=true;l.trafficability='Unmarked';}
+ combat.units.s11.location='r1c1';check(placePackage(combat,combat.contacts.pc_r1c1,vire.packages[8].alternatives[1]),'QA gun placement failed');combat.units.s11.location='r0c1';combat.units.hq1.location='r1c2';const gun=Object.values(combat.units).find(u=>u.kind==='PAK40');gun.location='r2c1';gun.cover=null;combat.vire_runtime.vehicles.sherman_hq.location='r1c1';combat.vire_runtime.vehicles.sherman_hq.activated=true;synchronizeVireATUnits(combat);combat.phase='AT_COMBAT';combat.impulse=null;combat.deck.order=Array(200).fill(Object.values(cards).find(c=>Number(c.at)===9&&c.id!==51).id);seal(combat);
+ await page.evaluate(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:VIRE_SAVE_KEY,value:bundle(combat)});await page.reload();await page.locator('[data-vehicle="sherman_hq"]').click();await page.locator('#vire-path').fill('r1c2');await page.locator('[data-vire-op="PREPARE_VEHICLE_MOVE"]').click();
+ for(let i=0;i<3;i++)await page.locator('[data-vire-op="STEP_VEHICLE_MOVE"]').click();
+ await page.reload();await page.locator('#vire-controls-open').click();check((await page.locator('#vire-controls').innerText()).includes('Movement stage: REACTION'),'Pending movement recovery missing');await page.locator('[data-vire-op="AUTO_ENEMY_REACTION"]').click();check(!(await page.locator('#vire-feedback').innerText()),'Enemy reaction UI failed');for(let i=0;i<8;i++){const saved=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)).latest.replay,VIRE_SAVE_KEY);const rt=importVireAdapterReplay(saved).vire_runtime;if(!rt.quick&&!rt.reaction?.eligible.length)break;await page.locator('[data-vire-op="AUTO_ENEMY_REACTION"]').click();check(!(await page.locator('#vire-feedback').innerText()),'Enemy follow-up failed');}if(await page.locator('[data-vire-op="STEP_VEHICLE_MOVE"]').count())await page.locator('[data-vire-op="STEP_VEHICLE_MOVE"]').click();check(!(await page.locator('#vire-feedback').innerText()),'Movement completion failed');
+ const played=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)).latest.replay.operations,VIRE_SAVE_KEY);check(played.some(op=>op.type==='AUTO_ENEMY_REACTION'),'Reaction operation not saved');await page.screenshot({path:'tmp/vire-browser/live-combat.png'});
+ combat.vire_runtime.vehicles.sherman_hq.activated=false;seal(combat);
+ await page.evaluate(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:VIRE_SAVE_KEY,value:bundle(combat)});await page.reload();await page.locator('#vire-controls-open').click();await page.locator('[data-vire-op="AUTO_ENEMY_AT_ACTION"]').click();check(!(await page.locator('#vire-feedback').innerText()),'Enemy action UI failed');check(await page.evaluate(k=>JSON.parse(localStorage.getItem(k)).latest.replay.operations.some(op=>op.type==='AUTO_ENEMY_AT_ACTION'),VIRE_SAVE_KEY),'Enemy action not saved');await page.screenshot({path:'tmp/vire-browser/enemy-action.png'});
+ await page.locator('#vire-controls-close').click();await page.keyboard.press('Tab');check(await page.evaluate(()=>document.activeElement!==document.body),'Keyboard focus missing');await page.locator('#vire-controls-open').focus();await page.keyboard.press('Enter');check(await page.locator('#vire-controls').isVisible(),'Keyboard opening failed');await page.keyboard.press('Escape');check(!(await page.locator('#vire-controls').isVisible()),'Keyboard close failed');
+ const fire=fresh();fire.units.artyfo.location='r1c2';fire.phase='GENERAL_INITIATIVE';fire.impulse={id:'qa-general',hq:'general',commands:2,spent:0};fire.units.artyfo.experience='Line';fire.deck.order=Array(50).fill(Object.values(cards).find(c=>c.multi&&!c.short&&c.id!==51).id);supportRequest(fire,fire.units.artyfo,'artillery','HE','r1c2');seal(fire);
+ await page.evaluate(({key,value})=>localStorage.setItem(key,JSON.stringify(value)),{key:VIRE_SAVE_KEY,value:bundle(fire)});await page.reload();await page.locator('#battalion-support').waitFor();await page.screenshot({path:'tmp/vire-browser/battalion-choice.png'});await page.locator('#battalion-support').click();await page.locator('#battalion-support').waitFor({state:'hidden'});await page.reload();const supportReplay=await page.evaluate(k=>JSON.parse(localStorage.getItem(k)).latest.replay,VIRE_SAVE_KEY);const resumed=importVireAdapterReplay(supportReplay);check(resumed.support.length===3&&!resumed.pending_support,'Battalion choice recovery failed');check(resumed.deck.draws===fire.deck.draws&&resumed.impulse.commands===fire.impulse.commands,'Battalion choice charged again');
+ for(const observer of ['artyfo','mtrfo']){await page.locator('#unit').selectOption(observer);const choices=await page.locator('#action option').allTextContents();check(choices.some(t=>t.includes('cannon HE'))&&choices.some(t=>t.includes('mortar WP'))&&choices.some(t=>t.includes('time-on-target')),observer+' support orders missing');}
+ check((await page.locator('[aria-label="Normandy mission status"]').innerText()).includes('cannon remaining'),'Support availability missing');
+ await page.setViewportSize({width:850,height:800});await page.locator('#vire-controls-open').click();await page.screenshot({path:'tmp/vire-browser/narrow.png'});
+ check(!errors.length,'Browser errors: '+errors.join('; '));
+ writeFileSync('tmp/vire-browser/results.json',JSON.stringify({passed:['startup','map tank counters','premission setup submission','named tank list','save/reload','pending five-tank entry','support recovery','vehicle reattempt submission','attempt-2 recovery','narrow dialog','mounted Jeep setup/recovery','live movement and enemy AT reaction','pending reaction recovery','enemy AT action','keyboard open/close','battalion choice/reload','both observers and all support agencies'],errors},null,2));
+ console.log('Vire browser checks passed. Screenshots: tmp/vire-browser');
+}finally{await browser.close();}

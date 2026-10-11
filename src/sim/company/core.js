@@ -1,3 +1,4 @@
+import {synchronizeVireATUnits} from './vireUnits.js';
 import {recordPatrolMovement} from './patrols.js';
 import data from './actionDeckData.json' with { type: 'json' };
 import { drawRandom } from '../rng.js';
@@ -92,7 +93,14 @@ export function attempt(s,u, count, icon, purpose, hidden = !visible(s,u),checkC
   }
   return successes;
 }
-export function result(before,next,extra={}) { return { state:next, events:next.events.slice(before.events.length), ...extra }; }
+export function result(before,next,extra={}) {
+ synchronizeVireATUnits(next);
+ if(next.vire_runtime?.normal_phase_enabled)for(const operation of next.replay.slice(before.replay.length)){
+  const id=`core_${next.vire_runtime.operations.length+1}`;
+  next.vire_runtime.operations.push({id,type:'ENGINE_OPERATION',operation:structuredClone(operation)});next.vire_runtime.applied.push(id);
+ }
+ return { state:next, events:next.events.slice(before.events.length), ...extra };
+}
 
 // Rule 5.1.6: assets and casualty loads use independent infantry capacities.
 export function transportReason(s,u,extraAssets=0) {

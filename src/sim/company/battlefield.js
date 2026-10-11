@@ -1,3 +1,4 @@
+import {vehicleFireSources,vehicleFireSource,storeVehicleFire,vehicleBasicTargets,vehicleOnlyBasicBlocked} from './vehicleFire.js';
 import {visibilityLosLimit,visibilityFireModifier,illuminationReductionsAt} from './visibility.js';
 import {transportReason} from './core.js';
 import {commandHub,canCommandCompany,isCompanyCommander} from './commandRoles.js';
@@ -16,6 +17,7 @@ export function coverAvailable(s,u,c,location=u.location){
   const others=occupants(s,location).filter(t=>t.id!==u.id&&t.cover===c.id);
   return !others.some(t=>t.faction!==u.faction)&&(!c.capacity||others.reduce((n,t)=>n+t.steps.length,0)+u.steps.length<=c.capacity);
 }
+const fireTargets=(s,u)=>values(s.units).concat(vehicleBasicTargets(s,u)).filter(live);
 const screen = (s,id) => s.locations[id].smoke || s.support.some(f => f.status === 'ACTIVE' && f.location === id);
 // Pure geometric trace. Hidden effects are sanitized separately in player projections.
 export function explainLos(s, from, to, max = 3, elevations = {}) {
@@ -168,7 +170,7 @@ function fireDestination(s,u,target,extended=false) {
     const id=`r${a.row+dr*i}c${a.col+dc*i}`;
     if(!s.locations[id]||!canFire(s,u,id))break;
     if(screen(s,id))return id;
-    const units=occupants(s,id).filter(t=>(t.faction===u.faction||!friendly(u)||s.knowledge.spotted[t.id]||grazingCapable(u))&&!(u.kind==='MORTAR'&&u.cohesion==='GOOD'&&t.faction===u.faction));
+    const units=fireTargets(s,u).filter(t=>t.location===id&&(t.faction===u.faction||!friendly(u)||s.knowledge.spotted[t.id]||grazingCapable(u))&&!(u.kind==='MORTAR'&&u.cohesion==='GOOD'&&t.faction===u.faction));
     const aim=intent?.anchor??target;
     if(units.length&&i<distance(a,s.locations[aim])&&overheadAllowed(s,u,aim,id)&&(extended||units.every(t=>t.faction===u.faction)))continue;
     if(units.length)return id;
@@ -217,7 +219,7 @@ export function automaticTargetCard(s,u,targets,projectedFire=s.fire) {
   if(friendly(u)) {
     const nearest=Math.min(...cards.map(id=>distance(s.locations[u.location],s.locations[id])));
     cards=cards.filter(id=>distance(s.locations[u.location],s.locations[id])===nearest);
-    const strength=id=>Math.min(99,...projectedFire.filter(f=>f.origin===id&&s.units[f.source]?.faction!==u.faction).map(f=>f.value));
+    const strength=id=>Math.min(99,...projectedFire.filter(f=>f.origin===id&&fireSource(s,f.source)?.faction!==u.faction).map(f=>f.value));
     const strongest=Math.min(...cards.map(strength));cards=cards.filter(id=>strength(id)===strongest);
   } else {
     const steps=id=>occupants(s,id).filter(t=>t.faction!==u.faction).reduce((n,t)=>n+t.steps.length,0);
@@ -225,7 +227,9 @@ export function automaticTargetCard(s,u,targets,projectedFire=s.fire) {
   }
   return cards.length===1?cards[0]:pick(s,cards,'Automatic engagement tie',!visible(s,u));
 }
+export const fireSource=(s,id)=>s.units[id]??(s.vire_runtime?.basic_fire_enabled&&s.vire_runtime.vehicles[id]?vehicleFireSource(s.vire_runtime.vehicles[id]):null);
 export function refresh(s) {
+  const vehicleSources=vehicleFireSources(s),sources=values(s.units).concat(vehicleSources);
   if(s.mission_rules?.enemyActivity==='normandy')for(const u of values(s.units).filter(u=>live(u)&&u.faction==='enemy'&&u.kind==='MORTAR'&&u.steps.length===1&&u.cohesion==='GOOD')){
    const local=occupants(s,u.location);
    if(!local.some(v=>v.id!==u.id&&v.faction===u.faction)&&local.some(v=>v.faction!==u.faction&&vofOf(v))){u.cohesion='F';u.experience='Green';u.fire=null;u.indirect=null;delete u.temporary_pdf;emit(s,'COHESION_CHANGED',`${u.name}: lone mortar confronted at point blank; Fire Team side.`,{actor:u.id,from:'GOOD',to:'F'},!visible(s,u));}
@@ -239,7 +243,7 @@ export function refresh(s) {
     if(!live(u)||u.location!==u.temporary_pdf.origin)delete u.temporary_pdf;
     else establish(`${u.faction}:${u.location}`,u.temporary_pdf.target);
   }
-  for(const u of values(s.units).filter(live)) {
+  for(const u of sources.filter(live)) {
     rememberDirection(s,u);
     if(u.fire)u.fire=fireDestination(s,u,u.fire,true);
     u.fire_effect=u.fire;
@@ -248,13 +252,13 @@ export function refresh(s) {
   }
   const selectionSnapshot={units:structuredClone(s.units)};
   const indirectUnits=values(s.units).filter(u=>live(u)&&u.indirect&&!u.exposed&&u.steps.length>=2&&u.cohesion==='GOOD'&&!u.pinned&&u.indirect!==u.location&&!['Building','Bunker','Deep Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type)&&s.locations[u.location].terrain!=='woods');
-  const projectedFire=values(s.units).filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)&&!indirectUnits.includes(u)).map(u=>({source:u.id,origin:u.location,value:basicValue(u,distance(s.locations[u.location],s.locations[u.fire]))})).filter(f=>f.value!==null).concat(indirectUnits.map(u=>({source:u.id,origin:u.location,value:-3})));
-  for (const u of values(s.units).filter(live)) {
-    if (occupants(s,u.location).some(t=>t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]))&&canFire(s,u,u.location))u.fire=u.location;
-    const key=`${u.faction}:${u.location}`,joined=[...(established.get(key)??[])].filter(id=>canFire(s,u,id));
+  const projectedFire=sources.filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)&&!indirectUnits.includes(u)).map(u=>({source:u.id,origin:u.location,value:basicValue(u,distance(s.locations[u.location],s.locations[u.fire]))})).filter(f=>f.value!==null).concat(indirectUnits.map(u=>({source:u.id,origin:u.location,value:-3})));
+  for (const u of sources.filter(live)) {
+    if (fireTargets(s,u).some(t=>t.location===u.location&&t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]))&&canFire(s,u,u.location))u.fire=u.location;
+    const key=`${u.faction}:${u.location}`,joined=[...(established.get(key)??[])].filter(id=>canFire(s,u,id)&&!vehicleOnlyBasicBlocked(s,u,id));
     if(!u.fire&&joined.length)u.fire=automaticTargetCard(s,u,joined.map(location=>({location})),projectedFire);
     if (!u.fire && !u.indirect && basicValue(u) !== null) {
-      const targets = values(s.units).filter(t => live(t) && t.faction !== u.faction &&
+      const targets = fireTargets(s,u).filter(t => live(t) && t.faction !== u.faction &&
         (!friendly(u) || s.knowledge.spotted[t.id]) && canFire(s,u,t.location) && fireDestination(s,u,t.location)===t.location &&
         (!friendly(u) || !occupants(s,t.location).some(v=>friendly(v)) || t.location === u.location));
       if (targets.length)u.fire=fireDestination(s,u,u.mission_weapon&&vofOf(u)==='S!'?sniperTargetCard(s,u,targets,selectionSnapshot):automaticTargetCard(s,u,targets,projectedFire));
@@ -262,7 +266,7 @@ export function refresh(s) {
     rememberDirection(s,u);u.fire_effect=u.fire;
     if(u.fire)establish(key,u.fire);
   }
-  s.fire = values(s.units).filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)).flatMap(u => basicFireTargets(s,u,u.fire).map(target=>({
+  s.fire = sources.filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)).flatMap(u => basicFireTargets(s,u,u.fire).map(target=>({
     source:u.id, origin:u.location, target, value:basicValue(u,distance(s.locations[u.location],s.locations[target])), indirect:false,
     direction:structuredClone(u.fire_direction),
     reason:target!==u.fire?'GRAZING_FIRE':screen(s,u.location)?'BLOCKED_AT_SOURCE':screen(s,u.fire)?'BLOCKED_BY_SMOKE':u.fire_direction?.anchor!==u.fire?'INTERCEPTED_OR_FOLLOWING':occupants(s,u.fire).some(t=>t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]))?'ENGAGED':'CONTINUING_AT_CLEARED_POSITION',
@@ -271,9 +275,10 @@ export function refresh(s) {
     s.fire = s.fire.filter(f=>f.source!==u.id);
     s.fire.push({source:u.id,origin:u.location,target:u.indirect,value:-3,indirect:true});
   }
-  s.markers=s.markers.filter(m=>m.type!=='CONCENTRATE'||(live(s.units[m.source])&&s.units[m.source].fire===m.location&&canFire(s,s.units[m.source],m.location)));
+  storeVehicleFire(s,vehicleSources);
+  s.markers=s.markers.filter(m=>{const source=fireSource(s,m.source);return m.type!=='CONCENTRATE'||(live(source)&&source.fire===m.location&&canFire(s,source,m.location));});
   for (const f of s.fire) {
-    const u=s.units[f.source], affectsFriendly=occupants(s,f.target).some(friendly);
+    const u=fireSource(s,f.source), affectsFriendly=occupants(s,f.target).some(friendly);
     if (!friendly(u) && affectsFriendly) s.knowledge.suspected[f.origin]=true;
     if(s.mission_contacts&&!friendly(u)&&!f.indirect&&!old.has(`${f.source}:${f.target}:${f.value}`)){
       const a=s.locations[f.origin],b=s.locations[f.target],d=distance(a,b);
@@ -309,7 +314,7 @@ export function spot(s,u) {
 }
 export const spottingLocations = s => Object.keys(s.knowledge.suspected).filter(id=>occupants(s,id).some(u=>!friendly(u)&&!s.knowledge.spotted[u.id]));
 export function hasFire(s,id,{includeInactiveMines=true}={}) { return includeInactiveMines&&!!s.locations[id]?.mines || s.fire.some(f=>f.target===id) || s.support.some(f=>f.status==='ACTIVE'&&f.location===id) || s.markers.some(m=>m.location===id&&['GRENADE','GRENADE_MISS','MINES','SNIPER'].includes(m.type)); }
-export function incoming(s,u) { return s.fire.filter(f=>f.target===u.location && (f.origin !== u.location || s.units[f.source].faction !== u.faction)); }
+export function incoming(s,u) { return s.fire.filter(f=>f.target===u.location && (f.origin !== u.location || fireSource(s,f.source)?.faction !== u.faction)); }
 export function combatExposure(s,u) {
   const terrain=s.locations[u.location], cover=coverOf(s,u), fire=incoming(s,u);
   const indirect=s.support.filter(f=>f.status==='ACTIVE'&&f.location===u.location);
@@ -346,6 +351,7 @@ export function combatExposure(s,u) {
 }
 export const combatModifier=combatExposure;
 export function movementReason(s,u,target) {
+  if(u.embarked_on)return 'Disembark before issuing an infantry movement order.';
   const to=s.locations[target],from=s.locations[u.location];
   if(u.mobile===false&&u.cohesion==='GOOD')return 'This gun cannot move on its good-order side.';
   if(!u.pinned&&u.cohesion!=='P'){const load=transportReason(s,u)??ammoLoadReason(s,u);if(load)return load;}

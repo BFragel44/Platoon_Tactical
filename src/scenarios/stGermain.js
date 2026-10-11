@@ -19,7 +19,7 @@ const units=structuredClone(cerisy.units).map(u=>({...u,location:`r1c${u.platoon
 for(const attachment of content.attachments.filter(u=>u.kind==='HMG'))units.push({...structuredClone(attachment),faction:'friendly',platoon:null,location:'r1c5',vof:'A+',range:3,radios:[],tripod:true,fire_team_vof:'A'});
 export const stGermain={
  ...structuredClone(cerisy),id:content.id,name:content.name,version:content.version,units,
- readiness:{playable:false,stage:'development playtest',development_validated:true,missing:['explicit-phase user acceptance']},
+ readiness:{playable:true,stage:'accepted standalone',development_validated:true,missing:[]},
  assets:{...structuredClone(cerisy.assets),s12:{illum:2},...Object.fromEntries(Object.entries(cerisy.assets).map(([id,a])=>[id,{...a,...(['s11','s12','s21','s31'].includes(id)?{illum:2}:{})}]))},
  map:{...structuredClone(cerisy.map),...content.map},
  patrol_plan:{platoon:1,primary:'r4c3',route:['r2c1','r3c2','r4c3','r2c2'],cop:'r2c3',ccp:'r1c2',concentration:'r4c3'},

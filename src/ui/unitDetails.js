@@ -9,6 +9,7 @@ export function formationLabel(unit) {
   if(unit.kind==='HQ')return `${unit.platoon??unit.name.match(/\d+/)?.[0]??''}HQ`;
   if(unit.kind==='FO')return /artillery/i.test(unit.name)?'ART FO':'MTR FO';
   const number=unit.name.match(/^(\d+)\//)?.[1]??'';
+  if(/Fallschirmj/i.test(unit.name))return `${number}FJ`;
   if(unit.kind==='MORTAR')return `${number}MTR`;
   if(['MG','LMG','HMG'].includes(unit.kind))return `${number}${/HMG/.test(unit.name)?'HMG':'LMG'}`;
   if(['AT','BAZOOKA'].includes(unit.kind))return `${number}AT`;
