@@ -165,3 +165,9 @@
 .unavailable-orders dt{font-weight:600;margin-top:8px;}
 .unavailable-orders dd{margin:3px 0 8px;color:#bac4ad;line-height:1.4;}
 .company-orders [hidden]{display:none!important;}
+
+.company-preparation { width:min(760px,90vw); max-height:85vh; overflow:auto; background:#1c2b22; color:#e8e3c7; border:2px solid #b4aa72; padding:1.25rem; font:inherit; }
+.company-preparation label { display:block; margin:.75rem 0; }
+.company-preparation select { display:block; max-width:100%; width:100%; }
+.company-preparation button { margin:.3rem; }
+.company-preparation::backdrop { background:#0009; }

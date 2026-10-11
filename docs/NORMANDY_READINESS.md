@@ -92,3 +92,11 @@ Standalone Mission 3 work started October 6, 2026 after Cerisy acceptance. See [
 - [ ] Later mission dependencies individually: Hasty Defense/bunkers; night/weather/patrol routes; artillery concentrations; then vehicles/AT/engineers and Delay Defense.
 
 KUTF achievements are not campaign experience. Unlimited KUTF ammunition/marker assumptions and simplified communications stay mission-specific. Vehicles are not prerequisites for Trévières and remain later work.
+
+## October 11 company preparation candidate
+
+All seven standalone missions are normally selectable. File > Campaign company provides a fresh M1 company with separate preparation/tactical storage and no automatic imports. [Company readiness](CAMPAIGN_COMPANY_READINESS.md) records evidence and remaining audits. Connected advancement remains gated.
+
+## October 11 normal vehicle release and company preparation
+
+All seven standalone missions are normally selectable. M6/M7 setup and recovery now dispatch by selected mission, with separate saves and compatible development URLs. File > Campaign company provides a fresh M1 company with separate preparation/tactical storage and no automatic imports. [Company readiness](CAMPAIGN_COMPANY_READINESS.md) records evidence and remaining audits. Connected advancement remains gated.

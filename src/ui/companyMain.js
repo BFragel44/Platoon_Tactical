@@ -1,3 +1,6 @@
+import {readCompanyPreparation} from '../sim/company/campaignPreparation.js';
+import {openCompanyPreparation} from './campaignPreparation.js';
+import {trevieres} from '../scenarios/trevieres.js';
 import {submitVehicleInteraction,withVehicleHQActivationTargets,companyVehicleActivationOperation} from './vehicleInteraction.js';
 import {vire as vireScenario} from '../scenarios/vire.js';
 import {tinchebray} from '../scenarios/tinchebray.js';
@@ -44,29 +47,52 @@ import {vireControls,bindVireControls,integrateVehicleControls} from './vireCont
 import {applyVireOperation,exportVireAdapterReplay,importVireAdapterReplay} from '../sim/company/vireIntegration.js';
 
 const app=document.querySelector('#app');
-const tinchebrayDevelopment=new URLSearchParams(location.search).get('tinchebrayDev')==='1';
-const vireDevelopment=tinchebrayDevelopment||new URLSearchParams(location.search).get('vireDev')==='1';
-const vire=tinchebrayDevelopment?tinchebray:vireScenario;
-const previewVireSetup=tinchebrayDevelopment?previewTinchebraySetup:originalPreviewVireSetup;
-const createVireDevelopmentMission=tinchebrayDevelopment?createTinchebrayDevelopmentMission:originalCreateVireDevelopmentMission;
-const createVireRoster=tinchebrayDevelopment?createTinchebrayMissionRoster:originalCreateVireRoster;
-const saveVireRecovery=tinchebrayDevelopment?saveTinchebrayRecovery:originalSaveVireRecovery;
-const resumeVireCheckpoint=tinchebrayDevelopment?resumeTinchebrayCheckpoint:originalResumeVireCheckpoint;
-const readVireRecovery=tinchebrayDevelopment?readTinchebrayRecovery:originalReadVireRecovery;
-const VIRE_SAVE_KEY=tinchebrayDevelopment?TINCHEBRAY_SAVE_KEY:ORIGINAL_VIRE_SAVE_KEY;
+const activeVehicleMission=()=>{try{return localStorage.getItem('platoon-active-vehicle-mission');}catch{return null;}};
+let tinchebrayDevelopment=new URLSearchParams(location.search).get('tinchebrayDev')==='1'||new URLSearchParams(location.search).get('vireDev')!=='1'&&activeVehicleMission()==='normandy_7';
+const vireDevelopment=tinchebrayDevelopment||new URLSearchParams(location.search).get('vireDev')==='1'||activeVehicleMission()==='normandy_6';
+let vire=tinchebrayDevelopment?tinchebray:vireScenario;
+let previewVireSetup=tinchebrayDevelopment?previewTinchebraySetup:originalPreviewVireSetup;
+let createVireDevelopmentMission=tinchebrayDevelopment?createTinchebrayDevelopmentMission:originalCreateVireDevelopmentMission;
+let createVireRoster=tinchebrayDevelopment?createTinchebrayMissionRoster:originalCreateVireRoster;
+let saveVireRecovery=tinchebrayDevelopment?saveTinchebrayRecovery:originalSaveVireRecovery;
+let resumeVireCheckpoint=tinchebrayDevelopment?resumeTinchebrayCheckpoint:originalResumeVireCheckpoint;
+let readVireRecovery=tinchebrayDevelopment?readTinchebrayRecovery:originalReadVireRecovery;
+let VIRE_SAVE_KEY=tinchebrayDevelopment?TINCHEBRAY_SAVE_KEY:ORIGINAL_VIRE_SAVE_KEY;
+function selectVehicleMission(definition){
+ tinchebrayDevelopment=definition.id===tinchebray.id;vire=definition;
+ previewVireSetup=tinchebrayDevelopment?previewTinchebraySetup:originalPreviewVireSetup;
+ createVireDevelopmentMission=tinchebrayDevelopment?createTinchebrayDevelopmentMission:originalCreateVireDevelopmentMission;
+ createVireRoster=tinchebrayDevelopment?createTinchebrayMissionRoster:originalCreateVireRoster;
+ saveVireRecovery=tinchebrayDevelopment?saveTinchebrayRecovery:originalSaveVireRecovery;
+ resumeVireCheckpoint=tinchebrayDevelopment?resumeTinchebrayCheckpoint:originalResumeVireCheckpoint;
+ readVireRecovery=tinchebrayDevelopment?readTinchebrayRecovery:originalReadVireRecovery;
+ VIRE_SAVE_KEY=tinchebrayDevelopment?TINCHEBRAY_SAVE_KEY:ORIGINAL_VIRE_SAVE_KEY;
+}
 let vehicleBoot=null,vehicleBootError='';
 if(vireDevelopment)try{const saved=readVireRecovery(localStorage);if(saved.error)vehicleBootError=saved.error;else if(saved.bundle){const restored=resumeVireCheckpoint(saved.bundle.latest);if(restored.state.scenario_id!==vire.id)throw new Error('Saved vehicle integration is not a Vire mission.');vehicleBoot=restored;}}catch(e){vehicleBootError=e.message;}
-let seed=vehicleBoot?.state.seed??'company-1',mission=vehicleBoot?.state??(vireDevelopment?createVireDevelopmentMission(seed):createMission(companyAssault,seed)),selected=null,action='ACTIVATE',target='',generalIssuer='co',contributors=[];
+let campaignBoot=null,campaignBootError='';
+if(activeVehicleMission()==='campaign_m1')try{
+ const company=readCompanyPreparation(localStorage),saved=readRecovery({getItem:key=>localStorage.getItem('connected-'+key)});
+ if(saved.error||!saved.bundle)throw new Error(saved.error??'Missing campaign tactical recovery.');
+ campaignBoot=resumeCheckpoint(trevieres,saved.bundle.latest);
+ if(campaignBoot.state.roster_snapshot?.company_id!==company?.roster.company_id)throw new Error('Campaign tactical recovery belongs to a different company.');
+}catch(e){campaignBoot=null;campaignBootError=e.message;}
+let seed=vehicleBoot?.state.seed??campaignBoot?.state.seed??'company-1',mission=vehicleBoot?.state??campaignBoot?.state??(vireDevelopment?createVireDevelopmentMission(seed):createMission(companyAssault,seed)),selected=null,action='ACTIVATE',target='',generalIssuer='co',contributors=[];
 let combatId=null,combatStage='pre',combatOpen=true,contactAcknowledged=null;
 let recoveryResult=null,reviewId=null,turnNotice=false;
 let commandLinks=false;
 let selectedVehicle=null,vehicleRoute=[];
 let selectedPdf=null,cleanupMap=null,camera=normalizeCamera(),ordersScroll=0,ordersSaveTimer=null;
-let recovery={raw:null,bundle:null,error:null},storageError='',recoveryPending=false,turnStart=checkpoint(mission);
-try{if(!vireDevelopment){recovery=readRecovery(localStorage);recoveryPending=recovery.raw!==null;}}catch(e){storageError=`Local storage unavailable: ${e.message}. Export replays manually.`;}
+let recovery={raw:null,bundle:null,error:null},storageError=campaignBootError,recoveryPending=false,turnStart=checkpoint(mission);
+try{if(!vireDevelopment&&!campaignBoot){recovery=readRecovery(localStorage);recoveryPending=recovery.raw!==null;}}catch(e){storageError=`Local storage unavailable: ${e.message}. Export replays manually.`;}
 const presentation=()=>({commandLinks,camera,ordersScroll,selectedVehicle,vehicleRoute,selected,action,target,generalIssuer,contributors,selectedPdf,combatId,combatStage,combatOpen,contactAcknowledged,recoveryResult,reviewId,turnNotice,feedback,feedbackKind});
 function persist(previous=null,replace=false){
-  if(mission.vire_runtime){try{saveVireRecovery(localStorage,mission,presentation(),{replace});storageError='';}catch(e){storageError=`Vehicle integration save failed: ${e.message}`;}return;}
+ let connected=null;try{connected=readCompanyPreparation(localStorage);}catch(e){storageError=e.message;}
+ if(connected&&connected.roster.company_id===mission.roster_snapshot?.company_id){
+  try{const storage={getItem:key=>localStorage.getItem('connected-'+key),setItem:(key,value)=>localStorage.setItem('connected-'+key,value)};saveRecovery(storage,mission,presentation(),{replace});localStorage.setItem('platoon-active-vehicle-mission','campaign_m1');storageError='';}catch(e){storageError=e.message;}return;
+ }
+
+  if(mission.vire_runtime){try{selectVehicleMission(missionById(mission.scenario_id));saveVireRecovery(localStorage,mission,presentation(),{replace});localStorage.setItem('platoon-active-vehicle-mission',mission.scenario_id);storageError='';}catch(e){storageError=`Vehicle integration save failed: ${e.message}`;}return;}
   if(recoveryPending&&!replace)return;
   if(mission.status==='ACTIVE'&&(replace||previous&&(mission.turn!==previous.turn||mission.attempt_number!==previous.attempt_number)))turnNotice=true;
   if(replace||previous&&(mission.turn!==previous.turn||mission.attempt_number!==previous.attempt_number))turnStart=checkpoint(mission,presentation());
@@ -97,6 +123,7 @@ function drawFirePaths(view){
   }).join('');
 }
 function render(){
+ if(mission.vire_runtime)selectVehicleMission(missionById(mission.scenario_id));
   const mapObjectives=mission.patrol?{primary:{location:mission.patrol.plan.primary},ccp:{location:mission.objectives.ccp},cop:{location:mission.patrol.plan.cop},concentration:{location:mission.patrol.plan.concentration},...Object.fromEntries(mission.patrol.plan.route.map((location,i)=>[`route ${i+1}`,{location,completed:i<mission.patrol.visited.length}]))}:null;
   const issuer=action==='BN_RECONSTITUTE_CO'?'offmap_bn':mission.impulse?.hq==='general'?generalIssuer:mission.impulse?.hq;
   const v=getPlayerView(mission,'friendly',issuer),events=getVisibleEvents(mission).map(e=>e.type==='HQ_EVENT'||e.type==='HQ_EVENT_CHOICE_REQUIRED'?{...e,text:hqEventExplanation({...e,final_row:mission.boundaries?.rows,hill192:!!mission.mission_rules.hill192,vire:!!mission.mission_rules.vire},id=>v.locations.find(l=>l.id===id)?.name??id)}:e),aar=getAfterActionReport(mission);
@@ -216,7 +243,7 @@ function render(){
   const openVehicleSetup=nextSeed=>{selectedVehicle=null;openMissionSetup(app,vire,nextSeed,setup=>{const {vehicle_positions,jeep,...infantry}=setup;const next=createVireDevelopmentMission(nextSeed,infantry,vehicle_positions,{jeep});startStandaloneRoster(localStorage,createVireRoster(),vire.rules.rosterKey);mission=next;seed=nextSeed;commandLinks=false;camera=normalizeCamera();ordersScroll=0;combatId=null;combatStage='pre';combatOpen=true;contactAcknowledged=null;selected=null;action='ACTIVATE';target='';contributors=[];selectedPdf=null;recoveryResult=null;reviewId=null;persist(null,true);render();},{preview:(_definition,nextSeed,setup={})=>{const {vehicle_positions,jeep,...infantry}=setup;return {...previewVireSetup(nextSeed,infantry,vehicle_positions,jeep),playable:true};}});};
   if(mission.vire_runtime){
    app.querySelectorAll('[data-vehicle]').forEach(b=>b.onclick=()=>{selectedVehicle=b.dataset.vehicle;vehicleRoute=[];selected=null;ordersScroll=0;persist();render();});
-   const button=document.createElement('button');button.id='vire-setup';button.textContent=tinchebrayDevelopment?'New Tinchebray development setup':'New Vire development setup';app.querySelector('#vire-controls').append(button);
+   const button=document.createElement('button');button.id='vire-setup';button.textContent=tinchebrayDevelopment?'New Tinchebray setup':'New Vire setup';app.querySelector('#vire-controls').append(button);
    button.onclick=()=>openVehicleSetup(seed);
   }
   bindVireControls(app,{submit:operation=>{selectedVehicle=operation.type==='ENGINE_OPERATION'&&operation.operation?.op==='selectHQ'?operation.operation.id:app.querySelector('#vire-firer')?.value??selectedVehicle;const next=submitVehicleInteraction(mission,operation);mission=next;if(operation.type==='PREPARE_VEHICLE_MOVE')vehicleRoute=[];persist();render();if(['PREPARE_VEHICLE_MOVE','STEP_VEHICLE_MOVE'].includes(operation.type))app.querySelector('#focus-unit')?.click();},exportSave:()=>download(tinchebrayDevelopment?'tinchebray-recovery-original.json':'vire-recovery-original.json',localStorage.getItem(VIRE_SAVE_KEY)??'null'),restoreSaved:()=>{const saved=readVireRecovery(localStorage);if(saved.error||!saved.bundle)throw new Error(saved.error??'No vehicle recovery available.');const restored=resumeVireCheckpoint(saved.bundle.latest);mission=restored.state;camera=normalizeCamera(restored.presentation.camera);commandLinks=restored.presentation.commandLinks===true;selected=restored.presentation.selected??null;selectedVehicle=restored.presentation.selectedVehicle??null;vehicleRoute=restored.presentation.vehicleRoute??[];render();},exportReplay:()=>download(tinchebrayDevelopment?'tinchebray-integration-replay.json':'vire-integration-replay.json',exportVireAdapterReplay(mission.vire_runtime.initial_state,mission)),restore:record=>{const restored=record.schema?resumeVireCheckpoint(record.latest):{state:importVireAdapterReplay(record),presentation:{}};if(restored.state.scenario_id!==vire.id)throw new Error('Imported vehicle replay belongs to a different mission.');mission=restored.state;const p=restored.presentation;camera=normalizeCamera(p.camera);commandLinks=p.commandLinks===true;selected=p.selected??null;selectedVehicle=p.selectedVehicle??null;vehicleRoute=p.vehicleRoute??[];persist(null,true);render();}});
@@ -270,7 +297,12 @@ function render(){
   const missionSelect=app.querySelector('#mission-select');
   const availability=()=>{const entry=missionCatalog.find(m=>m.id===missionSelect.value);app.querySelector('#restart').disabled=!!entry?.unavailable;app.querySelector('#preview-setup').disabled=!entry?.scenario?.map;app.querySelector('#mission-availability').textContent=entry?.unavailable?'Unavailable: '+entry.unavailable:'';};
   missionSelect.onchange=availability;availability();
-  const startMission=(definition,nextSeed,setup={})=>{
+  const companyButton=document.createElement('button');companyButton.textContent='Campaign company';companyButton.id='company-preparation';app.querySelector('#restart').after(companyButton);
+ companyButton.onclick=()=>openCompanyPreparation({scenario:trevieres,mission,download,resume:()=>{const st={getItem:key=>localStorage.getItem('connected-'+key)};const saved=readRecovery(st);if(saved.error||!saved.bundle)throw new Error(saved.error??'No campaign mission recovery.');mission=resumeCheckpoint(trevieres,saved.bundle.latest).state;recoveryPending=false;persist();render();},start:record=>openMissionSetup(app,trevieres,seed,setup=>{
+  const next=createMission(trevieres,seed,setup,{mission_instance_id:crypto.randomUUID(),roster:record.roster});
+  mission=next;selected='co';recoveryPending=false;localStorage.removeItem('platoon-active-vehicle-mission');persist(null,true);render();
+ })});
+ const startMission=(definition,nextSeed,setup={})=>{
     definition=hill192DeploymentDefinition(definition,setup);
     let campaign=null,deployment=null;
     if(definition.rules?.missionIdentity){
@@ -281,12 +313,12 @@ function render(){
     const next=createMission(definition,nextSeed,setup,deployment); // Validate before replacing the active state/save.
     if(campaign&&definition.rules.standaloneRoster)startStandaloneRoster(localStorage,campaign,definition.rules.rosterKey);
     else if(campaign&&!readCampaign(localStorage,definition.rules.rosterKey).record)saveCampaign(localStorage,campaign,definition.rules.rosterKey);
-    mission=next;seed=nextSeed;commandLinks=false;camera=normalizeCamera();ordersScroll=0;combatId=null;combatStage='pre';combatOpen=true;contactAcknowledged=null;selected='co';action='ACTIVATE';target='';contributors=[];selectedPdf=null;recoveryResult=null;reviewId=null;
+    localStorage.removeItem('platoon-active-vehicle-mission');mission=next;seed=nextSeed;commandLinks=false;camera=normalizeCamera();ordersScroll=0;combatId=null;combatStage='pre';combatOpen=true;contactAcknowledged=null;selected='co';action='ACTIVATE';target='';contributors=[];selectedPdf=null;recoveryResult=null;reviewId=null;
     feedbackKind='Status';feedback=`${mission.mission_name} started with seed ${seed}.`;recoveryPending=false;persist(null,true);render();
   };
   const setupMission=()=>{
     const definition=missionById(missionSelect.value),nextSeed=app.querySelector('#seed').value.trim()||seed;
-    if(vireDevelopment&&definition.id===vire.id){openVehicleSetup(nextSeed);return;}
+    if([vireScenario.id,tinchebray.id].includes(definition.id)){selectVehicleMission(definition);openVehicleSetup(nextSeed);return;}
     const result=openMissionSetup(app,definition,nextSeed,definition.readiness?.playable!==false?setup=>startMission(definition,nextSeed,setup):null);
     if(result.error)app.querySelector('#mission-availability').textContent=result.error;
   };
@@ -300,11 +332,11 @@ function render(){
   const patrol=app.querySelector('#result-patrol');if(patrol)patrol.onclick=()=>openPatrolSetup(app,mission,next=>{const previous=mission;mission=next;selected=`hq${next.patrol.plan.platoon}`;feedbackKind='Patrol preparation';feedback='Next patrol prepared. Continue explicit phase stepping.';persist(previous);render();});
   const reattempt=app.querySelector('#result-reattempt');if(reattempt)reattempt.onclick=()=>openReattemptSetup(app,mission,next=>{const previous=mission;mission=next;selected='co';feedbackKind='Mission reattempt';feedback='Second attempt prepared. Continue explicit phase stepping.';persist(previous);render();});
   const decline=app.querySelector('#result-decline-reattempt');if(decline)decline.onclick=()=>{const before=mission;mission=declineReattempt(mission).state;persist(before);render();};
-  const campaignExport=app.querySelector('#campaign-export');if(campaignExport)campaignExport.onclick=()=>{try{const saved=readCampaign(localStorage,mission.mission_rules?.rosterKey);if(saved.error||!saved.record)throw new Error(saved.error??'No company roster is saved.');download(mission.mission_rules?.tinchebray?'tinchebray-standalone-company-roster.json':mission.mission_rules?.vire?'vire-standalone-company-roster.json':mission.mission_rules?.hill192?'hill-192-standalone-company-roster.json':mission.scenario_id==='normandy_5'?'st-germain-standalone-company-roster.json':mission.scenario_id==='normandy_3'?'st-georges-standalone-company-roster.json':mission.scenario_id==='normandy_2'?'cerisy-standalone-company-roster.json':'normandy-company-roster.json',saved.record);}catch(error){storageError=error.message;render();}};
-  const debrief=app.querySelector('#result-debrief');if(debrief)debrief.onclick=()=>{try{debriefAndSave(localStorage,mission,mission.mission_rules.rosterKey);feedbackKind='Company roster';feedback='Mission losses recorded once in the company roster.';render();}catch(error){storageError=error.message;render();}};
+  const campaignExport=app.querySelector('#campaign-export');if(campaignExport)campaignExport.onclick=()=>{try{const connected=readCompanyPreparation(localStorage);if(connected&&connected.roster.company_id===mission.roster_snapshot?.company_id){download('normandy-connected-company.json',connected);return;}const saved=readCampaign(localStorage,mission.mission_rules?.rosterKey);if(saved.error||!saved.record)throw new Error(saved.error??'No company roster is saved.');download(mission.mission_rules?.tinchebray?'tinchebray-standalone-company-roster.json':mission.mission_rules?.vire?'vire-standalone-company-roster.json':mission.mission_rules?.hill192?'hill-192-standalone-company-roster.json':mission.scenario_id==='normandy_5'?'st-germain-standalone-company-roster.json':mission.scenario_id==='normandy_3'?'st-georges-standalone-company-roster.json':mission.scenario_id==='normandy_2'?'cerisy-standalone-company-roster.json':'normandy-company-roster.json',saved.record);}catch(error){storageError=error.message;render();}};
+  const debrief=app.querySelector('#result-debrief');if(debrief)debrief.onclick=()=>{try{if(readCompanyPreparation(localStorage)?.roster.company_id===mission.roster_snapshot?.company_id){companyButton.click();return;}debriefAndSave(localStorage,mission,mission.mission_rules.rosterKey);feedbackKind='Company roster';feedback='Mission losses recorded once in the company roster.';render();}catch(error){storageError=error.message;render();}};
 }
-if(vireDevelopment){
- if(vehicleBoot){const p=vehicleBoot.presentation;camera=normalizeCamera(p.camera);commandLinks=p.commandLinks===true;selected=p.selected??null;selectedVehicle=p.selectedVehicle??null;vehicleRoute=p.vehicleRoute??[];ordersScroll=p.ordersScroll??0;action=p.action??'ACTIVATE';target=p.target??'';generalIssuer=p.generalIssuer??'co';contributors=p.contributors??[];selectedPdf=p.selectedPdf??null;combatId=p.combatId??null;combatStage=completeCombatStage(p.combatStage??'pre');combatOpen=p.combatOpen??true;contactAcknowledged=p.contactAcknowledged??null;recoveryResult=p.recoveryResult??null;reviewId=p.reviewId??null;turnNotice=p.turnNotice??false;feedback=p.feedback??'Restored Vire development mission.';feedbackKind=p.feedbackKind??'Recovery';}
+if(vireDevelopment||campaignBoot){
+ if(vehicleBoot||campaignBoot){const p=(vehicleBoot??campaignBoot).presentation;camera=normalizeCamera(p.camera);commandLinks=p.commandLinks===true;selected=p.selected??null;selectedVehicle=p.selectedVehicle??null;vehicleRoute=p.vehicleRoute??[];ordersScroll=p.ordersScroll??0;action=p.action??'ACTIVATE';target=p.target??'';generalIssuer=p.generalIssuer??'co';contributors=p.contributors??[];selectedPdf=p.selectedPdf??null;combatId=p.combatId??null;combatStage=completeCombatStage(p.combatStage??'pre');combatOpen=p.combatOpen??true;contactAcknowledged=p.contactAcknowledged??null;recoveryResult=p.recoveryResult??null;reviewId=p.reviewId??null;turnNotice=p.turnNotice??false;feedback=p.feedback??'Restored Vire development mission.';feedbackKind=p.feedbackKind??'Recovery';}
  else if(!vehicleBootError)try{startStandaloneRoster(localStorage,createVireRoster(),mission.mission_rules.rosterKey);saveVireRecovery(localStorage,mission,presentation());}catch(e){vehicleBootError=e.message;}
  if(vehicleBootError)storageError=`Vire recovery unavailable: ${vehicleBootError}. Original save export remains available in Vehicle controls.`;
 }

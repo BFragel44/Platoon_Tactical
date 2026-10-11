@@ -6,9 +6,9 @@ import {createMission,RULES_VERSION} from '../src/sim/company/engine.js';
 import {delayActivityTable} from '../src/sim/company/enemyHierarchy.js';
 const capabilities={supportedEnemyKinds:c.required_enemy_kinds,supportedVehicleProfiles:['M4_SHERMAN75','M5_LIGHT37']};
 describe('Vire source-backed authored foundation',()=>{
- it('cannot execute or enter normal selection before vehicle validation',()=>{
-  expect(vire.readiness.playable).toBe(false);
-  expect(missionCatalog.some(m=>m.id===vire.id)).toBe(false);
+ it('enters normal selection while requiring the complete vehicle factory',()=>{
+  expect(vire.readiness.playable).toBe(true);
+  expect(missionCatalog.some(m=>m.id===vire.id)).toBe(true);
   expect(()=>createMission(vire,'no-bypass')).toThrow();
   expect(RULES_VERSION).toBe(33);
   expect(missionCatalog.filter(m=>/^normandy_[1-5]$/.test(m.id))).toHaveLength(5);

@@ -1,10 +1,10 @@
 # Normandy Mission 7 — Tinchebray Offensive
 
-Status, October 10, 2026: standalone explicit-phase playtest candidate ready. Normal selection remains gated for explicit-phase user acceptance. M6 remains independently gated for its playtest. No M6 company or save is consumed or advanced to start this mission. Development URL: `http://localhost:5173/?tinchebrayDev=1`.
+Status, October 11, 2026: the user accepted the standalone M7 explicit-phase playtest, reporting no issues. M6 was accepted separately on the same date. The user-acceptance gate is complete for both vehicle missions; normal catalog selection and mission-specific recovery routing are now enabled. M7 consumes no M6 company or save. Development URL remains `http://localhost:5173/?tinchebrayDev=1`. Connected campaign progression and broader vehicle usability work remain deferred.
 
 ## Current release evidence
 
-M7 replay envelope **version 3**, content 1, shared base rules 33 and common vehicle runtime 14. Earlier incomplete M7 envelopes 1/2 are rejected while original exports remain accessible; M6 adapter-14 records retain their original format and behavior. The vehicle-only contact/reveal, AT synchronization and nested package-9 leader corrections apply to M7 without changing accepted mission execution.
+Current M7 replay envelope is **version 4**, content 1, shared base rules 33 and common vehicle runtime 15. Prior vehicle records are rejected for resume while original exports remain accessible. The vehicle boundary correction is validated independently; the subsequent UI refinements do not change simulation/replay versions. Earlier dated evidence below is retained as history.
 
 - Complete-run fixtures pass: controlled thirty-turn three-attempt run; combat-bearing ten-turn success; combat-bearing failure → failure → success. All use normal explicit phases and exact replay; outcome checkpoints reload, immutable attempt records persist, and duplicate debrief is rejected. These are deterministic authored battle setups, not autonomous coverage of every possible randomly generated fight.
 - Source-focused fixtures cover published package alternatives, nested leader placement, every HQ-event table slot, mine/close/point-blank boundaries, counter exhaustion, finite support and caller draws, battalion choices, Green profiles, unique XP spending, finite M5 entry and preserved M10 losses/wrecks across both reattempts.
@@ -146,7 +146,7 @@ SITREP uses first three CO commands; COMM blocks BN activation and uses first tw
 - [x] Full regressions, production build, Company Assault/KUTF checks and accepted historical-reader tests; preserve source exports.
 - [x] Isolated browser checks: setup, six-row map, four M10s, five event M5 entries, all support agencies, both reattempts, pending choices, keyboard access, narrow layouts and reload.
 - [x] Provide explicit development opt-in; leave normal selection gated for user acceptance.
-- [ ] Obtain the user's explicit-phase acceptance before normal M7 selection.
+- [x] Obtain the user's explicit-phase acceptance before normal M7 selection.
 
 Connected campaign progression, between-mission replacements/promotions and the planned 3D/audio presentation remain deferred. Standalone fresh-company defaults make no claim about historical post-Vire casualties or strength.
 
@@ -175,3 +175,15 @@ Browser evidence: `scripts/vehicleInlineBrowserQA.js` now issues the normal Comp
 Friendly vehicle movement now rejects every outside-boundary card in the full proposed route before modifying state. UI route suggestions use that validation, so generated enemy-placement cards no longer offer Move here. In-boundary movement is unchanged. Focused interaction fixtures verify direct and intermediate outside-card rejection, immutable failure and allowed adjacent in-boundary destinations.
 
 Simulation compatibility: shared vehicle adapter is now 15 and Tinchebray replay envelope 4 (base infantry rules remain 33). Prior vehicle records are incompatible for resume and remain available through original-save export; start a fresh development run under the corrected version.
+
+### User playtest acceptance (2026-10-11)
+
+The user reported that M7 showed nothing amiss and is good to go. This completes standalone M7 explicit-phase user acceptance. All seven Normandy standalone missions now have recorded user acceptance; this is not validation or implementation of connected campaign progression. Vehicle presentation/usability refinement remains in `docs/FOR_LATER.md` for the next project phase. Continue correcting demonstrated gameplay bugs.
+
+## Normal selection release - October 11, 2026
+
+Accepted standalone mission is now available without a development URL. Setup/recovery dispatch by mission identity; vehicle saves remain isolated. Development URLs remain supported. Normal switching/reload/abort/restart and inline vehicle browser checks pass. Company preparation is a separate candidate; see [company readiness](CAMPAIGN_COMPANY_READINESS.md).
+
+## October 11 normal vehicle release and company preparation
+
+All seven standalone missions are normally selectable. M6/M7 setup and recovery now dispatch by selected mission, with separate saves and compatible development URLs. File > Campaign company provides a fresh M1 company with separate preparation/tactical storage and no automatic imports. [Company readiness](CAMPAIGN_COMPANY_READINESS.md) records evidence and remaining audits. Connected advancement remains gated.

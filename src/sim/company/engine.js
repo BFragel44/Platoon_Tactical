@@ -57,6 +57,7 @@ function phaseDescription(s){
 const index = a => Object.fromEntries(a.map(v=>[v.id,structuredClone(v)]));
 export function createMission(definition,seed,setup={},deployment=null,execution={}) {
   const development=(definition.id==='normandy_6'&&definition.rules?.vire&&execution.development==='vire')||(definition.id==='normandy_7'&&definition.rules?.tinchebray&&execution.development==='tinchebray');
+  if((definition.rules?.vire||definition.rules?.tinchebray)&&!development)throw new Error('Vehicle missions require the vehicle mission factory.');
   if(definition.readiness?.playable===false&&!development)throw new Error(`${definition.name} is not playable yet: ${definition.readiness.missing.join('; ')}.`);
   definition=hill192DeploymentDefinition(definition,setup);
   if(definition.rules?.standaloneRoster&&!deployment)deployment={mission_instance_id:execution.mission_instance_id??globalThis.crypto.randomUUID(),roster:createCampaignRoster(definition.rules.baselineCompanyId??'normandy_cerisy_standalone_company',definition)};

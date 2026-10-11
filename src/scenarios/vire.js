@@ -22,7 +22,7 @@ enemyCounters.push(...structuredClone(trevieres.enemy_counters.filter(u=>u.kind=
 // Explicit development execution is available; normal selection remains gated.
 export const vire={
  ...structuredClone(cerisy),id:content.id,name:content.name,version:content.version,units,
- readiness:{playable:false,stage:'explicit-phase playtest candidate',missing:['explicit-phase user acceptance']},
+ readiness:{playable:true,standalone_validated:true,stage:'accepted standalone',missing:[]},
  map:{...structuredClone(cerisy.map),...content.map},
  objectives:{type:'secure_and_clear',primary:'r5c2',secondary:'r5c3',attack:'r4c2',ccp:'r0c2',clear_rows:[1,2,3]},
  contact_rows:structuredClone(content.contact_rows),packages:structuredClone(content.packages),package_tables:structuredClone(content.package_tables),enemy_counters:enemyCounters,

@@ -14,12 +14,12 @@ describe('gated materialized Vire setup',()=>{
   expect(s.rules.hill192).toBeUndefined();expect(s.rules.patrols).toBeUndefined();
  });
  it('previews both observers, two HMGs, engineers and exactly five initial Shermans',()=>{
-  const p=previewVireSetup('vire-preview');expect(p.playable).toBe(false);
+  const p=previewVireSetup('vire-preview');expect(p.playable).toBe(true);
   for(const id of ['artyfo','mtrfo','hmg1','hmg2','engineers'])expect(p.units.some(u=>u.id===id)).toBe(true);
   expect(p.vehicles).toHaveLength(5);expect(p.vehicles.every(v=>v.profile==='M4_SHERMAN75'&&v.ammo===5&&v.crew.length===2&&v.ambushSusceptible)).toBe(true);
   expect(p.vehicles.filter(v=>v.command_role==='vehicle_platoon_hq')).toHaveLength(1);
   expect(p.vehicles.every(v=>v.command_hq==='sherman_hq')).toBe(true);expect(p.vehicles[0].radios).toEqual(['BN']);
-  expect(p.vehicles.some(v=>v.profile==='M5_LIGHT37')).toBe(false);expect(p.locations.filter(l=>l.row>=4).every(l=>!('contact_type' in l)&&!('contacts' in l))).toBe(true);expect(()=>createMission(vire,'still-gated')).toThrow(/not playable/);
+  expect(p.vehicles.some(v=>v.profile==='M5_LIGHT37')).toBe(false);expect(p.locations.filter(l=>l.row>=4).every(l=>!('contact_type' in l)&&!('contacts' in l))).toBe(true);expect(()=>createMission(vire,'still-gated')).toThrow(/vehicle mission factory/);
  });
  it('keeps attachments and published enemy equipment mission-specific',()=>{
   validateNormandyContent(vire);expect(vire.enemy_counters.filter(u=>u.kind==='SQUAD')).toHaveLength(6);

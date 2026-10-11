@@ -22,10 +22,7 @@ export const missionCatalog=[{id:companyAssault.id,name:'Company Assault — reg
  {id:stGeorges.id,name:stGeorgesDevelopment?`${stGeorges.name} · development playtest`:stGeorges.readiness.playable?stGeorges.name:`${stGeorges.name} · setup preview only`,scenario:stGeorgesCandidate,unavailable:stGeorgesDevelopment||stGeorges.readiness.playable?null:stGeorges.readiness.missing.join('; ')},
  {id:hill192.id,name:hill192.name,scenario:hill192,unavailable:hill192.readiness.playable?null:hill192.readiness.missing.join('; ')}];
 if(stGermainDevelopment||stGermain.readiness.playable)missionCatalog.push({id:stGermain.id,name:stGermainDevelopment?`${stGermain.name} · development playtest`:stGermain.name,scenario:stGermainCandidate,unavailable:null});
-// Explicit vehicle playtest opt-ins remain gated outside their development URL.
-for(const [flag,scenario]of [['vireDev',vire],['tinchebrayDev',tinchebray]]){
- if(typeof location!=='undefined'&&new URLSearchParams(location.search).get(flag)==='1')missionCatalog.push({id:scenario.id,name:`${scenario.name} · development playtest`,scenario:{...scenario,readiness:{...scenario.readiness,playable:true}},unavailable:null});
-}
+for(const scenario of [vire,tinchebray])missionCatalog.push({id:scenario.id,name:scenario.name,scenario,unavailable:scenario.readiness.playable?null:scenario.readiness.missing.join('; ')});
 export const missionById=id=>missionCatalog.find(m=>m.id===id)?.scenario;
 export function playableMissionById(id){
  const entry=missionCatalog.find(m=>m.id===id);

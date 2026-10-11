@@ -16,7 +16,7 @@ describe('Tinchebray gated foundation',()=>{
   expect(s.locations).toHaveLength(28);expect(s.contacts).toHaveLength(24);
   for(const letter of ['A','B','C'])expect(s.contacts.filter(c=>c.type===letter)).toHaveLength(8);
   expect(s.contacts.every(c=>!c.question_side)).toBe(true);
-  expect(JSON.stringify(tinchebray)).toBe(before);expect(tinchebray.readiness.playable).toBe(false);
+  expect(JSON.stringify(tinchebray)).toBe(before);expect(tinchebray.readiness.playable).toBe(true);
  });
  it('requires the primary on six, secondary on five, and attack adjacent to secondary on four',()=>{
   expect(()=>materializeScenario(tinchebray,'rows',{objectives:{primary:'r5c2'}})).toThrow();

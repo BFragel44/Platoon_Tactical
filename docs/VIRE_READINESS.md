@@ -1,6 +1,6 @@
 # Normandy 6: Vire Offensive
 
-Status, October 11, 2026: the user accepted the M6 explicit-phase playtest after the vehicle UI refinements and boundary correction. Further vehicle usability/presentation work is deferred to the next project phase and recorded in `docs/FOR_LATER.md`; it is not an outstanding M6 player-acceptance requirement. Current vehicle adapter is 15, base rules 33, content 1. The development URL remains `?vireDev=1`; normal catalog/recovery integration is still separate from this recorded acceptance. Connected campaign progression remains deferred. Earlier dated evidence below is retained as history.
+Status, October 11, 2026: the user accepted the M6 explicit-phase playtest after the vehicle UI refinements and boundary correction. Further vehicle usability/presentation work is deferred to the next project phase and recorded in `docs/FOR_LATER.md`; it is not an outstanding M6 player-acceptance requirement. Current vehicle adapter is 15, base rules 33, content 1. The development URL remains `?vireDev=1`; normal catalog selection and mission-specific recovery routing are now enabled. Connected campaign progression remains deferred. Earlier dated evidence below is retained as history.
 
 ## Authority and source audit
 
@@ -614,3 +614,11 @@ Simulation compatibility: shared vehicle adapter is now 15 and Tinchebray replay
 ### User playtest acceptance (2026-10-11)
 
 The user reported that the playtest passes and was substantially complete before the boundary-version change required a fresh run. Acceptance applies to M6; M7 acceptance is not implied. The boundary correction was covered by 39 focused movement/integration/persistence tests and a production build, rather than a new complete user playthrough. Continue fixing demonstrated gameplay defects; defer broader vehicle interaction/presentation refinement until the next project phase.
+
+## Normal selection release - October 11, 2026
+
+Accepted standalone mission is now available without a development URL. Setup/recovery dispatch by mission identity; vehicle saves remain isolated. Development URLs remain supported. Normal switching/reload/abort/restart and inline vehicle browser checks pass. Company preparation is a separate candidate; see [company readiness](CAMPAIGN_COMPANY_READINESS.md).
+
+## October 11 normal vehicle release and company preparation
+
+All seven standalone missions are normally selectable. M6/M7 setup and recovery now dispatch by selected mission, with separate saves and compatible development URLs. File > Campaign company provides a fresh M1 company with separate preparation/tactical storage and no automatic imports. [Company readiness](CAMPAIGN_COMPANY_READINESS.md) records evidence and remaining audits. Connected advancement remains gated.

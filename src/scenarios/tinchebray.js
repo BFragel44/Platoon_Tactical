@@ -4,7 +4,7 @@ import {validateNormandyContent} from '../sim/company/normandyContent.js';
 import {atProfile} from '../sim/company/vehicleCombat.js';
 export const tinchebray={
  ...structuredClone(vire),id:content.id,name:content.name,version:content.version,
- readiness:{playable:false,stage:'explicit-phase playtest candidate',missing:['explicit-phase user acceptance']},
+ readiness:{playable:true,standalone_validated:true,stage:'accepted standalone',missing:[]},
  map:{...structuredClone(vire.map),...content.map},
  objectives:{type:'secure_and_clear',primary:'r6c2',secondary:'r5c3',attack:'r4c3',ccp:'r0c2',clear_rows:[1,2,3,4,5]},
  contact_rows:structuredClone(content.contact_rows),packages:structuredClone(content.packages),package_tables:structuredClone(content.package_tables),
