@@ -1,6 +1,6 @@
 import {it,expect} from 'vitest';
 import {companyAssault} from '../src/scenarios/companyAssault.js';
-import {createMission,advancePhase,resolveCombat,getPlayerView,exportReplay,replayMission} from '../src/sim/company/engine.js';
+import {createMission,advancePhase,resolveCombat,getPlayerView,exportReplay,replayMission,replayOperation} from '../src/sim/company/engine.js';
 import {refresh,spot} from '../src/sim/company/battlefield.js';
 import {resolveDisplayedExchange} from '../src/ui/combatExchange.js';
 import {combatScreen,reciprocalCombat} from '../src/ui/combatScreen.js';
@@ -31,5 +31,15 @@ it('does not project hidden resolutions, identities or outcomes into either pane
  const s=fixture({hidden:true}),v=getPlayerView(s),before=structuredClone(s);
  expect(v.combat_resolutions.every(c=>c.target_faction==='friendly')).toBe(true);
  expect(reciprocalCombat(v.combat_resolution,v)).toBeNull();
- const html=combatScreen(v.combat_resolution,v,id=>id);expect(html).not.toContain('German LMG');expect(html).toContain('UNSPOTTED');expect(html).toContain('stakes hidden');expect(s).toEqual(before);
+ const html=combatScreen(v.combat_resolution,v,id=>id);expect(html).not.toContain('German LMG');expect(html).toContain('UNSPOTTED');expect(html).toContain('probabilities hidden');expect(s).toEqual(before);
+});
+
+it('advances and resolves the next exchange through exactly the manual operation sequence',async()=>{
+ const {resolveNextDisplayedExchange}=await import('../src/ui/combatExchange.js');const s=fixture({intervening:true});expect(resolveNextDisplayedExchange(s).accepted).toBe(false);const first=resolveDisplayedExchange(s).state;
+ const next=advancePhase(first).state,expected=resolveDisplayedExchange(next).state,operations=[];const actual=resolveNextDisplayedExchange(first,(a,b)=>operations.push(b)).state;expect(actual).toEqual(expected);expect(operations.length).toBeGreaterThan(1);let replayed=first;for(const op of actual.replay.slice(first.replay.length))replayed=replayOperation(replayed,op).state;expect(replayed).toEqual(actual);
+});
+
+it('offers combined next resolution only while another visible pending formation remains',()=>{
+ const s=fixture({intervening:true}),first=resolveDisplayedExchange(s).state,v=getPlayerView(first);expect(combatScreen(v.combat_resolution,v,id=>id)).toContain('combat-next-resolve');
+ const only=fixture({hidden:true}),resolved=resolveDisplayedExchange(only).state,last=getPlayerView(resolved);expect(combatScreen(last.combat_resolution,last,id=>id)).not.toContain('combat-next-resolve');
 });

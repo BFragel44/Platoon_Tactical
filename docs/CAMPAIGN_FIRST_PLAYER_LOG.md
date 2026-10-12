@@ -2,6 +2,8 @@
 
 Started October 11, 2026. Running log; observations are provisional until the session ends.
 
+Latest completed follow-up (October 12): the full M3 three-patrol cycle, full M4 failed attempt and successful reattempt, and live consecutive-contact/combined-combat checks are complete. Evidence and remaining broader coverage gaps are recorded in the final section below; earlier checkpoints remain as session history.
+
 ## Method and boundaries
 
 Play through the visible browser interface with a fresh campaign company. Make tactical choices from briefing, visible map/counters, orders, recaps and other player-facing information. Do not inspect simulation state, hidden enemies, seeds for outcomes, developer tools or scripted successful solutions. Existing knowledge of the rules cannot be erased; this is a simulated first-player usability review, not independent novice research. Use an isolated in-app browser at the development server so the user's Edge game saves remain untouched.
@@ -248,3 +250,132 @@ Browser QA used a fresh **aborted** isolated M1 company to exercise terminal pre
 - A removed General Initiative issuer now clears to an explicit Choose HQ for HQ-only actions placeholder rather than showing a different selected HQ while retaining an eliminated issuer internally. It does not automatically substitute another leader. Ordinary General Initiative orders still show their actual command source.
 
 Validation: 156 focused support/Cerisy/command/recovery checks passed; production build passed. Browser inspected Cerisy Company HQ's WP profile (one caller draw, one mission remaining, BN network), issued a failed WP call, then activated a platoon: the failure warning remained visible. Duplicate choice, registration, all experience levels, ammo-specific draws, hidden-name concealment and eliminated-issuer selection are covered by focused fixtures. The pending battalion choice was not generated in this short browser sample. No simulation, content, replay-format or rules-version changes; rules remain 35. Full manual mission/patrol/reattempt coverage remains outstanding.
+
+## Phase and movement clarity follow-up - October 11, 2026
+
+- The phase header directs players to select an HQ when an activation/initiative impulse is waiting, and identifies pending support decisions. Expanded phase help explains activation, General Initiative, zero-command free actions and mandatory choices using public player state.
+- Movement and known-cover orders offer a collapsed explanation of unavailable targets from the existing command predicates. Other target categories are excluded from this panel to avoid revealing hidden enemy information.
+- Valid movement previews show current friendly occupancy, the steps in the selected move and projected card stacking. Group previews use the published player-view recipient list; the rules engine remains authoritative. Completed/unavailable moves no longer retain a misleading capacity preview.
+
+Evidence: 51 focused phase/command/consequence/resolution/preparation/KUTF checks pass; production build passes. Isolated Cerisy browser QA resumed recovery, completed Company activation, verified Select HQ below and expanded phase guidance, previewed ten platoon steps joining one friendly step (11/16), executed the move, and inspected unavailable-target reasons after recovery. No new combat rules, replay migration or rules-version change; rules remain 35. This was a short presentation check, not another full mission run. Remaining manual coverage and disputed source questions above remain open.
+
+## Remaining-gap pass - October 12, 2026
+
+- Observation 28: equipment-transfer preview names both friendly participants and warns about exposure and further movement restrictions before spending a command.
+- Observation 31: Normandy CO-radio formations receive a cover-entry warning; same-area voice and working field phones are distinguished from radio loss. Other mission communication policies and observer radios are not given this warning.
+- Observation 36: ADVANCE/ADVANCE_PC prose recognizes the final mission row instead of requesting a nonexistent next row. Recorded events and scoring remain unchanged.
+- Observation 40: the formation selector separates active formations from off-map/historical inspection entries, preserving every identity and selection.
+- Observations 24/42: combat explains fixed segment probabilities in player language; declining a reattempt now explicitly says Decline reattempt and end mission.
+
+Browser QA resumed isolated Cerisy and checked the CO-radio cover warning, active selector group and named equipment-transfer exposure preview without issuing the transfer. Historical entries, cross-policy exclusions, unknown donors and advance boundaries are covered by fixtures. These are presentation changes only; rules remain 35.
+
+### Open work after the presentation patches
+
+- Diagnose the earlier transient blank page (32); it has not been reproduced or attributed to a confirmed cause.
+- Source-adjudicate patrol route numbering and non-patrol movement (73), and investigate detached-team group-move exclusion (62). No rules correction is claimed yet.
+- Improve combat/contact click flow while retaining explicit resolution and hidden information; contextual guard choices and recovery-command hints still need focused review.
+- Full fresh standalone M1, complete M3-M7 manual attempts, three-patrol cycles and reattempt playthroughs remain incomplete. Short UI checks and deterministic fixtures do not substitute for these runs.
+- Human preparation acceptance and connected campaign launch remain gated; broader vehicle redesign remains subsequent scope.
+
+Validation result for this pass: 31 focused presentation/event/consequence checks pass; production build passes. Full sweep: 122 files, 1,802 tests; initially 1,797 passed and five failed. Two combat wording assertions, a stale Settings assertion and an unsupported-version fixture using now-supported rules 35 were updated without loosening runtime compatibility. The M7 three-attempt test hit the shared 120-second bound, so that fixture alone now allows 240 seconds. Focused reruns: all 77 checks in the six small affected/audit files pass, and all three Tinchebray complete-run checks pass (181 seconds), including exact replay/recovery and duplicate-debrief rejection. The full sweep also reported a Windows fork-termination error for commandMenuAudit; its focused rerun passed. No second full sweep or new full manual playthrough is claimed.
+
+## Patrol-source adjudication - October 12, 2026
+
+Observations 62 and 73 source review: visually checked Normandy campaign pp.34-35 (M5 MSR 1-2), p.27 (M3 route MSR) and third-edition p.23 movement table; extracted companion p.26 (M3 MSR 1). Both patrol missions explicitly require route markers in sequence 1-4. Non-patrol defenders may receive orders and fire, but cannot move except by automatic retreat; the below-MLR exception proposed earlier is not printed. Current simulation matches these requirements and is unchanged.
+
+Move Platoon (4.2.2b) recipients are Good Order units on the same card, unexposed and in communication. Detached Assault/Fire Teams are LATs and do not meet that group recipient category; individual movement remains the appropriate command. The original observed exclusion therefore does not establish a rules defect. New public-state preview lists friendly formations staying behind, explains LAT/pinning/exposure exclusions and directs other exclusions to communication/actions/capacity checks. Setup now explicitly prints Route 1 → 2 → 3 → 4.
+
+Evidence: 83 presentation, M3/M5 engine and core command-audit checks pass, including concealment and projection immutability. No rules-version or replay change. Full manual patrol/reattempt reviews and transient blank-page investigation remain open; no new complete manual run is claimed.
+
+## Contact stepping and recovery guidance - October 12, 2026
+
+The user explicitly deprioritized the transient white page (observation 32). It is deferred, not resolved; it is no longer the next investigation.
+
+Observations 20/25/38/70: removed the presentation-only contact acknowledgement between consecutive contact evaluations. After a resolved card, Evaluate next contact invokes the existing single advancePhase operation for the next card. It does not batch contacts, skip the last result, resolve combat automatically or alter draw order. Previous results remain recorded; the final contact still requires explicit progression into pinned recovery. Older saved acknowledgement fields remain readable but no longer introduce an extra click.
+
+Damaged command counters now explain rallying, restoring a command/observer side and donor-based HQ reconstitution. These hints use the selected friendly formation's visible status and do not assert that an unavailable order is legal.
+
+Validation: 38 focused phase-guidance, command-consequence, resolution and combat-exchange checks pass; production build passes. Existing contact fixtures verify one card per operation, result visibility, fixed resolution ordering and projection immutability. No tactical rule/version or replay operation changes. No new browser or full manual mission run is claimed in this pass.
+
+Next active gaps: browser-verify the streamlined contact flow; assess contextual guard controls and detailed combat click reduction; complete remaining fresh standalone/patrol/reattempt manual coverage. Human preparation acceptance and connected progression remain separate gates. The white-page observation stays deferred at the user's request.
+
+## Guard context and explicit combat shortcut - October 12, 2026
+
+- Capture guard-side selection is shown only in Normandy capture when a live unpinned two-step friendly squad shares a card with a public enemy/suspected position. This is a conservative public-context filter, not a hidden capture-outcome prediction. Empty capture cards no longer allocate header space. The existing Fire Team default applies when no choice is shown; capture rules/order are unchanged.
+- Resolved combat offers Resolve next visible formation while another visible pending formation exists. It uses ordinary advancePhase followed by the existing displayed-exchange resolver; every accepted intermediate operation is persisted. The separate Next combat inspection action remains. The shortcut is absent at the end of the visible queue and never automatically starts the next phase.
+- Browser verification resumed isolated Cerisy, confirmed an empty capture phase with no guard dropdown, evaluated its single pending contact, reviewed the result, continued to combat, resolved one visible enemy and explicitly advanced afterward. Its queue had only one visible resolution, so the combined shortcut and consecutive-contact flow remain fixture-verified rather than live-browser verified.
+
+Evidence: 34 focused combat/phase/header/resolution checks pass; build passes. Shortcut state and replay-operation equivalence is checked against manual Next then Resolve, including unrelated receiving formations and end-of-queue controls. Tests also protect hidden identities/results, guard public context and inactive phases. No rules/version or replay-schema change. This short Cerisy continuation is not a complete tactical mission. Remaining full fresh standalone/patrol/reattempt manual runs are still open; the white-page investigation remains deferred by the user.
+
+## Live patrol follow-up in progress - October 12, 2026
+
+Isolated IAB, default M3 company-1 through normal selection; no hidden simulation/replay state consulted for tactical decisions. Patrol 1 completed SUCCESS on turn 7: 16 orders, one observed casualty step, two formation changes. Routes 2.1 → 3.2 → 4.3 → 2.2 and final return to 1.2 were completed. HQ1 was lost after reaching 4.3; surviving squads finished using General Initiative. Saved export: reference/playtest_replays/manual_followup_2026_10_12/M3_patrol1_success_replay.json.
+
+Live control gaps closed: consecutive contacts 2.1/2.2 used Resolve contact then Evaluate next contact, without the former acknowledgement. Turn-2 combat used Resolve next visible formation three times and required final explicit continuation. No automatic phase skip or hidden outcome disclosure was observed.
+
+Patrol-2 preparation transferred Assault team 13 into eliminated HQ1, selected one eligible Veteran step promotion, set active Platoon-2 cover choices Open, then began patrol 2. Revealed/expanded terrain remained. Patrol 2 is currently at turn 3 and is NOT complete. Browser-tool timeout reset the automation bindings; UI/autosave retained progress.
+
+New provisional findings: old movement danger warning can remain after action completion; prior-patrol WP failure appears again at the matching turn number in patrol 2, despite no such request in that patrol. Company HQ again needed to leave cover at patrol start; setup/cover interpretation needs verification before calling this a rules bug. Full three-patrol completion and reattempt runs remain open until terminal results are recorded.
+
+M3 follow-up completed: patrol outcomes SUCCESS on turns 7, 9 and 8; terminal SUCCESS, 51 orders, one observed casualty step, five formation changes. Patrol 2 used illumination and repeated rally/recovery; patrol 3 restored its HQ from Fire Team side and completed a revised route in Moon +4. Both intermediate preparations, source terrain/cover/mines retention and final MLR returns were exercised in the browser. Terminal replay, public AAR, scouted battlefield and roster are saved under reference/playtest_replays/manual_followup_2026_10_12/. Terminal reload recovered the result; the isolated roster export has revision 1 and one applied mission; a second application visibly reports This mission was already applied.
+
+Hill 192 now uses that actual M3 battlefield through normal setup, with conditional engineers offered for discovered Row-2/3 mines. Its fresh standalone company is separate from the M3 roster. First attempt is currently turn 5, both objectives/attack secured but row clearing incomplete; three observed casualty steps. XO donated its step to restore HQ3, which recovered the dropped radio. Infantry/staff rallies, conditional exhortation, smoke, an unsuccessful WP call with extra exhortation draw and group infiltration were exercised. This attempt is not yet terminal and reattempt coverage remains open.
+
+## Manual patrol/reattempt follow-up completed — October 12, 2026
+
+This supersedes the preceding in-progress checkpoints for M3/M4. These runs used the isolated in-app browser at localhost:5175, ordinary UI controls and explicit phase stepping. Tactical decisions used public map, briefing, commands and recaps. Exported state was inspected for verification only after the runs ended. The user's existing browser saves were not used or replaced.
+
+- **M3:** all three patrols succeeded, on turns 7, 9 and 8. Both preparations, LAT-to-HQ reconstitution, eligible promotion, route changes, illumination, cover/communications restrictions, retained mines and the final MLR returns were exercised. Terminal totals: 51 orders, one observed casualty step, five formation changes. Terminal reload and duplicate debrief rejection passed.
+- **M4:** imported the actual terminal M3 battlefield, including its retained cover/mines and conditional engineer attachment, into a separate fresh standalone company. Attempt 1 ended DEFEAT at turn 10 (67 orders, 25 observed casualty steps). The second attempt ended SUCCESS at turn 10. Combined terminal totals: 106 orders, 30 observed casualty steps, 87 formation changes. This is a complete failed-attempt → preparation → successful-reattempt UI run, not connected campaign advancement.
+- **Preparation:** selected 16 surviving LAT transfers, rebuilding Company HQ, HQ1, staff, three rifle formations, two engineer steps and two weapon counters. Spent 24 points on eligible promotions and four on skills; newly rebuilt command steps were not promoted. Selected secured-card deployments and cover, then saved/reloaded the new attempt. No fresh replacement identities or individual wound/death outcomes were invented.
+- **Live skills/support:** Auto Spot identified a currently reported enemy position and was consumed. Auto Infiltrate was used for an eligible individual rifle-squad action, rather than assumed to apply to a whole-platoon order. Repeated support failures remained visible only within their own attempt. Successful artillery produced a pending battalion-fire choice; it survived reload, and Ordinary fire continued without another command/draw. Mortar availability returned after the one-turn displacement event. Depleted HMG ammunition and named weapon-side recovery options were visible.
+- **Live controls:** M3's consecutive occupied contacts required one explicit evaluation per card with no intermediate acknowledgement. Its multi-formation combat exercised the combined Resolve next visible formation button three times, retained each result and required final explicit continuation. The M4 combat queues also used this flow through both attempts.
+- **Persistence:** M4 terminal reload recovered SUCCESS; its debrief produced revision 1 with one applied mission. Duplicate application visibly reported “This mission was already applied.” M3 and M4 company identities remained separate.
+
+### Confirmed presentation corrections
+
+Patrol 2/3 reused turn numbers and exposed an attempt-boundary defect: segment recaps, previous-turn summaries and failed-support alerts could reuse an earlier patrol's events. Presentation now scopes these to the latest PATROL_PREPARED / MISSION_REATTEMPTED boundary, while preserving the complete historical event stream, AAR and replay. Historical segment reviews identify their patrol/attempt. Live M4 attempt-2 recaps showed the correct attempt label; no pre-transition support warning appeared before a new request. Completed/unavailable movement no longer retains a prior movement-danger preview. Rules remain 35; no replay migration.
+
+The earlier Company HQ cover observation is not a demonstrated simulation defect: patrol preparation intentionally places fixed non-patrol defenders in available Foxholes. Offering an Open choice without explaining that setup rule remains a presentation refinement.
+
+### Remaining refinements and coverage boundaries
+
+- Heavy losses make the inspectable historical-formation selector long. Inspection remains useful, but an optional separate history filter would reduce clutter.
+- M4's public AAR checks show both victory conditions satisfied from reattempt turn 2; the mission continued to its final turn under the implemented mission-end rule. The live Mission summary did not make that timing, or row-clear progress, sufficiently obvious. This is a presentation/source-review follow-up, not evidence of hidden information leakage or a newly proven victory-rule defect.
+- The full M3 cycle and complete M4 reattempt gap are now closed. Full fresh standalone M1 and full manual M5–M7 runs remain broader review gaps; earlier opening/vehicle checks and deterministic fixtures are not relabelled as complete manual playthroughs. Connected progression and human campaign-preparation acceptance remain separate gates. The transient white-page observation stays deferred by the user's instruction.
+
+Evidence is preserved in `reference/playtest_replays/manual_followup_2026_10_12/`: M3 patrol-prefix/terminal replays, terminal AAR/roster/scouted battlefield, M4 first-attempt/terminal replays, terminal AAR/roster and the offline validation summary. Reproduce the exported-run audit with `node scripts/auditManualFollowup.js`. Both terminal exports and all earlier-attempt prefixes replay exactly; public AARs and committed browser rosters match, recovery reconstructs the full state, prior starts remain immutable, person identities remain stable, and duplicate/stale debriefs reject. Transition checks retain terrain/cover/mines, existing contacts, known enemy identity/positions and reward keys while allowing the published pin reset, P/L removal and patrol-point expiration. Actual M3 export import and separate company identities also pass. Focused presentation/resolution regression run: eight files, 51 tests pass. Production build passes with the existing chunk-size warning; `git diff --check` passes. No new full regression sweep is claimed.
+
+## Approved navigation, signals and mission-clarity pass — October 12, 2026
+
+Implemented the user's approved focused pass. This closes the earlier optional historical-selector and live objective-timing presentation refinements; it does not change the victory rules or claim another source audit. Normal startup mounts Home without creating or saving a placeholder Company Assault mission. Campaign opens the existing fresh M1 company/debrief/preparation workflow even when no tactical mission is active. Missions contains the standalone catalog, previews, explicit Start and the independently named infantry/Vire/Tinchebray recovery slots. Briefing replaces the old current-Mission menu. Opening navigation or previews preserves the current tactical run; explicit Start/Resume remains the point at which the active session changes.
+
+Briefing now has an expanded signal table using the public assigned plan and actual friendly inventory: readable device/effect names, current carriers and quantities, recoverable ground stock, transport stock and remaining totals. Confirmed deployment is distinguished from unavailable stock. Setup and command labels share objective/phase-line destination wording. Night patrols explain that colored smoke stock is unavailable for signaling at night. No assignments or execution rules changed.
+
+Offensive Briefing and turn notices show current objective statuses and the last public row-clear assessment with its turn. A new attempt has no assessment until its first check; repeated turn numbers cannot reuse a preceding attempt's result. Final-turn success timing is stated explicitly. Patrols retain route/objective/MLR-return requirements. No hidden blocker or per-card clearance list is projected.
+
+The optional Settings history filter defaults off and is saved with presentation. Pinned, degraded and surviving embarked formations remain in the live selector. Roster can select a reserve/historical formation with the filter off. Historical loss silhouettes follow the filter while an explicitly selected loss remains inspectable. Reserve and embarked records receive neutral status/restriction explanations rather than eliminated-HQ reconstitution advice. Fresh mission switching clears stale vehicle selections/routes; initial force centering now runs after the map controls are bound.
+
+### Focused browser evidence
+
+Used an isolated in-app browser at `http://127.0.0.1:5176/`; the user's existing browser saves and the earlier localhost:5175 manual-run evidence were not replaced. These are integration checks, not full first-player playthroughs.
+
+| Check | Observed result |
+| --- | --- |
+| Fresh normal startup | Home, Campaign and Missions; no active tactical mission or default save. |
+| Campaign stages | Fresh company → custom-signal M1 setup → terminal abort/debrief → preparation → Close/Home/reload → resumed preparation → prepared summary. Later connected launch remains gated. This used an abort to exercise navigation, not a successful new campaign playthrough. |
+| Standalone selection/recovery | Normal Company Assault, Cerisy, St. Georges, Vire and Tinchebray selection; infantry, campaign, M6 and M7 saves listed with actual mission names. Both vehicle families resumed after reload; abort/recovery and explicit restart exercised without URL flags. Default vehicles and the optional Jeep setup checked. |
+| Home during pending decisions | Company Assault contact result and unresolved combat panel unchanged after Home/return. Cerisy seed `navigation-battalion-30`, using ordinary phase stepping and orders, produced a real battalion choice: selections `r2c1`/`r2c3` survived Home/return and reload, advancement stayed blocked, and explicit confirmation resumed the impulse. |
+| Signal stock | Custom M1 RSP objective assignment displayed in Briefing. Live Cerisy RSP deployment displayed confirmed expenditure/zero stock; dropping RSC displayed ground stock/recovery requirement. Vire's RSP assigned to the embarked artillery observer displayed one device aboard transport. |
+| History and camera | St. Georges reserve HQs absent from the ordinary selector; Roster opened HQ2 with the filter off. Enabling history revealed reserve records. HQ2 selection and the checkbox survived reload; 80% zoom and camera offsets survived Home/return. Opening and cancelling Vire preview retained M3's selected HQ, phase and camera. |
+| Layout/keyboard | Desktop start screen and Briefing table visually checked. At 390×844, Home cards stack, Briefing stays within the viewport, and the table scrolls within its container. Enter opens Missions; Escape dismisses Briefing. Existing independent map/command-panel scrolling retained. |
+
+### Automated evidence and remaining boundaries
+
+- Full regression sweep: **126 files / 1,824 tests pass**. The first sweep timed out only on the long combat-bearing three-attempt M7 fixture; its per-test bound was raised to 240 seconds. All assertions remain. Its isolated replay/recovery run passed, and the subsequent full sweep passed.
+- Focused projection/navigation checks cover missing/corrupt/incompatible originals, mismatched recovery checkpoints, disabled invalid resumes, read-only save discovery, campaign/company association, all independent slots, real signal expenditure → reattempt replenishment → exact replay/save/reload, transferred/dropped/unavailable/transported stock, night availability, public assessment boundaries, surviving embarked formations and historical inspection. Form-draft fixtures cover battalion/guard/passenger choices, context boundaries and malformed optional historical presentation. Session routing is explicit: standalone File actions do not depend on a readable campaign record. Backup keys stay tied to the selected slot even without a readable latest record; the live Vire backup download was verified as `normandy_6`.
+- `node scripts/auditManualFollowup.js` rerun: the earlier complete M3 patrols and M4 reattempt still have exact replays, public AARs, recovered states, immutable starts and browser debrief rosters; duplicate/stale transactions still reject.
+- Production build passes with the existing bundle-size warning. Tactical rules remain **35**; replay and storage schemas are unchanged. New reference information and form drafts are presentation/player-view fields only.
+- Final presentation refinements: eight focused files / **40 tests pass**, including neutral reserve/transport inspection, pending-form drafts and the new reference projections. `git diff --check` passes. Start-screen screenshot: [Home](../tmp/usability_2026_10_12/home.jpg). Fresh Vire start visibly centers Company HQ in staging (camera top 1755), after the controls are bound.
+
+Corrupt/incompatible save cases and guard draft restoration have automated fixture coverage; they are not claimed as additional live fault-injection or prisoner-capture playthroughs. The broader fresh standalone M1/manual M5–M7 review gaps recorded above remain separate from this pass. Human campaign-preparation acceptance and required battlefield carryover remain gates for connected progression. Larger vehicle work, 3D/audio, card-pull experiments and the transient blank-page investigation remain deferred in `FOR_LATER.md`.

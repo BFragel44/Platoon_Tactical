@@ -1,3 +1,4 @@
+import {currentAttemptEvents} from './segmentResults.js';
 export function supportCallPreview(view,unit,action,target){
  if(!action.startsWith('CALL_'))return null;
  const id=action.includes('MORTAR')?'mortar':action.includes('CANNON')?'cannon':'artillery',agency=view.support_callers?.[id];
@@ -12,7 +13,7 @@ export function friendlyTargetLabel(view,id){
  return `${location?.name??id}${friendly.length?` · ${friendly.length} friendly formation(s) present`:''}`;
 }
 export function supportWarning(view,events){
- const event=events.findLast(e=>e.type==='SUPPORT_REQUEST'&&e.turn===view.turn);
+ const event=currentAttemptEvents(events).findLast(e=>e.type==='SUPPORT_REQUEST'&&e.turn===view.turn);
  if(!event||event.hidden||event.success&&!event.text.includes('short round'))return null;
  const friendly=view.units.filter(u=>u.steps&&!u.removed&&u.location===event.location);
  const agency=view.support_callers?.[event.agency]?.name??'Fire support',location=view.locations.find(l=>l.id===event.location)?.name??'the reported card';

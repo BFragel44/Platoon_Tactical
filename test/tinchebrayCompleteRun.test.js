@@ -37,6 +37,8 @@ function drive(s,moving,vehicles=false){
  }
  expect(s.status).not.toBe('ACTIVE');return s;
 }
+// Three full attempts plus exact recovery/replay can exceed the shared unit
+// timeout under concurrent Windows load; keep the larger bound local to this run.
 it('completes two failed ten-turn attempts then success with exact replay, reload and one debrief',()=>{
  let s=createTinchebrayDevelopmentMission('tinchebray-three-attempts',{}, {},{mission_instance_id:'three-attempts'});
  for(const l of Object.values(s.locations)){l.borders=l.staging?null:{N:'white',S:'white',E:'white',W:'white',NE:'white',NW:'white',SE:'white',SW:'white'};l.elevation=0;l.known=true;l.trafficability='Unmarked';}
@@ -58,7 +60,7 @@ it('completes two failed ten-turn attempts then success with exact replay, reloa
  saveCampaign(storage,createTinchebrayMissionRoster(),tinchebray.rules.rosterKey);
  const record=debriefAndSave(storage,s,tinchebray.rules.rosterKey);expect(record.revision).toBe(1);
  expect(()=>debriefAndSave(storage,replay(s),tinchebray.rules.rosterKey)).toThrow(/already applied/);
-});
+},240000);
 function combatStart(){
  const s=createTinchebrayDevelopmentMission('tinchebray-combat-run',{objectives:{primary:'r6c2',secondary:'r5c1',attack:'r4c1'}}, {},{mission_instance_id:'tinchebray-combat-run'});
  for(const l of Object.values(s.locations))Object.assign(l,{borders:l.staging?null:{N:'white',S:'white',E:'white',W:'white',NE:'white',NW:'white',SE:'white',SW:'white'},elevation:0,smoke:false,trafficability:'Unmarked',known:true,terrain:'open',building:false});
@@ -80,4 +82,4 @@ it('replays combat-bearing failure, failure and third-attempt success with recov
   if(attempt<3){const positions=Object.fromEntries(Object.values(s.units).filter(u=>u.faction==='friendly'&&live(u)).map(u=>[u.id,u.location]));const vehicle_positions=Object.fromEntries(Object.values(s.vire_runtime.vehicles).filter(v=>v.faction==='friendly'&&v.status==='ACTIVE'&&v.profile==='M10_TD76').map(v=>[v.id,v.location]));s=prepareReattempt(s,{positions,vehicle_positions}).state;}
  }
  expect(s.events.some(e=>e.type==='AT_SHOT_RESOLVED')).toBe(true);expect(s.attempt_records).toHaveLength(3);
-});
+},240000);

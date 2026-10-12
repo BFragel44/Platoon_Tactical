@@ -9,7 +9,7 @@ Recorded October 9, 2026. This is the durable backlog for agreed future work and
 
 Continue correcting gameplay bugs during mission development. Defer broader interface redesign and combat-system experiments until the mission work is shored up. Mission readiness guides remain authoritative for current implementation and acceptance gates; this file does not declare connected campaign progression complete or authorized.
 
-## Agreed usability priorities — deferred
+## Broader usability priorities — later milestones
 
 | Priority | Intended improvement | What to preserve |
 | --- | --- | --- |
@@ -18,6 +18,17 @@ Continue correcting gameplay bugs during mission development. Defer broader inte
 | Clarify the next decision | Keep current mission requirements, remaining support and event obligations easy to find. | Existing orders, inventory and accepted behavior; avoid unrequested changes to the restored right panel during mission work. |
 
 The goal is to reduce the effort required to understand the situation while retaining the tactical decisions that make the game interesting.
+
+## Approved focused usability pass — implemented October 12, 2026
+
+The user explicitly approved the navigation, signals and mission-clarity pass after the first-player follow-up. This is completed implementation work, separate from the broader redesign below. Evidence and coverage limits are recorded in [CAMPAIGN_FIRST_PLAYER_LOG.md](CAMPAIGN_FIRST_PLAYER_LOG.md).
+
+- Normal startup now opens Home, with separate Campaign and standalone Missions choices and named recovery entries. Tactical creation/restoration requires Start or Resume. Existing development URLs remain compatible.
+- In-play Home/Campaign/Missions access preserves the current run. The current-mission menu is now Briefing; File retains recovery, turn-start restoration, exports and replacement backups.
+- Briefing contains the assigned signal plan, current carriers, dropped/transported stock, confirmed expenditure and phase-line/objective destinations. It also explains objective progress, the latest attempt-scoped public row assessment and final-turn offensive success timing.
+- Settings has an optional off-map/history filter. Live pinned, degraded and embarked formations remain inspectable; Roster retains access to reserve and historical counters. Neutral reserve/transport explanations are distinct from eliminated-counter recovery advice.
+
+This pass does not authorize connected launches beyond M1, a broader vehicle redesign, 3D/audio work or a combat-resolution experiment. The previously deprioritized transient blank-page investigation remains deferred. The broader manual-review coverage boundaries in the running log remain explicit; these focused browser checks are not seven new full playthroughs.
 
 ## Intended 3D presentation — deferred until all seven missions are validated
 

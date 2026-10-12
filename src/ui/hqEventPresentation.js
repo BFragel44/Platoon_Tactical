@@ -1,6 +1,7 @@
 export function hqEventExplanation(e,name=id=>id){
  const through=e.counterattack_ends_after??e.turn+2;
  const next=(e.lead??0)+1;
+ const final=e.final_row??3,atBoundary=(e.lead??0)>=final;
  const descriptions={
  TANK_SUPPORT:e.ignored?'The single M5 support platoon has already entered this mission; no additional tanks are available.':e.vehicle_positions?`Five M5 tanks entered Row 1 with five ammo each. Entry cards: ${Object.entries(e.vehicle_positions).map(([id,l])=>`${id}: ${name(l)}`).join(', ')}.`:'Choose a Row 1 entry card for each of the five M5 tanks, including its HQ. Each has five ammo and is susceptible to AT ambush. Confirming uses the original event draw.',
  LOST:'One randomly selected active-patrol formation moves one card in a random direction and becomes exposed. Leaving the map reveals a new terrain card and the row’s contact marker; Row 5 uses A.',
@@ -15,8 +16,8 @@ export function hqEventExplanation(e,name=id=>id){
  NO_ARTY:'The 15th Field Artillery Battalion is displacing: artillery is unavailable this turn. Remaining missions are not expended.',
  CHECKING_UP:'A randomly selected higher HQ staff officer joins Company HQ for this turn and the next. Battalion HQ is considered on the map; the visitor participates in the higher HQ activation sequence.',
  HOLD:`No unit may advance into a new lead row (Row ${next}) this turn. Movement within the existing advance remains subject to ordinary order restrictions.`,
- ADVANCE:`Advance at least one unit into the next lead row (Row ${next}) this turn to close the flank gap. Ignore if already on Row ${e.final_row??3}. Completion earns one experience point; insufficient commands cause no penalty.`,
- ADVANCE_PC:`Advance at least one unit into the next lead row (Row ${next}) onto a potential-contact card this turn. Ignore if already on Row ${e.final_row??3} or no such contact is reachable. Completion earns one experience point; insufficient commands cause no penalty.`,
+ ADVANCE:atBoundary?`The lead has reached the final mission row (Row ${final}); ignore this advance obligation. No movement beyond the mission boundary is required.`:`Advance at least one unit into the next lead row (Row ${next}) this turn to close the flank gap. Ignore if already on Row ${final}. Completion earns one experience point; insufficient commands cause no penalty.`,
+ ADVANCE_PC:atBoundary?`The lead has reached the final mission row (Row ${final}); ignore this contact-advance obligation. No movement beyond the mission boundary is required.`:`Advance at least one unit into the next lead row (Row ${next}) onto a potential-contact card this turn. Ignore if already on Row ${final} or no such contact is reachable. Completion earns one experience point; insufficient commands cause no penalty.`,
  RESUPPLY:e.location?`Four ${e.ammo_type??'selected'} ammunition are available for pickup at ${name(e.location)}. Ordinary carrying and pickup rules apply.`:'Choose four ammunition of one type (MG, mortar or rocket) and a Row 1 destination. Confirm the choice to finish this event.',
  EVAC:'Enemy casualty markers on cards without US troops are removed. Hidden casualty locations and totals are not reported.',
  DISPLACE_MORTAR:'Enemy mortars on cards without US troops leave the map. Hidden affected units and locations are not reported.',

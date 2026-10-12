@@ -12,4 +12,14 @@ export function movingFormationIds(option,target,enabled=true) {
   const selected=option.targets.find(t=>t.id===target);
   return selected&&!selected.reason?selected.moving_unit_ids??[]:[];
 }
+export function movementSpace(view,unit,option,target){
+ if(option?.reason||option?.targets?.find(t=>t.id===target)?.reason)return null;
+ if(!['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(option?.type))return null;
+ const location=view.locations.find(l=>l.id===target);if(!location)return null;
+ const friendly=view.units.filter(u=>u.faction==='friendly'&&u.steps&&!u.removed);
+ const ids=['PLATOON_MOVE','PLATOON_INFILTRATE'].includes(option.type)?option.targets.find(t=>t.id===target)?.moving_unit_ids??[]:[unit.id];
+ const incoming=friendly.filter(u=>ids.includes(u.id)&&u.location!==target).reduce((n,u)=>n+u.steps,0);
+ const occupied=friendly.filter(u=>u.location===target).reduce((n,u)=>n+u.steps,0);
+ return {name:location.name,occupied,incoming,total:occupied+incoming,limit:location.staging?null:16};
+}
 export const tacticalText=(view,text)=>String(text??'').replace('Commander aborted the company assault.',`Commander aborted ${view.mission_name??'the mission'}.`).replace(/\bcover_\w+\b/g,id=>coverLabel(view,id)??'cover position');

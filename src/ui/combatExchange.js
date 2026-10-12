@@ -1,5 +1,12 @@
 import {getPlayerView,resolveCombat,advancePhase} from '../sim/company/engine.js';
 import {reciprocalCombat,resolvesPair} from './combatScreen.js';
+export function resolveNextDisplayedExchange(state,onAccepted=()=>{}){
+ if(getPlayerView(state).combat_resolution?.status!=='RESOLVED')return {state,accepted:false,reason:'Review the current combat result first.'};
+ const r=advancePhase(state);if(r.state===state)return r;
+ onAccepted(state,r.state);
+ if(getPlayerView(r.state).combat_resolution?.status!=='PENDING')return r;
+ return resolveDisplayedExchange(r.state,onAccepted);
+}
 // Use existing operations and queue order; never jump over unrelated visible combat.
 export function resolveDisplayedExchange(state,onAccepted=()=>{}){
  const view=getPlayerView(state),current=view.combat_resolution;

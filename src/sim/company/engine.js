@@ -1,3 +1,4 @@
+import {playerReferences,friendlyTransport} from './playerReferences.js';
 import {vehicleHQRecord,vehicleHQs} from './vehicleCommand.js';
 import {enterVireVehiclePhase,prepareVireInfantryCombat,resolveVireInfantryCombat,cleanupVireVehicles,exportVireAdapterReplay} from './vireIntegration.js';
 import {hill192DeploymentDefinition} from './hill192Setup.js';
@@ -379,12 +380,13 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     personnel:u.steps.flatMap(v=>v.personnel),incoming:incoming(s,u).map(f=>({origin:f.origin,value:f.value,source:visible(s,fireSource(s,f.source))?f.source:null})),
     combat:(()=>{const c=combatModifier(s,u);return c?{ncm:c.ncm,total:c.total,parts:structuredClone(c.parts),modifiers:structuredClone(c.modifiers)}:null;})(),options:live(u)?commandOptions(s,u,issuerId):[]}));
   for(const u of units) {
+    u.transport=friendlyTransport(s,u);
     u.skills=(s.skills??[]).filter(p=>p.holder===u.id&&!p.used).map(p=>({id:p.id,label:SKILLS[p.type].label}));
     u.automatic_skill=s.automatic_skills?.[u.id]?(s.skills.find(p=>p.id===s.automatic_skills[u.id])?.type==='AUTO_GRENADE'?'Auto Grenade assigned to next return attempt':'Extra Draw assigned to next automatic attempt'):null;
     u.tactical_ready=u.options.some(o=>o.available&&!(o.cost===0&&['DROP_LOAD','DROP_CASUALTY'].includes(o.type)));
     u.inventory={equipment:[...Object.entries(u.assets).filter(([,n])=>n>0).map(([key,quantity])=>({key,label:key.replaceAll('_',' '),quantity})),...Object.entries(u.ammo??{}).map(([key,quantity])=>({key,label:`${key} ammunition`,quantity}))],radios:[...u.radios],casualties:s.casualties.filter(c=>c.carrier===u.id&&!c.evacuated).map(c=>({id:c.id,label:`${c.origin_name??'Friendly formation'} casualty step`}))};
     const transition=visibleHistory.findLast(e=>e.type==='HQ_RECONSTITUTED'&&e.donor===u.id);
-    u.transition_description=u.removed==='RECONSTITUTED'?(transition?`Reconstituted ${transition.restored_name??s.units[transition.actor]?.name??'HQ'}`:'Used in reconstitution'):u.removed==='GUARD'?'Assigned as prisoner guard':u.removed==='CAPTURED'?'Captured':u.removed==='WITHDRAWN'?'Withdrawn':null;
+    u.transition_description=u.transport?`Embarked aboard ${u.transport.name} · ${u.transport.steps} surviving step${u.transport.steps===1?'':'s'}`:u.removed==='RESERVE'?(s.patrol?'Not assigned to patrol':'Reserve · not deployed'):u.removed==='RECONSTITUTED'?(transition?`Reconstituted ${transition.restored_name??s.units[transition.actor]?.name??'HQ'}`:'Used in reconstitution'):u.removed==='GUARD'?'Assigned as prisoner guard':u.removed==='CAPTURED'?'Captured':u.removed==='WITHDRAWN'?'Withdrawn':null;
   }
   const knownEnemy=Object.keys(s.knowledge.spotted).filter(id=>s.units[id]).map(id=>observeRecord(s.units[id]));
   const pending=s.phase==='COMBAT_EFFECTS'?s.pending_combat?.[s.segment_progress?.index]:null;
@@ -407,7 +409,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     historical_losses:getVisibleEvents(s).filter(e=>e.type==='FORMATION_LOST'),
     segment_progress,briefing:s.briefing,activity:s.activity,impulse:structuredClone(s.impulse),eligible_hqs:eligibleHQs(s),units,
     locations:values(s.locations).map(terrainProjection),
-    command_network:commandNetwork(s),mission_rules_text:structuredClone(s.mission_rules_text??[]),
+    ...playerReferences(s,visibleHistory),command_network:commandNetwork(s),mission_rules_text:structuredClone(s.mission_rules_text??[]),
     hq_events:structuredClone(s.hq_events??[]).map(({side,code,turn,lead,completed,choice,placements,waypoint,ignored})=>({side,code,turn,lead,completed,choice,placements,...(waypoint!==undefined?{waypoint,ignored}:{})})),mission_name:s.mission_name,objectives:s.objectives?Object.fromEntries(['primary','secondary','attack','ccp'].map(k=>[k,{location:s.objectives[k],...secureStatus(s,s.objectives[k])}])):null,achievements:structuredClone(s.achievements),achievement_tally:achievementTally(s),
     contacts:values(s.contacts).filter(c=>!c.returning||s.knowledge.suspected[c.location]).map(c=>({id:c.id,location:c.location,type:(c.counterattack||c.question_side)&&!c.revealed&&!c.resolved?'?':c.type,resolved:c.resolved,counterattack:!!c.counterattack})),
     enemies:knownEnemy,suspected:spottingLocations(s),historical_reports:Object.keys(s.knowledge.suspected),

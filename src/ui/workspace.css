@@ -171,3 +171,16 @@
 .company-preparation select { display:block; max-width:100%; width:100%; }
 .company-preparation button { margin:.3rem; }
 .company-preparation::backdrop { background:#0009; }
+/* Start and mission selection screens do not mount a tactical battlefield. */
+.application-screen{width:min(1060px,100%);margin:0 auto;padding:clamp(18px,4vw,48px);min-height:100dvh;overflow-y:auto;box-sizing:border-box}
+.application-screen nav{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:32px}
+.application-screen h1{font-size:32px;margin-bottom:12px}.application-screen p{line-height:1.6;margin:12px 0}
+.application-cards{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:26px}
+.application-cards>section,.application-mission-setup{background:#213027;border:1px solid #78876c;border-radius:6px;padding:22px;min-width:0}
+.application-screen button{margin:4px 8px 4px 0}.application-screen label{display:block;margin:12px 0}
+.application-screen select,.application-screen input{display:block;width:100%;max-width:520px;margin-top:7px}
+.saved-runs{list-style:none;padding:0}.saved-runs li{border-top:1px solid #53644c;margin-top:15px;padding-top:14px}
+.reference-table-wrap{overflow-x:auto}.signal-reference table{width:100%;border-collapse:collapse;font-size:12px}
+.signal-reference th,.signal-reference td{text-align:left;vertical-align:top;padding:9px;border-bottom:1px solid #53644c;line-height:1.45}
+.header-navigation nav{flex-wrap:wrap}.header-navigation nav button{white-space:nowrap}
+@media(max-width:650px){.application-cards{grid-template-columns:1fr}.application-screen{padding:16px}.application-screen nav{margin-bottom:20px}.signal-reference th,.signal-reference td{padding:6px}}

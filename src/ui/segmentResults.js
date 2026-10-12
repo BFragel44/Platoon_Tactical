@@ -1,8 +1,14 @@
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const meaningful=new Set(['HQ_EVENT','HQ_EVENT_NONE','HQ_EVENT_FORMATION','AUTOMATIC_RECOVERY','UNIT_CAPTURED','ENEMY_CASUALTY_CAPTURED','UNIT_MOVED','UNIT_WITHDREW','ASSETS_DROPPED']);
+const transitions=new Set(['PATROL_PREPARED','MISSION_REATTEMPTED']);
+export function currentAttemptEvents(events){
+ const index=events.findLastIndex(e=>transitions.has(e.type));
+ return index<0?events:events.slice(index);
+}
 
 // Recaps consume the already-filtered historical stream, never current hidden state.
 export function previousSegment(events,phases) {
+  events=currentAttemptEvents(events);
   const entries=events.filter(e=>e.type==='PHASE_ENTERED');
   const end=entries.at(-1),start=entries.at(-2);
   if(!start||!end)return null;
@@ -12,13 +18,15 @@ export function previousSegment(events,phases) {
 // Input is exclusively getVisibleEvents output. Retain locations from that time.
 export function segmentReviews(events) {
   return events.filter(e=>e.type==='SEGMENT_COMPLETED').flatMap(end=>{
-    const batch=events.filter(e=>e.turn===end.turn&&e.phase===end.phase&&e.sequence<=end.sequence);
+    const start=events.findLast(e=>transitions.has(e.type)&&e.sequence<=end.sequence);
+    const batch=events.filter(e=>e.turn===end.turn&&e.phase===end.phase&&e.sequence<=end.sequence&&(!start||e.sequence>=start.sequence));
     if(batch.some(e=>e.type==='PHASE_SKIPPED'))return [];
-    return [{id:end.id,turn:end.turn,label:end.label,phase:end.phase,events:batch.filter(e=>meaningful.has(e.type))}];
+    const attemptLabel=events.some(e=>transitions.has(e.type))?`${events.some(e=>e.type==='PATROL_PREPARED')?'Patrol':'Attempt'} ${start?.attempt??1}`:null;
+    return [{id:end.id,turn:end.turn,label:end.label,phase:end.phase,attemptLabel,events:batch.filter(e=>meaningful.has(e.type))}];
   });
 }
 export function segmentResultMarkup(review,name) {
-  return `<dialog class="tactical-dialog" id="segment-result" aria-labelledby="segment-result-title"><h2 id="segment-result-title">${esc(review.label)}</h2><p>Turn ${review.turn} · resolved segment</p>${review.events.length?review.events.map(e=>`<p>${e.faction?`<b>${e.faction==='friendly'?'U.S.':'German'}</b> · `:''}${esc(e.text)}${e.location?` <span>At ${esc(name(e.location))}.</span>`:''}${e.from?` <span>${esc(name(e.from))} → ${esc(name(e.target))}.</span>`:''}${e.condition?` <strong>${esc(e.condition)}</strong>`:''}${e.expires?` <span>${esc(e.expires)}.</span>`:''}</p>`).join(''):'<p>No visible changes.</p>'}<button id="dismiss-segment">Continue</button></dialog>`;
+  return `<dialog class="tactical-dialog" id="segment-result" aria-labelledby="segment-result-title"><h2 id="segment-result-title">${esc(review.label)}</h2><p>${review.attemptLabel?esc(review.attemptLabel)+' · ':''}Turn ${review.turn} · resolved segment</p>${review.events.length?review.events.map(e=>`<p>${e.faction?`<b>${e.faction==='friendly'?'U.S.':'German'}</b> · `:''}${esc(e.text)}${e.location?` <span>At ${esc(name(e.location))}.</span>`:''}${e.from?` <span>${esc(name(e.from))} → ${esc(name(e.target))}.</span>`:''}${e.condition?` <strong>${esc(e.condition)}</strong>`:''}${e.expires?` <span>${esc(e.expires)}.</span>`:''}</p>`).join(''):'<p>No visible changes.</p>'}<button id="dismiss-segment">Continue</button></dialog>`;
 }
 export function inventoryMarkup(unit) {
   const inventory=unit.inventory??{equipment:[],radios:[],casualties:[]};
