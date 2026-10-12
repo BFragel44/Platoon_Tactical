@@ -7,7 +7,7 @@ import {visibilityCommandLimits,patrolInitiative} from './visibility.js';
 import {commandNetwork} from './commandNetwork.js';
 import {achievementTally} from './achievementTally.js';
 import {recordAttemptStart} from './attemptRecords.js';
-import {SKILLS} from './skills.js';
+import {SKILLS,buySkills} from './skills.js';
 import {rosterSnapshot,createCampaignRoster} from './campaignRoster.js';
 import {prepareReattempt,preparePatrol} from './reattempt.js';
 import {damagePhoneLines} from './phoneNetwork.js';
@@ -45,7 +45,7 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 33;
+export const RULES_VERSION = 35;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 function phaseDescription(s){
   if(s.vire_runtime?.normal_phase_enabled&&s.phase==='AT_COMBAT')return 'Complete vehicle actions, reactions and immediate HITs, then finish end-of-phase VOF before advancing.';
@@ -61,6 +61,7 @@ export function createMission(definition,seed,setup={},deployment=null,execution
   if(definition.readiness?.playable===false&&!development)throw new Error(`${definition.name} is not playable yet: ${definition.readiness.missing.join('; ')}.`);
   definition=hill192DeploymentDefinition(definition,setup);
   if(definition.rules?.standaloneRoster&&!deployment)deployment={mission_instance_id:execution.mission_instance_id??globalThis.crypto.randomUUID(),roster:createCampaignRoster(definition.rules.baselineCompanyId??'normandy_cerisy_standalone_company',definition)};
+  if(deployment?.prepared_skills?.length||deployment?.roster?.prepared_skills?.length)setup={...structuredClone(setup),prepared_skills:structuredClone(deployment.prepared_skills??deployment.roster.prepared_skills)};
   return initializeMission(definition,seed,setup,deployment,execution);
 }
 // Read-only pre-mission inspection. Does not bypass the playable-mission gate.
@@ -132,6 +133,10 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
    s.visibility={light:patrolMoonLight(randomNumber(s,4,'Patrol moon visibility')),weather:0};
    for(const l of values(s.locations).filter(l=>l.row===1||l.id===s.patrol.plan.cop))for(let i=0;i<2;i++)l.covers.push({id:`fox_${l.id}_${i}`,type:'Foxholes',value:1,known:true,discovered:true});
    for(const u of values(s.units).filter(u=>friendly(u)&&live(u)&&!patrolParticipant(s.patrol,u)))u.cover=s.locations[u.location].covers[0].id;
+  }
+  if(setup.prepared_skills?.length){
+   if(!deployment)throw new Error('Prepared skills require an immutable company deployment.');
+   buySkills(s,setup.prepared_skills.map(({holder,type})=>({holder,type})),Infinity);
   }
   emit(s,'MISSION_STARTED',scenario.briefing,{scenario:scenario.id,version:scenario.version,seed:String(seed)});
   revealTerrain(s,{setup:true});
@@ -409,6 +414,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     fire:[...s.fire,...temporaryMortarFire(s)].filter(f=>friendly(fireSource(s,f.source))||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>({...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:visible(s,fireSource(s,f.source))?f.source:null,friendly:friendly(fireSource(s,f.source))})),
     markers:s.markers.filter(m=>m.type==='ILLUMINATION'||occupants(s,m.location).some(u=>friendly(u)||s.knowledge.spotted[u.id])).map(m=>({type:m.type,location:m.location,value:m.value,critical:!!m.critical,...(m.source&&fireSource(s,m.source)&&visible(s,fireSource(s,m.source))?{source:m.source,origin:m.origin??fireSource(s,m.source).location}:{}),...(m.target&&s.units[m.target]&&visible(s,s.units[m.target])?{target:m.target}:{}),...(m.cover&&terrainProjection(s.locations[m.location]).covers?.some(c=>c.id===m.cover)?{cover:m.cover}:{}),...(m.weapon?{weapon:m.weapon}:{}),...(m.type==='ILLUMINATION'?{center:m.center,adjacent:m.adjacent,delivery:m.delivery}:{})})),phone_lines:structuredClone(s.phone_lines),runners:structuredClone(s.runners),
     support:knownSupport.map(f=>({location:f.location,status:f.status,value:f.value,...(f.agency?{agency:f.agency==='cannon'?'cannon':f.agency.includes('mortar')?'mortar':'artillery',ammo:f.ammo??'HE'}:{})})),support_inventory:structuredClone(s.support_inventory),
+    support_callers:Object.fromEntries(Object.entries(s.support_agencies??{}).map(([id,a])=>[id,{name:a.name,draws:structuredClone(a.draws),ammo_draws:structuredClone(a.ammo_draws),networks:structuredClone(a.networks),registered:s.registered_targets?.[id]??null}])),
     personnel:values(s.personnel),casualties:s.casualties.filter(c=>c.faction==='friendly').map(c=>({...structuredClone(c),label:`${c.origin_name??'Friendly formation'} casualty step`,carrier_name:c.carrier?s.units[c.carrier]?.name:null})),
     assets:s.assets.filter(a=>!a.destroyed&&a.faction==='friendly').map(a=>({...structuredClone(a),label:a.type==='RADIO'?`${a.net} radio`:`${String(a.key??'Equipment').replaceAll('_',' ')}${a.type==='AMMO'?' ammunition':''}${a.quantity>1?` ×${a.quantity}`:''}`,carrier_name:a.carrier?s.units[a.carrier]?.name:null})),
     deck:{draws:getVisibleEvents(s).filter(e=>e.type==='CARDS_DRAWN').reduce((n,e)=>n+e.card_ids.length,0)},

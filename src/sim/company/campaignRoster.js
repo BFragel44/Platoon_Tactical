@@ -29,7 +29,7 @@ export function createCampaignRoster(companyId,scenario){
  }
  return {schema:CAMPAIGN_SCHEMA,company_id:companyId,revision:0,formations,steps,people,applied_missions:{}};
 }
-export function rosterSnapshot(record){const source=assertRecord(record);return copy({company_id:source.company_id,revision:source.revision,formations:source.formations,steps:source.steps,people:source.people});}
+export function rosterSnapshot(record){const source=assertRecord(record);return copy({company_id:source.company_id,revision:source.revision,formations:source.formations,steps:source.steps,people:source.people,...(source.prepared_skills?{prepared_skills:source.prepared_skills}:{})});}
 export function applyMissionDebrief(record,mission){
  const next=copy(assertRecord(record));
  if(['ACTIVE','PATROL_COMPLETE'].includes(mission.status)||!mission.status)throw new Error('Only a terminal mission can be debriefed.');

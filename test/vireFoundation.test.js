@@ -10,7 +10,7 @@ describe('Vire source-backed authored foundation',()=>{
   expect(vire.readiness.playable).toBe(true);
   expect(missionCatalog.some(m=>m.id===vire.id)).toBe(true);
   expect(()=>createMission(vire,'no-bypass')).toThrow();
-  expect(RULES_VERSION).toBe(33);
+  expect(RULES_VERSION).toBe(35);
   expect(missionCatalog.filter(m=>/^normandy_[1-5]$/.test(m.id))).toHaveLength(5);
  });
  it('validates authored distributions only against explicitly supplied profile capabilities',()=>{

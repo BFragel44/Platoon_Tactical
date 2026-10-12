@@ -10,6 +10,9 @@ export function selectedOrder(options,action,target) {
 export const completeCombatStage=stage=>stage==='effect'?'result':stage;
 export const combatArt=(filename,role)=>({filename,flip:!!art.assets[filename]?.[`${role}_flip`]});
 export const supportContext=source=>source&&source.kind!=='BASIC_FIRE';
+export function retainedGeneralIssuer(units,id){
+ return units.some(u=>u.id===id&&u.steps&&!u.removed&&['HQ','STAFF'].includes(u.kind))?id:'';
+}
 
 const escapeOrderText=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function availableOrderMenu(options,action,label=o=>o.label){

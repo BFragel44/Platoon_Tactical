@@ -1,12 +1,12 @@
 import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {hill192} from '../src/scenarios/hill192.js';
-import {replayMission,exportReplay,createMission,prepareReattempt} from '../src/sim/company/engine.js';
+import {replayMission,exportReplay,createMission,RULES_VERSION,prepareReattempt} from '../src/sim/company/engine.js';
 import {hill192DeploymentDefinition} from '../src/sim/company/hill192Setup.js';
 import {createCampaignRoster,applyMissionDebrief,saveCampaign,readCampaign} from '../src/sim/company/campaignRoster.js';
 import {checkpoint,resumeCheckpoint} from '../src/ui/localRecovery.js';
 const candidate={...hill192,readiness:{playable:true}};
-const read=seed=>JSON.parse(readFileSync(`output/hill192-playtests-v2-r33/${seed}-hill192.json`,'utf8'));
+const read=seed=>JSON.parse(readFileSync(`output/hill192-playtests-v2-r${RULES_VERSION}/${seed}-hill192.json`,'utf8'));
 describe('complete Hill 192 legal-order runs',()=>{
  for(const [seed,attempt] of [['hill-route-1',1],['hill-scouted-2',2],['hill-forward-4',2]])it(`${seed}: success, exact replay, recovery and isolated debrief`,()=>{
   const fixture=read(seed),record=fixture.replay,original=structuredClone(record);

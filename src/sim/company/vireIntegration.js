@@ -22,7 +22,7 @@ import {embarkInfantry,disembarkInfantry,exposePassengersForCombat,storePassenge
 import {transferVehicleCargo} from './vehicleCargo.js';
 export const VIRE_ADAPTER_VERSION=15;
 export const TINCHEBRAY_ADAPTER_VERSION=4;
-export const VIRE_ADAPTER_BASE_RULES_VERSION=33;
+export const VIRE_ADAPTER_BASE_RULES_VERSION=35;
 export function initializeVireAdapter(base,deployments){
  if(base.rules_version!==VIRE_ADAPTER_BASE_RULES_VERSION)throw new Error('Incompatible vehicle adapter base rules.');
  const s=structuredClone(base);s.vire_runtime={version:VIRE_ADAPTER_VERSION,vehicles:{},pending_hits:[],operations:[],applied:[]};
@@ -302,6 +302,12 @@ export function applyVireOperation(state,operation){
   const u=s.units[pending.unit_id];if(!live(u))throw new Error('Crew step unavailable.');
   const c=draw(s,1,'Vehicle crew / passenger HIT',u.faction==='enemy'&&!s.knowledge.spotted[u.id])[0],effect=c.hit[u.experience];
   if(!effect)throw new Error('Unsupported crew HIT effect.');applyHit(s,u,effect);pending.resolved=true;pending.card_id=c.id;pending.effect=effect;
+ }else if(operation.type==='HOLD_VEHICLE'){
+  if(s.phase!=='AT_COMBAT'||runtime.move&&!runtime.move.complete||runtime.quick||runtime.reaction?.eligible.length||runtime.pending_hits.some(h=>!h.resolved))throw new Error('Resolve pending vehicle procedures before holding.');
+  const v=activeVehicle(s,operation.vehicle);
+  if(v.faction!=='friendly'||atProfile(v.profile).target_type!=='V')throw new Error('Only a friendly vehicle can hold.');
+  startOrderedAction(s,v.id);resolveVehicleVOF(s,v,operation.id);runtime.vehicles[v.id].moved_fired=true;
+  emit(s,'VEHICLE_HELD',`${v.name} held position.`,{actor:v.id,location:v.location});
  }else if(operation.type==='PREPARE_VEHICLE_MOVE'){
   if(runtime.disembark||runtime.phase_complete||runtime.end_vof||runtime.pending_fire||runtime.move&&!runtime.move.complete||runtime.quick||runtime.reaction?.eligible.length)throw new Error('Resolve the pending vehicle operation first.');
   if(runtime.pending_hits.some(h=>!h.resolved))throw new Error('Resolve immediate crew HITs before movement.');

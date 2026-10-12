@@ -1,61 +1,71 @@
 # Normandy company preparation
 
-October 11, 2026: development candidate. All seven standalone missions remain independently selectable. Connected advancement remains gated pending battlefield carryover and campaign dependencies.
+October 11, 2026: development candidate. Seven accepted standalone missions remain independent. Fresh campaign M1 and terminal preparation are available; connected advancement remains gated.
 
-## Source checklist
+## Source audit
 
-- [x] Visually inspected Normandy pp.12-13: experience, up to six Green replacements, assets and communications.
-- [x] Visually inspected third-edition pp.80-81: ordered sequence, promotion costs/restrictions, casualties across attempts and Veteran return thresholds.
-- [x] Visually inspected p.82: allocations, attachment replacements, combined experience and skills.
-- [ ] Campaign-wide patrol/guard/attachment and vehicle personnel handoff audit before connected progression.
+- [x] Normandy pp.12–13: published starting company, experience, six Green replacements, equipment and communications.
+- [x] Third-edition pp.80–82, §§12.1–12.7: preparation sequence, promotion restrictions, replacements, combined experience and expendable skills.
+- [x] Third-edition p.74, §10.7: vehicle retreat removes passengers for the remainder of the mission; surviving company passengers return between missions without replacement spending. Brewed-up casualties and prisoners remain unresolved.
+- [x] M4 special rules: use the same company's preserved M3 terrain, cover and discovered mines; engineers require discovered Row-2/3 mines.
+- [x] Campaign-wide preparation source audit and adversarial personnel cases: mission exceptions, patrol skill carryover, rebuilt-HQ transfers, runner-box personnel and deliberately unassigned survivors. This closes the preparation audit, not connected advancement validation.
 
-## Candidate
+### Campaign-wide preparation audit — October 11
 
-File > Campaign company creates a fresh published M1 company in a separate versioned record. Set up campaign M1 opens the accepted setup dialog. Resume saved campaign M1 reads its separate checkpoint. Terminal debrief offers ordered reconstitution/promotions, replacements and skills. Finishing produces a company summary without launching Mission 2.
+| Mission | Published preparation exception / handoff | Evidence |
+| --- | --- | --- |
+| M1 Trévières | Published starting company; one reattempt; ordinary skill expiration and destination supply reset. | Normandy pp.12–19; preparation/roster fixtures. |
+| M2 Cerisy | One reattempt; observers replaced through parent organizations; prepared company identities/experience persist. | Normandy pp.20–23; Cerisy deployment/skill fixtures. |
+| M3 St. Georges | Three patrols; participant promotions; unused purchased skills carry into the next mission; preserve battlefield for M4. Patrol failure does not end the campaign. | Normandy pp.24–27; real three-patrol replay/handoff fixture. |
+| M4 Hill 192 | Same-company M3 cover/mines; remove COP, retain foxholes; Row-2/3 discovered mines enable engineers; omitted units unavailable until next mission. | Normandy pp.28–31; linked battlefield/engineer fixtures. |
+| M5 St. Germain | Three patrols; participant promotions and unused purchased skill carryover; no published M5→M6 battlefield reuse requirement. | Normandy pp.32–35; complete patrol replay/preparation fixture. |
+| M6 Vire | One reattempt; five initial Shermans/five event Stuarts and engineers are support; replace Jeep automatically; surviving company passengers return. | Normandy pp.36–41 and p.12; actual vehicle factory/passenger fixtures. |
+| M7 Tinchebray | Two reattempts; casualties across attempts count once; four initial M10s/five event Stuarts replenish as support. | Normandy pp.42–46; factory/replay and casualty fixtures. |
 
-Transfers preserve identities; replacements receive new identities. Casualty dispositions remain unresolved. Veteran allowances do not assign recovery to a specific named casualty. Immutable input copies, unique mission IDs and revision checks protect atomic single-record commits. Original replay and preparation operations remain in history. Prepared deployment exposes strength, experience, skills and a destination-content supply-reset policy; subsequent launches remain gated.
+Cross-cutting source: third-edition §§12.1–12.7 (pp.80–82), §4.3.2 (p.27), §10.7 (p.74), Normandy pp.12–15. No additional Normandy between-mission losses or experience reductions were found under §12.5; do not invent them. Visually checked starting company/assets tables (pp.12–13), patrol MSRs/support tables (pp.26,34), Hill MSRs (p.30), vehicle attachment/support tables (pp.38,44), and preparation sequence (rules p.81). Tactical content remains covered by each mission's readiness guide.
 
-Storage: `platoon-normandy-connected-company` schema 4; tactical checkpoints prefixed `connected-`. Existing standalone records are not imported or replaced. Incompatible preparation bytes remain exportable.
+Audit corrections: unused patrol skills retain counters/holder limits without another experience charge; rebuilt-HQ promotion restrictions follow transferred step identities; surviving boxed/dispatched runners return to selectable reconstitution; deliberately unassigned survivors remain available after later deployment/debrief. Used skills, casualties and prisoners are never revived. Offensive skills still expire. Preparation schema 6 rejects earlier candidate records with original-export access; tactical rules remain 34.
+
+## Candidate and storage
+
+File > Campaign company creates a fresh published M1 company. Set up campaign M1 and Resume saved campaign M1 use its separate checkpoint. Terminal debrief guides reconstitution/promotions, replacements and skills. Finishing shows the prepared company; Mission 2 launch is unavailable.
+
+Preparation storage: `platoon-normandy-connected-company`, schema 6. Tactical checkpoints use the `connected-` prefix. Standalone companies are not imported or changed. Earlier preparation schemas are explicitly rejected; original bytes remain exportable. Tactical rules remain 34, vehicle adapter base 34, with strict historical replay/recovery rejection and export access.
+
+## Implemented handoffs
+
+- [x] Immutable mission snapshots/history, unique mission IDs, revision checks and atomic single-record storage; stale/duplicate/invalid actions reject without changing the saved company.
+- [x] Persistent people and steps survive transfers. Replacement identities are new; no named casualty is assigned a fabricated wound/death or Veteran return outcome.
+- [x] Green/Veteran replacement allowances require successful completion. Actual company casualty/prisoner vacancies limit allocation; parent-organization and temporary withdrawal losses cannot inflate the company allowance.
+- [x] Published support ownership survives breakdown and guards. Attachments cannot donate company steps or receive company promotions. Destination observers, HMGs, engineers and vehicle crews replenish separately with new support identities.
+- [x] Prior patrol experience awards expire; unused purchased patrol skills carry forward under MSR 1. Promotion eligibility follows participating step identities, including guards; one promotion per eligible step, with Green→Line costing 1 and Line→Veteran costing 3. Rebuilt HQ/staff and new replacements cannot receive spare-point promotions.
+- [x] Surviving company passengers return from active/retreated vehicles with their formation identities and recorded experience. Generic LATs become Green; named HQ/weapon Fire Teams rally at their original experience. Casualties and prisoners do not return through this mechanism.
+- [x] Company mortar section/team choices preserve surviving identities and strength. Unassigned LATs are not silently reconstituted. Deployment aliases do not create extra personnel.
+- [x] Prepared skills enter immutable roster snapshots, setup and attempt records; live use and replay preserve one-use exhaustion. Physical counter/holder restrictions remain enforced.
+- [x] M6/M7 initial and event support crews, ammunition, activation and support availability reset through destination content/factories. Old support casualties remain unresolved.
+- [x] A completed three-patrol M3 battlefield is stored in the same company's terminal history. Campaign M4 automatically uses it and rejects foreign, missing or modified sources. Standalone M4 loading remains unchanged.
+- [x] `commitPreparedCompanyDeployment` prepares and commits the destination roster before deployment. Reloaded next-mission debrief uses that roster; mismatched mission IDs and stale commits reject. This transaction API does not enable connected launch.
 
 ## Validation
 
-- [x] Thirty-five preparation fixtures: active/duplicate rejection, immutable snapshots, promotions/rebuilt HQs, returning guards, attachment restrictions, patrol eligibility, casualty thresholds, replacement identities, skills, reload/stale revisions and storage failure.
-- [x] Strict original M1 rules-25 rejection and unchanged recovery/export bytes (`test/normandyHistoricalCompatibility.test.js`).
-- [x] Normal M6/M7 selection without flags, switching, deployment, reload, abort/restart; fresh campaign M1 through prepared summary, interrupted preparation reload and narrow layout (`scripts/campaignReleaseBrowserQA.js`).
-- [x] Existing inline vehicle browser checks: activation, phases, map movement, exports, recovery and narrow layout.
+- [x] Preparation/roster/historical compatibility/Hill foundation fixtures: identities, guards, support ownership, promotion/replacement boundaries, skills, storage failure, duplicate/stale rejection and immutable exports.
+- [x] Legal three-patrol M3 → debrief/preparation → same-company M4 setup, exact M3 replay, save/reload and foreign/modified battlefield rejection.
+- [x] Complete M5 patrol replay → preparation with final-patrol experience, HMG ownership and unique active memberships.
+- [x] Actual M6/M7 factory handoffs: crew losses/withdrawals, surviving passengers, parent replenishment, prepared skills and exact vehicle replay.
+- [x] Normal M6/M7 routing and campaign M1 preparation browser checks: switching, abort/restart, interrupted preparation, recovery and narrow layout.
+- [x] M5 browser cases and M6/M7 inline vehicle controls, phase filtering, exports and recovery.
+- [x] Previous full regression: 117 files / 1,753 tests; six Company Assault and six KUTF policies with exact replay. Separate regenerated rules-34 M4/M5 runs preserve previous outcomes; original rules-33 files remain unchanged.
 - [ ] Human preparation acceptance.
-- [ ] Expanded campaign-wide personnel handoff fixtures before enabling progression.
+- [ ] Connected campaign sequence/launch/recovery UI and complete seven-mission advancement validation (subsequent scope).
 
-Updated full regression: 116 files / 1718 tests passed. The latest prepared-deployment fixture also passes in the 16-test preparation suite. Six Company Assault and six KUTF scripted policies completed with exact replay. Production build passes with existing bundle-size warning. No tactical replay version changed. Historical M1 audit script cannot execute rules-25 operations against today's engine (operation 95); original records remain unchanged and strict historical rejection remains in force.
+Latest campaign-wide audit follow-up: 96 tests pass across preparation, roster, Hill foundation and historical compatibility. The normal-selection/interrupted-preparation browser script passes under schema 6. Latest preparation work changes no tactical resolution/version. Production build passes with the existing bundle-size warning. Readiness evidence should distinguish these focused follow-up checks from the previous full regression run.
 
+## Remaining boundaries
 
-### Personnel handoff follow-up
+Connected progression stays unavailable until human preparation acceptance and end-to-end campaign advancement/carryover validation. No automatic conversion of standalone/historical companies. Vehicle presentation redesign and 3D/audio remain separate later work. Preparation never assigns unsupported individual casualty outcomes.
 
-Focused validation: 29 tests passed across campaign preparation, campaign roster and historical compatibility. Production build passes (existing bundle-size warning). Surviving support crew memberships and undeployed reserves are retained rather than cleared wholesale. Unresolved losses remain outside active strength. Support crews cannot donate company steps. Final patrol experience excludes spent awards and does not subtract previous patrol expenditure twice. Promotion eligibility follows the participating step identity through transfers. Both replacement categories require successful mission completion.
+First-player blocker verification (October 11): Jeep Hold operation, compact tactical storage, original exports, historical rejection, failed-write backup rollback and M7 browser reload validated. Command previews and preparation guidance were refined without ungating connected progression. Rules 35 validation and remaining full manual runs are tracked in `CAMPAIGN_FIRST_PLAYER_LOG.md`.
 
-Preparation schema 2 rejects earlier candidate preparation records explicitly, preserving their raw bytes for export; tactical replay versions are unchanged. Remaining work: audit attachment provenance after breakdown, supporting personnel withdrawals and destination-specific attachment replenishment; expand real M3/M5/M6/M7 handoff fixtures and repeat browser recovery checks before connected progression. Human preparation acceptance is still pending.
+### First-player preparation and recap refinements
 
-
-### Ownership and exhaustion audit
-
-Rechecked the printed third-edition p.81 sequence and restrictions visually. Preparation now records supporting formation ownership independently of tactical flags, including the published M3/M5 HMG attachment lists. Detached supporting steps cannot enter the company LAT pool or receive company promotions. Company Veteran return thresholds exclude parent-organization personnel losses while immutable mission history retains all casualty IDs. Mortar section/team aliases no longer duplicate active personnel memberships. Previously purchased mission skills expire even when preparation buys no new skills.
-
-Evidence: 34 focused tests pass (26 preparation fixtures plus roster and historical compatibility); normal-selection/recovery/preparation browser checks pass; production build passes with the existing bundle-size warning. Preparation schema 3 requires explicit support ownership; older candidate records are rejected and original bytes remain exportable. No tactical replay version changed.
-
-Still pending: destination attachment replenishment, full real-mission withdrawal handoff fixtures, battlefield carryover and human preparation acceptance. Supporting vehicle withdrawals remain unresolved rather than being silently restored or declared casualties.
-
-
-### Replacement vacancies and presentation
-
-Fixed live observer memberships being cleared before support exclusion. Replacement allocation now consumes only recorded company casualty/prisoner vacancies from the completed mission across its attempts; withdrawn personnel do not create replacement entitlements. Redistribution may change which understrength formation receives the replacement without increasing the vacancy allowance. Skill holders must belong to the persistent company.
-
-The preparation interface now limits replacement targets to understrength company formations and skill targets to surviving HQ/staff, omits irrelevant step selection outside reconstitution, and disables exhausted replacement allocations. Evidence: 37 focused tests pass; normal mission/recovery and interrupted preparation browser script passes; production build passes with its existing size warning. Preparation schema 4 explicitly adds replacement-vacancy accounting; incompatible candidate bytes remain exportable. Tactical replay versions remain unchanged. Real vehicle-withdrawal handoffs and destination attachment replenishment remain pending; connected launch stays gated.
-
-
-### Destination roster and vehicle handoff fixtures
-
-`preparedCompanyDeployment(record, missionId, destination)` now builds an immutable destination roster for infantry missions. It preserves persistent company step/person identities, supplies destination-authored attachments under fresh mission-specific supporting identities, archives prior support formation membership, and retains unresolved historical support casualties. Active departing attachments are recorded as returned to their parent organization, not dead or wounded. It rejects reuse of completed mission IDs and incompatible company formation capacities. Hill 192 HMG attachments are now recognized as support.
-
-A real Vire factory fixture verifies surviving crew membership and withdrawn crew dispositions, exclusion from company donors and replacement vacancies, and complete debrief export. Vehicle destination handoff explicitly rejects until vehicle crew/asset replenishment is implemented; it does not emit an incomplete vehicle deployment.
-
-Evidence: 43 focused tests pass (35 preparation tests, roster and historical compatibility); production build passes with existing size warning. Tactical replay and preparation schema versions are unchanged in this follow-up. Remaining: apply/replay prepared skills in live deployment, conditional Hill 192 engineers with preserved M3 battlefield, supporting vehicle replenishment, M5/M7 full handoff fixtures, and human preparation acceptance. Connected mission launch remains unavailable.
+Company preparation now supports prevalidated multi-step transfer batches with one revision-checked commit, promotion/skill previews and step-derived combined-experience summaries. Invalid/stale/failed batches leave assignments unchanged and preserve the older backup. Optional recap popups persist as presentation; required choices, manual history and explicit phase stepping remain. Mission command/glossary guidance and terminal-preparation eligibility messages were added. Eight focused preparation-choice cases, existing campaign/recovery/command fixtures and browser checks pass; rules remain 35. See `CAMPAIGN_FIRST_PLAYER_LOG.md` for actual manual coverage.

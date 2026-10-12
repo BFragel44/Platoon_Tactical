@@ -1,3 +1,4 @@
+import {decodeRecovery} from '../src/ui/recoveryEncoding.js';
 import {describe,it,expect} from 'vitest';
 import {companyAssault} from '../src/scenarios/companyAssault.js';
 import {createMission,advancePhase,resolveCombat as resolveCurrentCombat,selectHQ,submitCommand,getPlayerView,getVisibleEvents,exportReplay,replayMission,endTurn} from '../src/sim/company/engine.js';
@@ -124,7 +125,7 @@ describe('Strict local recovery',()=>{
  it('preserves the old save on storage failure and keeps corrupt/incompatible data exportable',()=>{
   const storage=memory();saveRecovery(storage,fresh());const original=storage.getItem(SAVE_KEY);
   expect(()=>saveRecovery({...storage,setItem(){throw new Error('Quota exceeded');}},legalCombatReview())).toThrow('Quota');expect(storage.getItem(SAVE_KEY)).toBe(original);
-  const old=JSON.parse(original);old.latest.replay.rules_version=2;expect(()=>resumeCheckpoint(companyAssault,old.latest)).toThrow('version mismatch');
+  const old=JSON.parse(decodeRecovery(original));old.latest.replay.rules_version=2;expect(()=>resumeCheckpoint(companyAssault,old.latest)).toThrow('version mismatch');
   storage.setItem(SAVE_KEY,'corrupt');expect(readRecovery(storage).raw).toBe('corrupt');expect(()=>saveRecovery(storage,fresh())).toThrow('Cannot read');
   saveRecovery(storage,fresh(),{}, {replace:true});expect(storage.getItem(`${SAVE_KEY}-previous`)).toBe('corrupt');
  });

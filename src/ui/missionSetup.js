@@ -44,7 +44,7 @@ export function setupMarkup(preview,canStart=false){
  const locations=preview.locations;
  const lastRow=preview.map?.rows??Math.max(...locations.map(l=>l.row));
  const options=ls=>ls.map(l=>[l.id,l.name]);
- return `<section class="mission-setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title"><form id="mission-setup-form"><h2 id="setup-title">Mission setup preview</h2><p>Seed: ${esc(preview.seed)} · content version ${preview.mission_version}. Previewing never changes the active mission or its save.</p>
+ return `<section class="mission-setup-dialog" role="dialog" aria-modal="true" aria-labelledby="setup-title"><form id="mission-setup-form"><h2 id="setup-title">Mission setup preview</h2><p><b>${esc(preview.mission_name??'Mission briefing')}</b></p>${preview.briefing?`<p>${esc(preview.briefing)}</p>`:''}<p>Seed: ${esc(preview.seed)} · content version ${preview.mission_version}. Previewing never changes the active mission or its save.</p>
  ${preview.assumptions?.length?`<p>Validation assumptions: ${preview.assumptions.map(esc).join(' ')}</p>`:''}
  ${!preview.playable?`<p class="storage-warning">Not playable yet. Required work:</p><ul>${preview.missing.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`:''}
  ${preview.setup_options?.mortar_mode?`<label>60mm mortars ${select('mortar-mode',[['section','Three-step section'],['teams','Three individual teams']],preview.setup.mortar_mode??'section')}</label>`:''}
@@ -66,7 +66,7 @@ export function openMissionSetup(root,definition,seed,onStart=null,options={}){
  try{preview=makePreview(definition,seed);if(preview.patrol)preview=makePreview(definition,seed,{positions:Object.fromEntries(preview.units.map(u=>[u.id,patrolDeploymentDefault(u,preview.patrol.platoon)]))});}catch(e){return {error:e.message};}
  const sourceState=definition.rules?.hill192?(()=>{try{return readBattlefields(options.storage??globalThis.localStorage);}catch(error){return {error:error.message};}})():{};
  const sources=Object.values(sourceState.record?.entries??{});
- const annotate=()=>{if(preview.hill192){preview.battlefield_sources=sources;preview.battlefield_error=sourceState.error;}};
+ const annotate=()=>{preview.mission_name=definition.name;preview.briefing=definition.briefing;if(preview.hill192){preview.battlefield_sources=sources;preview.battlefield_error=sourceState.error;}};
  const close=()=>{closed=true;root.querySelector('.mission-setup-dialog')?.remove();document.removeEventListener('keydown',keyboard);(previous?.isConnected&&previous.getClientRects().length?previous:root.querySelector('#menu-file'))?.focus();};
  const keyboard=e=>{if(e.key==='Escape'){e.preventDefault();close();}if(e.key==='Tab'){const focusable=[...root.querySelectorAll('.mission-setup-dialog button,.mission-setup-dialog select,.mission-setup-dialog input,.mission-setup-dialog summary')].filter(e=>e.getClientRects().length);if(e.shiftKey&&document.activeElement===focusable[0]){e.preventDefault();focusable.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===focusable.at(-1)){e.preventDefault();focusable[0].focus();}}};
  const paint=()=>{annotate();root.querySelector('.mission-setup-dialog')?.remove();root.insertAdjacentHTML('beforeend',setupMarkup(preview,!!onStart));root.querySelector('#setup-close').onclick=close;const form=root.querySelector('#mission-setup-form');bindPatrolDeployment(form,preview.units,'platoon',preview.locations);

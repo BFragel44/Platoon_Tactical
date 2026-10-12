@@ -16,7 +16,7 @@ export function materializeScenario(definition,seed,setup={}) {
  definition=hill192DeploymentDefinition(definition,setup);
  validateNormandyContent(definition);
  if(!definition.map){if(Object.keys(setup).length)throw new Error('This authored course has no configurable setup.');return definition;}
- if(Object.keys(setup).some(k=>!['objectives','assignments','positions','assets','mortar_mode','mortar_radio_recipient','command_network','phone_lines','signals','phase_lines','patrol','battlefield','forward_defense','concentration'].includes(k)))throw new Error('Unknown setup field.');
+ if(Object.keys(setup).some(k=>!['objectives','assignments','positions','assets','mortar_mode','mortar_radio_recipient','command_network','phone_lines','signals','phase_lines','patrol','battlefield','forward_defense','concentration','prepared_skills'].includes(k)))throw new Error('Unknown setup field.');
  if(setup.phase_lines&&!definition.rules?.signals)throw new Error('This mission has no configurable phase lines.');
  if(setup.mortar_mode&&!definition.unit_options?.mortar)throw new Error('This mission has no mortar setup choice.');
  if(setup.mortar_mode&&!['section','teams'].includes(setup.mortar_mode))throw new Error('Choose the mortar section or individual teams.');

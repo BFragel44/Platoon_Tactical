@@ -1,11 +1,11 @@
 import {describe,it,expect} from 'vitest';
 import {readFileSync} from 'node:fs';
 import {stGermain} from '../src/scenarios/stGermain.js';
-import {replayMission,exportReplay,createMission,preparePatrol} from '../src/sim/company/engine.js';
+import {replayMission,exportReplay,createMission,RULES_VERSION,preparePatrol} from '../src/sim/company/engine.js';
 import {createCampaignRoster,startStandaloneRoster,readCampaign,debriefAndSave,applyMissionDebrief} from '../src/sim/company/campaignRoster.js';
 import {checkpoint,resumeCheckpoint} from '../src/ui/localRecovery.js';
 const candidate={...stGermain,readiness:{playable:true}};
-const read=seed=>JSON.parse(readFileSync(`output/st-germain-playtests-v2-r33/${seed}.json`,'utf8')).replay;
+const read=seed=>JSON.parse(readFileSync(`output/st-germain-playtests-v2-r${RULES_VERSION}/${seed}.json`,'utf8')).replay;
 describe('authentic complete St. Germain patrol runs',()=>{
  for(const [seed,outcomes] of [['st-germain-short-2',['SUCCESS','SUCCESS','SUCCESS']],['st-germain-short-1',['SUCCESS','SUCCESS','DEFEAT']],['st-germain-short-1-defenders',['SUCCESS','SUCCESS','SUCCESS']]])it(`${seed}: three platoons, exact replay, recovery and isolated terminal persistence`,()=>{
   const record=read(seed),original=structuredClone(record),s=replayMission(candidate,record);

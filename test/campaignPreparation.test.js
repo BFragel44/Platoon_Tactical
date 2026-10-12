@@ -1,3 +1,10 @@
+import {readFileSync} from 'node:fs';
+import {createRunner,dispatchRunner} from '../src/sim/company/runners.js';
+import {stGermain} from '../src/scenarios/stGermain.js';
+import {tinchebray} from '../src/scenarios/tinchebray.js';
+import {createTinchebrayDevelopmentMission} from '../src/sim/company/tinchebrayMission.js';
+import {importVireAdapterReplay} from '../src/sim/company/vireIntegration.js';
+import {exportScoutedBattlefield} from '../src/sim/company/battlefieldCarryover.js';
 import {vire} from '../src/scenarios/vire.js';
 import {createVireRoster,createVireDevelopmentMission} from '../src/sim/company/vireMission.js';
 import {cerisy} from '../src/scenarios/cerisy.js';
@@ -5,10 +12,58 @@ import {hill192} from '../src/scenarios/hill192.js';
 import {stGeorges} from '../src/scenarios/stGeorges.js';
 import {describe,it,expect} from 'vitest';
 import {trevieres} from '../src/scenarios/trevieres.js';
-import {createMission,abortMission} from '../src/sim/company/engine.js';
-import {newCompanyCampaign,beginCompanyPreparation,prepareCompany,saveCompanyPreparation,readCompanyPreparation,preparedCompanyDeployment} from '../src/sim/company/campaignPreparation.js';
+import {createMission,abortMission,exportReplay,replayMission,advancePhase,submitCommand,selectHQ,eligibleHQs,endTurn,preparePatrol} from '../src/sim/company/engine.js';
+import {newCompanyCampaign,beginCompanyPreparation,prepareCompany,saveCompanyPreparation,readCompanyPreparation,preparedCompanyDeployment,commitPreparedCompanyDeployment} from '../src/sim/company/campaignPreparation.js';
 const storage=()=>{const data={};return {getItem:k=>data[k]??null,setItem:(k,v)=>data[k]=v};};
 function terminal(){const r=newCompanyCampaign(trevieres,'test-company');let s=createMission(trevieres,'prep',{}, {mission_instance_id:'run-1',roster:r.roster});s=abortMission(s).state;return {r,s};}
+describe('campaign-wide preparation source audit',()=>{
+ it('preserves deliberately unassigned survivors through another deployment and debrief',()=>{
+  const {r,s}=terminal();const step=s.units.s11.steps.pop();
+  s.units.detached={...structuredClone(s.units.s11),id:'detached',kind:'LAT',named:false,steps:[step]};
+  let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+  const committed=commitPreparedCompanyDeployment(p,'unassigned-next',cerisy);
+  const mission=abortMission(createMission(cerisy,'unassigned',{},committed.deployment)).state;
+  const next=beginCompanyPreparation(committed.record,mission);
+  expect(next.preparation.available).toContain(step.id);
+  expect(next.roster.steps[step.id].disposition).toBe('ACTIVE');
+  expect(next.preparation.replacement_slots).toBe(0);
+ });
+ for(const dispatched of [false,true])it(`returns surviving ${dispatched?'dispatched':'boxed'} runners as selectable reconstitution steps`,()=>{
+  const {r,s}=terminal();createRunner(s,s.units.s11);if(dispatched)dispatchRunner(s,s.units.hq1);
+  const step=s.runners[0].step.id;let p=beginCompanyPreparation(r,s);
+  expect(p.preparation.available).toContain(step);expect(p.roster.steps[step].experience).toBe('Line');
+  expect(Object.values(p.roster.formations).flatMap(f=>f.step_ids)).not.toContain(step);
+  p=prepareCompany(p,{type:'TRANSFER',step,target:'s11'});
+  expect(p.roster.formations.s11.step_ids).toContain(step);
+ });
+ for(const scenario of [trevieres,cerisy,stGeorges,hill192,stGermain,vire,tinchebray])it(`${scenario.id}: only patrols retain unused skill counters`,()=>{
+  const {r,s}=terminal();s.scenario_id=scenario.id;
+  s.skills=[{id:'kept',counter:11,holder:'co',type:'AUTO_SPOT',used:false},{id:'spent',counter:12,holder:'co',type:'AUTO_SPOT',used:true}];
+  let p=beginCompanyPreparation(r,s);const patrol=['normandy_3','normandy_5'].includes(scenario.id);
+  expect(p.roster.prepared_skills.map(x=>x.id)).toEqual(patrol?['kept']:[]);
+  const st=storage();saveCompanyPreparation(st,p);p=readCompanyPreparation(st);
+  for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+  expect(preparedCompanyDeployment(p,'audit-next').prepared_skills.map(x=>x.id)).toEqual(patrol?['kept']:[]);
+ });
+ it('retained patrol skills occupy counters and holder capacity without being charged again',()=>{
+  const {r,s}=terminal();s.scenario_id='normandy_5';s.achievements=[{points:3}];
+  s.skills=[{id:'kept',counter:11,holder:'co',type:'AUTO_SPOT',used:false}];
+  let p=beginCompanyPreparation(r,s);p=prepareCompany(prepareCompany(p,{type:'NEXT'}),{type:'NEXT'});
+  p=prepareCompany(p,{type:'SKILL',purchase:{holder:'co',type:'AUTO_SPOT'}});
+  expect(p.preparation.points).toBe(2);expect(p.roster.prepared_skills.map(x=>x.counter)).toEqual([11,12]);
+  expect(()=>prepareCompany(p,{type:'SKILL',purchase:{holder:'hq1',type:'AUTO_SPOT'}})).toThrow(/counter mix/);
+  p=prepareCompany(p,{type:'SKILL',purchase:{holder:'co',type:'EXTRA_DRAW'}});
+  expect(p.preparation.points).toBe(1);
+  expect(()=>prepareCompany(p,{type:'SKILL',purchase:{holder:'co',type:'EXTRA_DRAW'}})).toThrow(/at most three/);
+ });
+ it('cannot promote a rebuilt HQ step after transferring it back to a squad',()=>{
+  const {r,s}=terminal();s.casualties=[{step:s.units.co.steps.pop()}];s.achievements=[{points:10}];
+  let p=beginCompanyPreparation(r,s);const step=p.roster.formations.s11.step_ids[0];
+  p=prepareCompany(p,{type:'TRANSFER',step,target:'co'});
+  p=prepareCompany(p,{type:'TRANSFER',step,target:'s11'});
+  expect(()=>prepareCompany(p,{type:'PROMOTE',step})).toThrow(/cannot be promoted/);
+ });
+});
 describe('campaign company preparation',()=>{
  it('rejects active missions and preserves deployment snapshots',()=>{const {r,s}=terminal();const before=structuredClone(s.roster_snapshot);expect(()=>beginCompanyPreparation(r,{...s,status:'ACTIVE'})).toThrow();const next=beginCompanyPreparation(r,s);expect(s.roster_snapshot).toEqual(before);expect(next.stage).toBe('PREPARATION');expect(()=>beginCompanyPreparation(next,s)).toThrow();});
  it('promotes once, rejects invalid actions without mutation, and discards remaining points',()=>{const {r,s}=terminal();s.achievements=[{points:10}];const p=beginCompanyPreparation(r,s);const step=p.roster.formations.co.step_ids[0];const next=prepareCompany(p,{type:'PROMOTE',step});expect(next.preparation.points).toBe(9);expect(()=>prepareCompany(next,{type:'PROMOTE',step})).toThrow();expect(p.preparation.points).toBe(10);let done=next;for(let i=0;i<3;i++)done=prepareCompany(done,{type:'NEXT'});expect(done.stage).toBe('PREPARED');expect(done.preparation.points).toBe(0);});
@@ -125,9 +180,9 @@ it('does not replace personnel withdrawn aboard a vehicle as casualties',()=>{
  const u=s.units.s11,step=u.steps.pop();
  s.vire_runtime={vehicles:{jeep:{faction:'friendly',status:'RETREATED',crew:[],passengers:[step]}}};
  s.vire_runtime.initial_state=structuredClone(s);s.vire_runtime.operations=[];
- let p=beginCompanyPreparation(r,s);expect(p.roster.steps[step.id].disposition).toBe('WITHDRAWN_UNRESOLVED');
+ let p=beginCompanyPreparation(r,s);expect(p.roster.steps[step.id].disposition).toBe('ACTIVE');
  p=prepareCompany(p,{type:'NEXT'});
- expect(()=>prepareCompany(p,{type:'REPLACE',target:'s11',level:'green'})).toThrow(/Replacement unavailable/);
+ expect(p.roster.formations.s11.step_ids).toContain(step.id);expect(()=>prepareCompany(p,{type:'REPLACE',target:'s11',level:'green'})).toThrow(/Replacement unavailable/);
 });
 it('limits replacements to casualty and prisoner vacancies even after redistribution',()=>{
  const {r,s}=terminal();s.status='SUCCESS';const loss=s.units.s11.steps.pop();s.casualties=[{step:loss}];
@@ -179,7 +234,193 @@ it('retains actual Vire crews and isolates a withdrawn crew from company replace
  expect(p.roster.formations[live.id].step_ids).toEqual(live.crew.map(t=>t.id));
  expect(p.preparation.replacement_slots).toBe(0);
 });
-it('rejects incomplete destination vehicle handoffs explicitly',()=>{
+it('supplies complete destination vehicle crews',()=>{
  const {r,s}=terminal();let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
- expect(()=>preparedCompanyDeployment(p,'vehicle-next',vire)).toThrow(/vehicle deployment handoff/);
+ const d=preparedCompanyDeployment(p,'vehicle-next',vire);
+ const next=createVireDevelopmentMission('vehicle-next',{}, {},{mission_instance_id:d.mission_instance_id,roster:d.roster});
+ expect(Object.values(next.vire_runtime.vehicles).filter(v=>v.faction==='friendly'&&v.profile==='M4_SHERMAN75')).toHaveLength(5);
+ expect(next.vire_runtime.vehicles.sherman_hq.crew.every(t=>t.id.startsWith('vehicle-next_support_'))).toBe(true);
+});
+
+
+it('deploys prepared skills and reconstructs them exactly through replay',()=>{
+ const {r,s}=terminal();s.achievements=[{points:5}];let p=beginCompanyPreparation(r,s);
+ p=prepareCompany(prepareCompany(p,{type:'NEXT'}),{type:'NEXT'});
+ p=prepareCompany(p,{type:'SKILL',purchase:{holder:'co',type:'AUTO_SPOT'}});p=prepareCompany(p,{type:'NEXT'});
+ const d=preparedCompanyDeployment(p,'skilled-run',cerisy),next=createMission(cerisy,'skills',{},d);
+ expect(next.roster_snapshot.prepared_skills).toEqual(d.roster.prepared_skills);expect(next.skills).toHaveLength(1);expect(next.skills[0]).toMatchObject({holder:'co',type:'AUTO_SPOT',used:false});
+ expect(replayMission(cerisy,exportReplay(next))).toEqual(next);
+ expect(p.roster.prepared_skills[0].used).toBe(false);
+});
+it('validates prepared skill holders against actual deployed strength',()=>{
+ const {r,s}=terminal();let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+ const d=preparedCompanyDeployment(p,'bad-skill',cerisy);d.prepared_skills=[{holder:'missing',type:'AUTO_SPOT'}];
+ expect(()=>createMission(cerisy,'skills',{},d)).toThrow(/surviving company HQ/);
+});
+
+
+for(const row of [1,2,3,4])it(`deploys engineers only for qualifying discovered Row ${row} mines`,()=>{
+ const locations=Object.fromEntries(Array.from({length:20},(_,i)=>{const r=1+Math.floor(i/5),c=1+i%5,id=`r${r}c${c}`;return [id,{id,row:r,col:c,name:'Scouted terrain',terrain:'open',elevation:1,known:true,covers:[],mines:r===row&&c===2}];}));
+ const battlefield=exportScoutedBattlefield({scenario_id:'normandy_3',scenario_version:1,rules_version:34,mission_instance_id:'m3-source',seed:'mines',status:'SUCCESS',attempt_number:3,patrol_history:[1,2,3].map(platoon=>({platoon,outcome:'SUCCESS'})),terrain_deck:[],events:[{type:'MINEFIELD_FOUND',location:`r${row}c2`}],locations});
+ const {r,s}=terminal();let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+ p.history.push({mission_id:battlefield.source.mission_instance_id,replay:{scenario:'normandy_3',mission_instance_id:battlefield.source.mission_instance_id},snapshot:{company_id:p.roster.company_id},battlefield});
+ const setup={battlefield},before=structuredClone(battlefield),d=preparedCompanyDeployment(p,`hill-${row}`,hill192,setup);
+ const next=createMission(hill192,'engineers',setup,d);
+ expect(!!next.units.engineers).toBe(row===2||row===3);
+ if(next.units.engineers){expect(next.units.engineers.steps).toHaveLength(3);expect(d.support_formations).toContain('engineers');}
+ expect(battlefield).toEqual(before);expect(replayMission(hill192,exportReplay(next))).toEqual(next);
+});
+
+
+it('replenishes M10 and event M5 crews with prepared skills and exact vehicle replay',()=>{
+ const {r,s}=terminal();s.achievements=[{points:5}];let p=beginCompanyPreparation(r,s);
+ p=prepareCompany(prepareCompany(p,{type:'NEXT'}),{type:'NEXT'});p=prepareCompany(p,{type:'SKILL',purchase:{holder:'co',type:'AUTO_SPOT'}});p=prepareCompany(p,{type:'NEXT'});
+ const d=preparedCompanyDeployment(p,'m7-fresh-support',tinchebray);
+ const next=createTinchebrayDevelopmentMission('m7-support',{}, {},{mission_instance_id:d.mission_instance_id,roster:d.roster});
+ expect(Object.values(next.vire_runtime.vehicles).filter(v=>v.profile==='M10_TD76'&&v.faction==='friendly')).toHaveLength(4);
+ expect(d.roster.formations.m5_hq.step_ids).toHaveLength(1);
+ expect(next.skills[0]).toMatchObject({holder:'co',type:'AUTO_SPOT',used:false});
+ expect(importVireAdapterReplay(exportReplay(next))).toEqual(next);
+ expect(next.vire_runtime.vehicles.m10_hq.ammo).toBe(5);
+ expect(next.vire_runtime.vehicles.m10_hq.activated).toBe(false);
+});
+it('rejects rules-33 replay without modifying its original export',()=>{
+ const {s}=terminal(),record=exportReplay(s);record.rules_version=33;const original=JSON.stringify(record);
+ expect(()=>replayMission(trevieres,record)).toThrow(/version mismatch/);expect(JSON.stringify(record)).toBe(original);
+});
+
+
+it('can deploy surviving individual mortars as either teams or their section',()=>{
+ const r=newCompanyCampaign(trevieres,'mortar-handoff');let s=createMission(trevieres,'mortar', {mortar_mode:'teams'}, {mission_instance_id:'mortar-source',roster:r.roster});s=abortMission(s).state;
+ let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+ const d=preparedCompanyDeployment(p,'mortar-destination',cerisy);
+ expect(createMission(cerisy,'section',{},d).units.mortar_section.steps).toHaveLength(3);
+ const teams=createMission(cerisy,'teams',{mortar_mode:'teams'},d);
+ expect(['mortar1','mortar2','mortar3'].flatMap(id=>teams.units[id].steps)).toHaveLength(3);
+ expect(replayMission(cerisy,exportReplay(teams))).toEqual(teams);
+});
+
+
+it('spends a deployed skill once and retains its used state through exact replay',()=>{
+ const {r,s}=terminal();s.achievements=[{points:5}];let p=beginCompanyPreparation(r,s);
+ p=prepareCompany(prepareCompany(p,{type:'NEXT'}),{type:'NEXT'});p=prepareCompany(p,{type:'SKILL',purchase:{holder:'co',type:'GENERAL_INITIATIVE'}});p=prepareCompany(p,{type:'NEXT'});
+ let next=createMission(cerisy,'skill-use',{},preparedCompanyDeployment(p,'skill-use',cerisy));
+ for(let n=0;next.phase!=='GENERAL_INITIATIVE'&&n<40;n++)next=!next.impulse&&eligibleHQs(next).length?selectHQ(next,eligibleHQs(next)[0]).state:advancePhase(next).state;
+ expect(next.phase).toBe('GENERAL_INITIATIVE');
+ const used=submitCommand(next,{type:'SKILL_GENERAL',unit_id:'co',issuer_id:'co'});expect(used.accepted).toBe(true);
+ expect(used.state.skills[0].used).toBe(true);expect(submitCommand(used.state,{type:'SKILL_GENERAL',unit_id:'co',issuer_id:'co'}).accepted).toBe(false);
+ expect(replayMission(cerisy,exportReplay(used.state))).toEqual(used.state);
+ expect(p.roster.prepared_skills[0].used).toBe(false);
+});
+
+
+it('restores a participating patrol guard at its recorded experience and permits promotion',()=>{
+ const {r,s}=terminal();s.patrol={plan:{platoon:1}};s.achievements=[{points:4,platoon:1}];
+ const guard=s.units.s11.steps.pop();guard.experience='Line';s.prisoners=[{guard,guard_origin:'s11',guard_experience:'Line',prisoners:[]}];
+ const loss=s.units.s21.steps.pop();s.casualties=[{step:loss}];
+ let p=beginCompanyPreparation(r,s);expect(p.roster.steps[guard.id].experience).toBe('Line');
+ p=prepareCompany(p,{type:'TRANSFER',step:guard.id,target:'s21'});
+ expect(prepareCompany(p,{type:'PROMOTE',step:guard.id}).roster.steps[guard.id].experience).toBe('Veteran');
+});
+
+
+it('replaces destroyed supporting crews for the destination without resolving their casualties',()=>{
+ const roster=createVireRoster(),r=newCompanyCampaign(vire,roster.company_id);r.roster=roster;
+ let s=createVireDevelopmentMission('destroyed-support',{}, {},{mission_instance_id:'destroyed-support',roster});
+ const old=s.vire_runtime.vehicles.sherman_hq,loss=old.crew[0];s.casualties.push({step:loss,evacuated:false});old.crew=[];old.status='BREWED_UP';s=abortMission(s).state;
+ let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+ const d=preparedCompanyDeployment(p,'new-m10-company',tinchebray),next=createTinchebrayDevelopmentMission('fresh-m10',{}, {},{mission_instance_id:d.mission_instance_id,roster:d.roster});
+ expect(d.roster.steps[loss.id].disposition).toBe('CASUALTY_UNRESOLVED');
+ expect(d.roster.formations.sherman_hq).toBeUndefined();expect(next.vire_runtime.vehicles.m10_hq.crew).toHaveLength(2);
+ expect(next.vire_runtime.tank_support_used).toBe(false);
+ expect(next.vire_runtime.vehicles.m10_hq.crew.map(t=>t.id)).not.toContain(loss.id);
+ expect(d.roster.formations.co.step_ids).toEqual(p.roster.formations.co.step_ids);
+});
+
+
+it('does not silently return an unassigned mortar LAT to its old section',()=>{
+ const {r,s}=terminal(),step=s.units.mortar_section.steps.pop();s.units.mortar_lat={id:'mortar_lat',kind:'LAT',faction:'friendly',experience:'Green',steps:[step]};
+ let p=beginCompanyPreparation(r,s);expect(p.preparation.available).toContain(step.id);
+ for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+ const d=preparedCompanyDeployment(p,'understrength-mortars',cerisy),next=createMission(cerisy,'understrength',{},d);
+ expect(next.units.mortar_section.steps).toHaveLength(2);expect(next.units.mortar_section.steps.map(t=>t.id)).not.toContain(step.id);
+});
+
+
+it('rejects campaign Hill 192 without the same company completed M3 history',()=>{
+ const {r,s}=terminal();let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+ expect(()=>preparedCompanyDeployment(p,'unlinked-hill',hill192)).toThrow(/completed M3 battlefield/);
+});
+
+
+for(const status of ['ACTIVE','RETREATED'])it(`returns surviving company passengers from ${status} vehicles without replacements`,()=>{
+ const roster=createVireRoster(),r=newCompanyCampaign(vire,roster.company_id);r.roster=roster;
+ let s=createVireDevelopmentMission('passengers',{}, {},{mission_instance_id:`passengers-${status}`,roster});
+ const u=s.units.s11,steps=structuredClone(u.steps),v=s.vire_runtime.vehicles.sherman_hq;
+ v.status=status;v.passengers=steps.map(t=>({...t,origin_formation:u.id,experience:'Line'}));u.steps=[];u.removed='EMBARKED';
+ s=abortMission(s).state;const p=beginCompanyPreparation(r,s);
+ expect(p.roster.formations.s11.step_ids).toEqual(steps.map(t=>t.id));expect(p.preparation.returned_passengers).toHaveLength(3);
+ expect(p.preparation.replacement_slots).toBe(0);
+ for(const t of steps){expect(p.roster.steps[t.id].disposition).toBe('ACTIVE');expect(p.roster.steps[t.id].experience).toBe('Line');}
+ expect(s.units.s11.steps).toEqual([]);
+});
+
+
+it('records a complete legal three-patrol M3 battlefield and binds M4 to that company',()=>{
+ const r=newCompanyCampaign(stGeorges,'linked-company');let s=createMission(stGeorges,'linked-patrols',{}, {mission_instance_id:'linked-m3',roster:r.roster});
+ for(let platoon=1;platoon<=3;platoon++){
+  for(let turn=0;s.status==='ACTIVE'&&turn<10;turn++)s=endTurn(s).state;
+  if(platoon<3){
+   const positions={},load=[0,0,0,0,0];
+   for(const u of Object.values(s.units).filter(u=>u.faction==='friendly'&&u.steps.length&&(!u.removed||u.removed==='RESERVE'))){const col=load.findIndex(n=>n+u.steps.length<=16);expect(col).toBeGreaterThanOrEqual(0);positions[u.id]=`r1c${col+1}`;load[col]+=u.steps.length;}
+   s=preparePatrol(s,{patrol:{...s.patrol.plan,platoon:platoon+1},positions}).state;
+  }
+ }
+ expect(s.patrol_history).toHaveLength(3);expect(replayMission(stGeorges,exportReplay(s))).toEqual(s);
+ let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+ const before=structuredClone(p),d=preparedCompanyDeployment(p,'linked-m4',hill192);
+ expect(d.setup.battlefield.source.mission_instance_id).toBe('linked-m3');
+ const next=createMission(hill192,'linked-map',d.setup,d);expect(next.battlefield_source.mission_instance_id).toBe('linked-m3');
+ expect(p).toEqual(before);
+ const tampered=structuredClone(d.setup.battlefield);tampered.locations[0].name='Unrelated terrain';
+ expect(()=>preparedCompanyDeployment(p,'bad-m4',hill192,{battlefield:tampered})).toThrow(/differs from/);
+ const foreign=structuredClone(p);foreign.history[0].snapshot.company_id='another-company';
+ expect(()=>preparedCompanyDeployment(foreign,'foreign-m4',hill192)).toThrow(/completed M3 battlefield/);
+ const st=storage();saveCompanyPreparation(st,p);expect(preparedCompanyDeployment(readCompanyPreparation(st),'reloaded-m4',hill192).setup.battlefield).toEqual(d.setup.battlefield);
+},60000);
+
+
+it('atomically commits the destination roster before deployment and subsequent debrief',()=>{
+ const {r,s}=terminal();let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
+ const before=structuredClone(p),committed=commitPreparedCompanyDeployment(p,'committed-m2',cerisy);
+ expect(committed.record.stage).toBe('DEPLOYMENT');expect(p).toEqual(before);
+ const st=storage();saveCompanyPreparation(st,p);saveCompanyPreparation(st,committed.record,p.revision);
+ const next=abortMission(createMission(cerisy,'commit',committed.deployment.setup,committed.deployment)).state;
+ const debrief=beginCompanyPreparation(readCompanyPreparation(st),next);
+ expect(debrief.history).toHaveLength(2);expect(debrief.roster.formations.mtrfo.step_ids).toHaveLength(1);
+ expect(()=>commitPreparedCompanyDeployment(committed.record,'duplicate-start',cerisy)).toThrow();
+ expect(()=>beginCompanyPreparation(committed.record,{...next,mission_instance_id:'wrong-run'})).toThrow(/committed/);
+ expect(()=>saveCompanyPreparation(st,committed.record,p.revision)).toThrow(/revision changed/);
+});
+
+
+it('debriefs a complete real M5 patrol run with final-patrol experience and attachment ownership',()=>{
+ const replay=JSON.parse(readFileSync('output/st-germain-playtests-v2-r35/st-germain-short-1-defenders.json','utf8')).replay;
+ const s=replayMission(stGermain,replay),r=newCompanyCampaign(stGermain,replay.roster_snapshot.company_id);
+ r.roster={schema:1,...structuredClone(replay.roster_snapshot),applied_missions:{}};
+ const immutable=structuredClone(s.roster_snapshot),p=beginCompanyPreparation(r,s);
+ expect(p.preparation.points).toBe(s.achievements.filter(a=>!a.spent&&a.platoon===3).reduce((n,a)=>n+a.points,0));
+ expect(p.preparation.attachments).toContain('hmg1');expect(p.preparation.fieldable).not.toContain('hmg1');
+ expect(s.roster_snapshot).toEqual(immutable);
+ const members=Object.values(p.roster.formations).flatMap(f=>f.step_ids);expect(new Set(members).size).toBe(members.length);
+},120000);
+
+
+it('rallies a returned named HQ Fire Team without reducing its original experience',()=>{
+ const roster=createVireRoster(),r=newCompanyCampaign(vire,roster.company_id);r.roster=roster;
+ let s=createVireDevelopmentMission('named-return',{}, {},{mission_instance_id:'named-return',roster});
+ const u=s.units.hq1,steps=structuredClone(u.steps),v=s.vire_runtime.vehicles.sherman_hq;
+ u.cohesion='F';u.original_experience='Line';u.steps=[];u.removed='EMBARKED';
+ v.passengers=steps.map(t=>({...t,origin_formation:u.id,experience:'Green'}));v.status='RETREATED';s=abortMission(s).state;
+ const p=beginCompanyPreparation(r,s);expect(p.roster.steps[steps[0].id].experience).toBe('Line');
 });

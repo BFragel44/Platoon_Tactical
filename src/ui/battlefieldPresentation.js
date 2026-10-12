@@ -12,4 +12,4 @@ export function movingFormationIds(option,target,enabled=true) {
   const selected=option.targets.find(t=>t.id===target);
   return selected&&!selected.reason?selected.moving_unit_ids??[]:[];
 }
-export const tacticalText=(view,text)=>String(text??'').replace(/\bcover_\w+\b/g,id=>coverLabel(view,id)??'cover position');
+export const tacticalText=(view,text)=>String(text??'').replace('Commander aborted the company assault.',`Commander aborted ${view.mission_name??'the mission'}.`).replace(/\bcover_\w+\b/g,id=>coverLabel(view,id)??'cover position');

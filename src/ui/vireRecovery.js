@@ -1,3 +1,4 @@
+import {writeRecoveryBundle,decodeRecovery} from './recoveryEncoding.js';
 import {exportReplay} from '../sim/company/engine.js';
 import {importVireAdapterReplay,VIRE_ADAPTER_VERSION,VIRE_ADAPTER_BASE_RULES_VERSION} from '../sim/company/vireIntegration.js';
 export const VIRE_SAVE_KEY='platoon-vire-integration';
@@ -5,10 +6,10 @@ export const VIRE_SAVE_SCHEMA=1;
 export function readVireRecovery(storage){
  const raw=storage.getItem(VIRE_SAVE_KEY);if(raw===null)return {raw:null,bundle:null,error:null};
  try{
-  const bundle=JSON.parse(raw);
+  const bundle=JSON.parse(decodeRecovery(raw));
   if(bundle.schema!==VIRE_SAVE_SCHEMA||!bundle.latest?.replay||!bundle.turnStart?.replay)throw new Error('Unsupported vehicle save format.');
   for(const c of [bundle.latest,bundle.turnStart])if(c.replay.format!=='vire-integration'||c.replay.version!==VIRE_ADAPTER_VERSION||c.replay.base_rules_version!==VIRE_ADAPTER_BASE_RULES_VERSION)throw new Error('Incompatible vehicle rules; export the original save.');
-  return {raw,bundle,error:null};
+  return {raw:decodeRecovery(raw),bundle,error:null};
  }catch(error){return {raw,bundle:null,error:error.message};}
 }
 export function vireCheckpoint(state,presentation={}){
@@ -29,6 +30,5 @@ export function saveVireRecovery(storage,state,presentation={},options={}){
  const changed=previous.bundle&&(previous.bundle.latest.turn!==state.turn||previous.bundle.latest.attempt!==state.attempt_number);
  const turnStart=options.turnStart??(options.replace||changed?latest:previous.bundle?.turnStart??latest);
  const bundle={schema:VIRE_SAVE_SCHEMA,latest,turnStart};
- if(options.replace&&previous.raw!==null)storage.setItem(`${VIRE_SAVE_KEY}-previous`,previous.raw);
- storage.setItem(VIRE_SAVE_KEY,JSON.stringify(bundle));return bundle;
+ writeRecoveryBundle(storage,VIRE_SAVE_KEY,bundle,options.replace?previous.raw:null);return bundle;
 }
