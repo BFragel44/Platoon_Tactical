@@ -80,7 +80,7 @@ export function eligibleTargets(s,u,type) {
   if(type==='CREATE_RUNNER')return values(s.units).filter(v=>friendly(v)&&live(v)&&(good(v)||!v.pinned&&['A','F'].includes(v.cohesion))&&communication(s,companyCommander(s),v)&&chain(companyCommander(s),v,type)).map(v=>v.id);
   if(type==='DISPATCH_RUNNER')return values(s.units).filter(t=>friendly(t)&&live(t)&&['HQ','STAFF'].includes(t.kind)&&!isCompanyCommander(t)&&t.command_role!=='higher_hq').map(t=>t.id);
   if(['ENTER_COVER','INFILTRATE_WITHIN'].includes(type)) return ['open',...s.locations[u.location].covers.filter(c=>(!friendly(u)||c.known)&&coverAvailable(s,u,c)).map(c=>c.id)];
-  if(type==='SPOT') return spottingLocations(s).filter(id=>occupants(s,id).some(t=>t.faction!==u.faction&&!s.knowledge.spotted[t.id]&&unitLos(s,u,t)));
+  if(type==='SPOT') return [...new Set([...(friendly(u)&&!s.locations[u.location]?.staging?[u.location]:[]),...spottingLocations(s).filter(id=>occupants(s,id).some(t=>t.faction!==u.faction&&!s.knowledge.spotted[t.id]&&unitLos(s,u,t)))])];
   if(type==='INDIRECT') return values(s.locations).filter(l=>!l.staging&&distance(s.locations[u.location],l)<=u.range).map(l=>l.id);
   if(type.endsWith('_ILLUM'))return values(s.locations).filter(l=>!l.staging&&(type==='HANDHELD_ILLUM'||l.known!==false)&&(type!=='HANDHELD_ILLUM'||l.id===u.location||adjacent(s,u.location).some(a=>a.id===l.id))).map(l=>l.id);
   if((['SHIFT_FIRE'].includes(type)||type.startsWith('CALL_'))) return values(s.locations).filter(l=>!l.staging&&seesCard(s,u,l.id)).map(l=>l.id);
@@ -206,7 +206,7 @@ export function orderReason(s,c) {
   if(type==='DEPLOY_FIRE_TEAM'&&(!good(u)||(!u.named||u.steps.length!==1)))return 'Only a good-order one-step named formation can deploy its named Fire Team; command/observer capability is lost until recovered.';
   if(type==='RALLY'&&!u.pinned) return 'This unit is not pinned.';
   if(type==='RECOVER'&&(u.pinned||!['P','L','F'].includes(u.cohesion))) return 'Remove the pin first; only paralyzed, litter or fire teams need recovery.';
-  if(type==='SPOT'&&(u.pinned||['P','L'].includes(u.cohesion)||!eligibleTargets(s,u,type).includes(target))) return 'Need an unpinned spotting-capable unit on the map with LOS to a current unspotted position.';
+  if(type==='SPOT'&&(u.pinned||['P','L'].includes(u.cohesion)||!eligibleTargets(s,u,type).includes(target))) return 'Need an unpinned spotting-capable unit on terrain; search its own card or observe a current unspotted position in LOS.';
   if(type==='SHIFT_FIRE'&&(!u.fire||!s.locations[target]||!seesCard(s,issuer??u,target)||!canFire(s,u,target)||
     (s.knowledge.suspected[target]&&!targetsAt(s,u,target).length))) return 'Need an existing fire direction and an eligible destination visible to the issuer. Spot suspected enemies first.';
   if(type==='SHIFT_FIRE'&&(coverOf(s,u)?.type==='Bunker'||s.mission_rules?.specialEnemies&&coverOf(s,u)?.type==='Pillbox')) return 'Fortification occupants cannot shift their firing arc.';
@@ -376,7 +376,12 @@ export function spotAttempt(s,u,id) {
   const l=s.locations[id],countFor=t=>spottingBaseDraws(s,u,t);
   // Attempt against the easiest unit to spot; success reveals the whole card.
   const t=targets.sort((a,b)=>countFor(b)-countFor(a)||a.id.localeCompare(b.id))[0];
-  const found=!!t&&attempt(s,u,countFor(t),'spot',`${u.name}: observe ${l.name}`)>0;
+  // An own-card search is offered without consulting hidden occupancy. Empty searches
+  // still spend the command and draw, and never announce that a card is enemy-free.
+  const protection=terrainProtection(l,s.locations[u.location]);
+  const count=t?countFor(t):2+(u.location===id?1:0)+(protection>=3?-1:protection===0?1:0);
+  const success=attempt(s,u,count,'spot',`${u.name}: observe ${l.name}`)>0;
+  const found=!!t&&success;
   if(found)spot(s,t);
   emit(s,'OBSERVATION',`${u.name}: ${found?'enemy position identified':'no additional enemy identified'}.`,{actor:u.id,location:id,success:found});
 }

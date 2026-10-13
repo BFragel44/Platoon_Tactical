@@ -1,4 +1,5 @@
 import {readFileSync} from 'node:fs';
+import {replayMission as replayRules35,stGermain as stGermainRules35} from '../src/sim/company/compat/rules35.js';
 import {createRunner,dispatchRunner} from '../src/sim/company/runners.js';
 import {stGermain} from '../src/scenarios/stGermain.js';
 import {tinchebray} from '../src/scenarios/tinchebray.js';
@@ -406,7 +407,8 @@ it('atomically commits the destination roster before deployment and subsequent d
 
 it('debriefs a complete real M5 patrol run with final-patrol experience and attachment ownership',()=>{
  const replay=JSON.parse(readFileSync('output/st-germain-playtests-v2-r35/st-germain-short-1-defenders.json','utf8')).replay;
- const s=replayMission(stGermain,replay),r=newCompanyCampaign(stGermain,replay.roster_snapshot.company_id);
+ expect(()=>replayMission(stGermain,replay)).toThrow(/version mismatch/);
+ const s=replayRules35(stGermainRules35,replay),r=newCompanyCampaign(stGermain,replay.roster_snapshot.company_id);
  r.roster={schema:1,...structuredClone(replay.roster_snapshot),applied_missions:{}};
  const immutable=structuredClone(s.roster_snapshot),p=beginCompanyPreparation(r,s);
  expect(p.preparation.points).toBe(s.achievements.filter(a=>!a.spent&&a.platoon===3).reduce((n,a)=>n+a.points,0));

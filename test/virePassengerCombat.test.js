@@ -1,8 +1,7 @@
 import {it,expect} from 'vitest';
 import {cerisy} from '../src/scenarios/cerisy.js';
 import {createMission} from '../src/sim/company/engine.js';
-import {createRng} from '../src/sim/rng.js';
-import {resolveCombatOutcome,resolveHitEffect} from '../src/sim/company/combatProbability.js';
+import {cards} from '../src/sim/company/core.js';
 import {initializeVireAdapter,applyVireOperation,exportVireAdapterReplay,importVireAdapterReplay} from '../src/sim/company/vireIntegration.js';
 function start(){
  const s=createMission(cerisy,'rider-combat');s.phase='CO_ACTIVATION';s.impulse={hq:'co',commands:3,spent:0};s.units.co.pinned=false;s.units.co.cohesion='GOOD';s.locations.r1c1.protection=0;
@@ -22,7 +21,8 @@ it('includes every tank rider in vehicle-targeted grenade effects without creati
 });
 it('uses ordinary HIT breakdown and retains each surviving step exactly once aboard after replay',()=>{
  const s=start();s.markers=[{type:'GRENADE',target:'tank',location:'r1c1',value:-4}];
- for(let n=0;n<1000;n++){const rng=createRng(`rider-hit-${n}`),combat=resolveCombatOutcome(-4,rng);if(combat.result==='HIT'&&resolveHitEffect('Line',combat.rng).effect==='F'){s.rng=rng;break;}}
+ const combat=Object.values(cards).find(c=>c.id!==51&&c.combat[0]==='HIT'),hit=Object.values(cards).find(c=>c.id!==51&&c.hit.Line==='F');
+ s.deck.order=[combat.id,hit.id,...s.deck.order];
  const original=s.vire_runtime.vehicles.tank.passengers.filter(step=>step.origin_formation==='s11').map(step=>step.id);
  let r=applyVireOperation(s,{id:'prepare',type:'PREPARE_INFANTRY_COMBAT'});const row=r.pending_combat.find(row=>row.target_id==='s11');
  r=applyVireOperation(r,{id:'resolve',type:'RESOLVE_INFANTRY_COMBAT',resolution:row.id});

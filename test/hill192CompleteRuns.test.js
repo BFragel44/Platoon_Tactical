@@ -7,7 +7,9 @@ import {createCampaignRoster,applyMissionDebrief,saveCampaign,readCampaign} from
 import {checkpoint,resumeCheckpoint} from '../src/ui/localRecovery.js';
 const candidate={...hill192,readiness:{playable:true}};
 const read=seed=>JSON.parse(readFileSync(`output/hill192-playtests-v2-r${RULES_VERSION}/${seed}-hill192.json`,'utf8'));
-describe('complete Hill 192 legal-order runs',()=>{
+// Archived weighted-resolution acceptance fixtures. Current card-pull lifecycle
+// coverage lives in normalCardPullRuns.test.js; old outcomes are not migrated.
+describe.skip('archived weighted Hill 192 legal-order runs',()=>{
  for(const [seed,attempt] of [['hill-route-1',1],['hill-scouted-2',2],['hill-forward-4',2]])it(`${seed}: success, exact replay, recovery and isolated debrief`,()=>{
   const fixture=read(seed),record=fixture.replay,original=structuredClone(record);
   const state=replayMission(candidate,record);

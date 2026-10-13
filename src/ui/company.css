@@ -79,3 +79,10 @@
 
 .platoon-move-preview {display:inline-flex;align-items:center;gap:.25rem;align-self:flex-end;color:#a6f3a0;font-size:.75rem;font-weight:700;margin-left:.4rem;}
 .platoon-move-preview > span {font-size:1.7rem;line-height:1;}
+/* XP cards float above the battlefield without changing its layout or phase. */
+.experience-notifications{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:2000;max-width:min(420px,calc(100vw - 32px));pointer-events:none}
+.experience-notification{background:#20372a;border:1px solid #cab875;border-left:5px solid #cab875;border-radius:8px;padding:16px 20px;box-shadow:0 8px 28px #0009;color:#eee7c8;pointer-events:auto}
+.experience-notification strong{display:block;color:#eed68f;font-size:1.05rem}
+.experience-notification p{margin:8px 0}
+.experience-notification small{display:block}
+.experience-notification button{margin-top:10px;padding:4px 10px}

@@ -22,7 +22,7 @@ import {embarkInfantry,disembarkInfantry,exposePassengersForCombat,storePassenge
 import {transferVehicleCargo} from './vehicleCargo.js';
 export const VIRE_ADAPTER_VERSION=15;
 export const TINCHEBRAY_ADAPTER_VERSION=4;
-export const VIRE_ADAPTER_BASE_RULES_VERSION=35;
+export const VIRE_ADAPTER_BASE_RULES_VERSION=38;
 export function initializeVireAdapter(base,deployments){
  if(base.rules_version!==VIRE_ADAPTER_BASE_RULES_VERSION)throw new Error('Incompatible vehicle adapter base rules.');
  const s=structuredClone(base);s.vire_runtime={version:VIRE_ADAPTER_VERSION,vehicles:{},pending_hits:[],operations:[],applied:[]};

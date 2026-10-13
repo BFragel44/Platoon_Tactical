@@ -379,3 +379,51 @@ Used an isolated in-app browser at `http://127.0.0.1:5176/`; the user's existing
 - Final presentation refinements: eight focused files / **40 tests pass**, including neutral reserve/transport inspection, pending-form drafts and the new reference projections. `git diff --check` passes. Start-screen screenshot: [Home](../tmp/usability_2026_10_12/home.jpg). Fresh Vire start visibly centers Company HQ in staging (camera top 1755), after the controls are bound.
 
 Corrupt/incompatible save cases and guard draft restoration have automated fixture coverage; they are not claimed as additional live fault-injection or prisoner-capture playthroughs. The broader fresh standalone M1/manual M5–M7 review gaps recorded above remain separate from this pass. Human campaign-preparation acceptance and required battlefield carryover remain gates for connected progression. Larger vehicle work, 3D/audio, card-pull experiments and the transient blank-page investigation remain deferred in `FOR_LATER.md`.
+
+
+### Connected campaign gates — October 12 follow-up
+
+Preparation review accepted by the user. Implemented an explicit ?campaignDev=1 Standard campaign candidate, connected mission setup/recovery dispatch and an immutable committed-start fallback for failed tactical writes. Fresh M1 launch, Home/reload and campaign resume checked on isolated origin 5177; missing preview import found in the browser and corrected. Seven orchestration fixtures pass, including synthetic M1→M2 identity preservation and vehicle replay version rejection. Source §12.8 prevents offensive defeat/abort from advancing while allowing patrol defeat.
+
+This closes preparation acceptance and implements the launch UI candidate; it does not close the complete seven-mission connected-play validation gate. Existing standalone acceptance remains intact, normal connected launch beyond M1 stays gated, and broader manual playthrough gaps remain as previously recorded. See CAMPAIGN_COMPANY_READINESS.md for boundaries and evidence.
+
+
+Final checks: 127 files / 1,832 tests pass; final focused checks: 3 files / 20 tests pass. Windows emitted a fork shutdown warning; the affected mortar fixture separately passed all five cases in a thread pool. Recorded M3/M4 manual runs again reproduce exact replay/AAR/roster/debrief results. Production build and diff checks pass; bundle-size warning unchanged.
+
+
+### XP award notifications — October 12
+
+Campaign and standalone tactical saves now show queued, dismissible XP cards with the recorded amount, task and recipient pool. Public grenade events identify the acting formation; other company awards remain labelled Company rather than fabricating individual step experience. Patrol awards identify the patrolling platoon. Cards float above the battlefield, expire after eight seconds, and do not advance phases or resize the map. Restored checkpoints initialize the notification cursor from existing awards, preventing historical awards from replaying on reload; unique award keys suppress repeats across reattempts. Offensive location awards remain at their existing final assessment timing. No tactical scoring or rules version changes. Three focused presentation fixtures and production build pass; no new full campaign-play claim.
+
+
+### Reported live M1 friendly-fire bug — October 12
+
+Edge playtest, turn 3/Pinned recovery: enemy HMG appeared at 3.5; the .50-cal HMG at 1.3 acquired legal overhead fire, but colocated LMG/bazookas incorrectly inherited its PDF and fired into friendly 2.4. Reproduced from exported replay before modifying the engine. Corrected per-source path validation when joining existing fire; rules become 36. Original rules35 replay and frozen read-only engine preserve audit evidence. Diagnostic rules36 reproduction accepts every historical order and prevents the erroneous new friendly-fire paths; no live save is silently retagged. Source p.39 visually checked. Build and focused path/overhead/vehicle tests pass; original strict recovery rejection/export access remain intentional.
+
+
+Validation: full sweep passed 1,832 checks; eight M4/M5 checks initially could not find rules36 recording files. Regenerated six new executions using the existing legal-order validation script, leaving previous recordings unchanged. The eight complete-run/recovery/debrief checks then passed. Aggregate: all 1,840 checks across 130 files accounted for, including current vehicle/reattempt and historical strict rejection. Original M1 rules35 export reproduces byte-equivalent JSON through the frozen audit engine. Original rules35 M5 preparation fixture now explicitly uses that reader and asserts current-engine rejection. Build and diff checks pass. Rules36 diagnostics are labelled comparisons, never live save conversions.
+
+
+### Visible phase lines — October 12
+
+Configured phase lines now render as labelled full-width separators between card rows using the patrol MLR styling. Labels follow the existing signal destination semantics: PL assigned Row N is crossed from Row N-1 into Row N (Row 0 is staging where present). Coincident phase lines and MLR share one separator rather than overlapping. Explicit grid placement preserves sparse/generated terrain columns and adjusts lower rows for inserted separators. Three focused layout cases and production build pass. Presentation only; no rules or replay version change.
+
+
+### Card-pull comparison candidate — October 12
+
+Approved separate Trévières experiment uses real shared Action Deck draws for NCM and HIT, with compact highlighted reveal cards. Separate scenario/resolver identity and company/tactical slots preserve normal mission behavior. Three full scripted two-attempt runs reproduce exactly, all DEFEAT under the existing policy; this is execution evidence, not balance acceptance. Browser selection/setup/start/reload and a labelled synthetic reveal fixture passed. Human comparative pacing/playthrough remains open. See CARD_PULL_COMPARISON.md for launch URL and boundaries.
+
+
+### Live card-pull LOS check — October 12
+
+Reported unspotted fire from 5.-1 Orchard through 4.0 Hedgerow and 3.1 Village into 2.2 Hedgerow/Hill. Edge inspection could not attach; the user exported a fresh replay, which was reproduced offline without changing it. Source and both intervening cards are level 1; target 2.2 is level 2. Both dark-border intermediates are therefore overlooked under reciprocal elevation LOS (third-edition p.35, visually verified), and the source can legally fire at distance three. No tactical defect found; hidden source identity was not disclosed. Added a focused reciprocal diagonal fixture with flat-target and insufficient-range controls; all 12 LOS tests pass. Original export and source-page evidence preserved in output/los-audit. No rules or replay change.
+# Live CCP / objective investigation (2026-10-12)
+
+The turn-nine card-pull M1 export is preserved in `output/ccp-objective-audit/original-rules36-replay.json`. The objective assessment was correct, but a non-firing contact lacked its unspotted-position marker. Rules 37 records the public position for every unresolved identification after contact placement, including non-firing packages; the marker follows movement and the map retains it alongside identified enemies. Enemy identity and strength remain concealed. Friendly units may also spend a Spot command to search their own terrain card without a prior firing report; empty searches spend their command and draws and do not declare clearance.
+
+CCP relocation does not itself evacuate casualties already there: third-edition §5.1.7 requires transport and drop-off, followed by Cleanup. Casualty labels now distinguish transport still required from delivery awaiting Cleanup. No evacuation rule changed. The frozen rules-36 reader preserves exact historical export; current recovery continues to reject historical rules rather than migrate a live attempt silently.
+
+Validation: 134-file regression sweep covered 1,855 checks. Five failures came from modules/fixtures loaded while the correction and current-rules recordings were still being completed; the affected suites subsequently passed against stable code and regenerated recordings. Focused six-suite check: 182 passed. Complete Hill 192 and St. Germain replay/recovery/preparation suites plus the live-export audit: nine passed. The audit also verifies exact current-rules replay and original rules36 export. Production build passed with the existing bundle-size warning; diff whitespace check passed. No fresh browser playthrough was performed for this follow-up, and the user's existing Edge attempt was not advanced or migrated.
+## Normal card-pull release (2026-10-12)
+
+User accepted the card-pull mechanics and directed promotion to normal play, dropping historical compatibility as a release requirement. Rules38 makes Action Deck NCM/HIT resolution the sole active company combat path across the normal mission catalog and campaign deployments. Normal infantry saves no longer risk being routed into the comparison slot. Recaps report actual cards rather than attempting to format a nonexistent numeric roll. Vehicles retain their AT/gunnery procedures; passenger and infantry NCM use cards. See CARD_PULL_COMPARISON.md for current validation, archived weighted-order checks and complete current runs. Combat-screen footprint remains a separate refinement.

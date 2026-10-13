@@ -1,3 +1,4 @@
+import {decodeRecovery,writeRecoveryBundle} from './recoveryEncoding.js';
 import {exportScoutedBattlefield,validateScoutedBattlefield} from './battlefieldCarryover.js';
 import {createCampaignRoster,applyMissionDebrief,rosterSnapshot} from './campaignRoster.js';
 import {exportReplay} from './engine.js';
@@ -137,8 +138,8 @@ export function prepareCompany(record,operation){
  }else throw new Error('Unknown preparation operation.');
  p.operations.push(clone(operation));if(next.stage==='PREPARED')next.history.at(-1).preparation=clone(p);next.revision++;return next;
 }
-export function readCompanyPreparation(storage){const raw=storage.getItem(PREPARATION_KEY);if(!raw)return null;return validateRecord(JSON.parse(raw));}
-export function saveCompanyPreparation(storage,record,expected=null){validateRecord(record);const old=readCompanyPreparation(storage);if(expected!==null&&old?.revision!==expected)throw new Error('Company preparation revision changed.');if(old&&record.revision<old.revision)throw new Error('Cannot overwrite newer campaign preparation.');if(old&&record.revision===old.revision&&JSON.stringify(record)!==JSON.stringify(old))throw new Error('Cannot change an existing preparation revision.');if(old&&old.id!==record.id)throw new Error('Another campaign occupies this slot.');if(old)storage.setItem(PREPARATION_KEY+'-previous',JSON.stringify(old));storage.setItem(PREPARATION_KEY,JSON.stringify(record));return clone(record);}
+export function readCompanyPreparation(storage){const raw=storage.getItem(PREPARATION_KEY);if(!raw)return null;return validateRecord(JSON.parse(decodeRecovery(raw)));}
+export function saveCompanyPreparation(storage,record,expected=null){validateRecord(record);const old=readCompanyPreparation(storage);if(expected!==null&&old?.revision!==expected)throw new Error('Company preparation revision changed.');if(old&&record.revision<old.revision)throw new Error('Cannot overwrite newer campaign preparation.');if(old&&record.revision===old.revision&&JSON.stringify(record)!==JSON.stringify(old))throw new Error('Cannot change an existing preparation revision.');if(old&&old.id!==record.id)throw new Error('Another campaign occupies this slot.');writeRecoveryBundle(storage,PREPARATION_KEY,record,old?decodeRecovery(storage.getItem(PREPARATION_KEY)):null);return clone(record);}
 
 export function preparedCompanyDeployment(record,missionId,destination=null,setup={}){
  validateRecord(record);
@@ -213,6 +214,5 @@ export function commitPreparedCompanyDeployment(record,missionId,destination,set
 export function startFreshCompanyCampaign(storage,record){
  validateRecord(record);const old=readCompanyPreparation(storage);
  if(record.stage!=='DEPLOYMENT'||old&&old.stage!=='PREPARED')throw new Error('Finish the current company preparation before starting another campaign.');
- const raw=storage.getItem(PREPARATION_KEY);if(raw!==null)storage.setItem(PREPARATION_KEY+'-previous',raw);
- storage.setItem(PREPARATION_KEY,JSON.stringify(record));return clone(record);
+ const raw=storage.getItem(PREPARATION_KEY);writeRecoveryBundle(storage,PREPARATION_KEY,record,raw===null?null:decodeRecovery(raw));return clone(record);
 }

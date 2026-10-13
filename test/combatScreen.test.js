@@ -10,5 +10,5 @@ it('renders every frozen receiving modifier and exact stakes without exposing th
  expect(html).toContain('combat-overlay');expect(html).not.toContain('Secret German LMG');expect(html).toContain('UNSPOTTED');
  for(const m of c.modifiers)expect(html).toContain(m.label);
  for(const result of ['MISS','PIN','HIT'])expect(html).toContain(`${Math.round(c.probabilities.probabilities[result]*100)}%`);
- expect(html).toContain('If HIT');expect(html).toContain('Unspotted · probabilities hidden');expect(v).toEqual(before);
+ expect(html).toContain('HIT:');expect(html).toContain('Not remaining-deck odds');expect(html).toContain('Unspotted · probabilities hidden');expect(v).toEqual(before);
 });

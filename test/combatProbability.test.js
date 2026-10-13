@@ -57,11 +57,12 @@ describe('pending probabilistic combat',()=>{
   expect(advancePhase(s).state).toBe(s);expect(advancePhase(s).reason).toContain('Resolve');
   expect(resolveCombat(s,'wrong').accepted).toBe(false);
  });
- it.each([['MISS',6,1],['PIN',2,1],['HIT',-4,2]])('%s applies state and consumes %i direct RNG draw(s)',(expected,ncm,draws)=>{
+ it.each([['MISS',6,1],['PIN',2,1],['HIT',-4,2]])('%s applies state using the shared deck',(expected,ncm,draws)=>{
   const s=fresh(),u=s.units.s11;u.location='r1c1';u.pinned=true;enemy(s);refresh(s);prepareCombat(s);
   const r=s.pending_combat.find(r=>r.target_id===u.id);r.ncm=ncm;r.probabilities={total:50,counts:{...combatResolutionTable[ncm].counts},probabilities:{...combatResolutionTable[ncm].probabilities}};
-  s.rng=createRng('company-1');
-  const before=s.rng.draw_count,deck=s.deck.draws;resolvePreparedCombat(s,r.id);expect(r.result).toBe(expected);expect(s.rng.draw_count-before).toBe(draws);expect(s.deck.draws).toBe(deck);
+  const card=Object.values(cards).find(c=>c.id!==51&&c.combat[ncm+4]===expected);
+  s.deck.order=[card.id,2,...s.deck.order];
+  const before=s.rng.draw_count,deck=s.deck.draws;resolvePreparedCombat(s,r.id);expect(r.result).toBe(expected);expect(s.rng.draw_count).toBe(before);expect(s.deck.draws-deck).toBe(draws);
   if(expected==='MISS')expect(u.pinned).toBe(false);if(expected==='PIN')expect(u.pinned).toBe(true);if(expected==='HIT')expect(r.hit_effect).toBeTruthy();
  });
  it('retains the frozen later exposure and persistent fire after earlier outcomes',()=>{
@@ -82,3 +83,4 @@ describe('pending probabilistic combat',()=>{
   const record=exportReplay(fresh());record.rules_version=3;expect(()=>replayMission(companyAssault,record)).toThrow('version mismatch');
  });
 });
+import {cards} from '../src/sim/company/core.js';

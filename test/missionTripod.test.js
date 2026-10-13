@@ -13,6 +13,14 @@ const fresh=()=>{
  return s;
 };
 describe('Tripod grazing and overhead fire',()=>{
+ it('does not let colocated weapons inherit an HMG overhead path through friendly troops',()=>{
+  const s=fresh();s.locations.r3c2.elevation=2;s.units.enemy.location='r3c2';s.units.s11.location='r2c2';
+  Object.assign(s.units.mg1,{location:'r1c2',vof:'H'});
+  Object.assign(s.units.s12,{location:'r1c2',fire:null,fire_direction:null});
+  refresh(s);refresh(s);
+  expect(s.units.mg1.fire).toBe('r3c2');expect(s.units.s12.fire).toBeNull();
+  expect(s.fire.some(f=>f.origin==='r1c2'&&f.target==='r2c2')).toBe(false);
+ });
  it('exerts one source on every card to maximum range, including friendlies beyond the target',()=>{
   const s=fresh(),u=s.units.mg1;s.units.s11.location='r4c2';refresh(s);
   expect(s.fire.filter(f=>f.source===u.id).map(f=>f.target)).toEqual(['r2c2','r3c2','r4c2']);

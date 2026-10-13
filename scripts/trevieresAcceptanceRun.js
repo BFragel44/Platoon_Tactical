@@ -1,8 +1,10 @@
 import {isDeepStrictEqual} from 'node:util';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {trevieres} from '../src/scenarios/trevieres.js';
+import {trevieresCardPull} from '../src/scenarios/trevieresCardPull.js';
 import {createMission,getPlayerView,selectHQ,submitCommand,advancePhase,resolveCombat,exportReplay,replayMission,prepareReattempt} from '../src/sim/company/engine.js';
-const candidate={...trevieres,readiness:{playable:true}};
+const cardPull=process.argv.includes('--card-pull');
+const candidate={...(cardPull?trevieresCardPull:trevieres),readiness:{playable:true}};
 function choose(v){
  const loc=id=>v.locations.find(l=>l.id===id),distance=(a,b)=>Math.max(Math.abs(a.row-b.row),Math.abs(a.col-b.col));
  const objectives=[v.objectives.primary.location,v.objectives.secondary.location];
@@ -35,7 +37,8 @@ function play(s){let guard=0;
   else{const c=v.impulse&&choose(v);if(c){const r=submitCommand(s,c);if(!r.accepted)throw new Error(r.reason);s=r.state;}else s=advancePhase(s,s.pending_event?{eventChoice:{ammo_type:'MG',location:'r1c1'}}:{}).state;}
  }if(s.status==='ACTIVE')throw new Error('Acceptance policy did not terminate.');return s;
 }
-for(const seed of process.argv.slice(2).length?process.argv.slice(2):['trev-accept-1']){
+const seeds=process.argv.slice(2).filter(arg=>arg!=='--card-pull');
+for(const seed of seeds.length?seeds:['trev-accept-1']){
  let s=play(createMission(candidate,seed));
  const first=s.status;
  if(s.status==='DEFEAT'){
@@ -51,7 +54,7 @@ for(const seed of process.argv.slice(2).length?process.argv.slice(2):['trev-acce
  }
  if(!isDeepStrictEqual(s,replayMission(candidate,exportReplay(s))))throw new Error('Acceptance replay diverged.');
  const summary={seed,first,outcome:s.status,attempt:s.attempt_number,orders:s.events.filter(e=>e.type==='COMMAND_ISSUED').length,contacts:s.events.filter(e=>e.type==='CONTACT_EVALUATED').length,enemies:Object.values(s.units).filter(u=>u.faction==='enemy').length,objective_check:s.events.findLast(e=>e.type==='OBJECTIVE_CHECK'),exact_replay:true};
- const output='output/company-playtests';mkdirSync(output,{recursive:true});
+ const output=cardPull?'output/card-pull-playtests':'output/company-playtests';mkdirSync(output,{recursive:true});
  writeFileSync(`${output}/${seed.replace(/[^a-z0-9_-]/gi,'_')}-normandy.json`,JSON.stringify({summary,replay:exportReplay(s),events:s.events.filter(e=>!e.hidden)},null,2));
  console.log(summary);
 }

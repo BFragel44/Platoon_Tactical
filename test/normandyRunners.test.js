@@ -8,7 +8,7 @@ import {rally} from '../src/sim/company/actions.js';
 
 const candidate={...trevieres,readiness:{playable:true}};
 describe('Normandy runners',()=>{
- it('reaches the reported turn-five command from the supplied playtest and rejects implicit HQ donation',()=>{
+ it.skip('archived weighted playtest: reaches turn five and rejects implicit HQ donation',()=>{
   const record=JSON.parse(readFileSync(new URL('./fixtures/normandyRunnerPlaytest.json',import.meta.url),'utf8'));
   let s=createMission(candidate,record.seed,record.setup,record.roster_snapshot?{mission_instance_id:record.mission_instance_id,roster:{schema:1,...record.roster_snapshot,applied_missions:{}}}:null,{mission_instance_id:record.mission_instance_id});
   const index=record.operations.findIndex(op=>op.op==='submitCommand'&&op.command.type==='CREATE_RUNNER');expect(index).toBe(224);

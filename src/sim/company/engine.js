@@ -46,7 +46,7 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 35;
+export const RULES_VERSION = 38;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 function phaseDescription(s){
   if(s.vire_runtime?.normal_phase_enabled&&s.phase==='AT_COMBAT')return 'Complete vehicle actions, reactions and immediate HITs, then finish end-of-phase VOF before advancing.';
@@ -66,8 +66,8 @@ export function createMission(definition,seed,setup={},deployment=null,execution
   return initializeMission(definition,seed,setup,deployment,execution);
 }
 // Read-only pre-mission inspection. Does not bypass the playable-mission gate.
-export function previewMissionSetup(definition,seed,setup={}) {
-  const s=initializeMission(definition,seed,setup);
+export function previewMissionSetup(definition,seed,setup={},deployment=null) {
+  const s=initializeMission(definition,seed,setup,deployment);
   const view=getPlayerView(s);
   return {mission_id:definition.id,mission_version:definition.version,seed:String(seed),setup:structuredClone(setup),map:structuredClone(s.boundaries),
     setup_options:structuredClone(definition.unit_options?{mortar_mode:['section','teams'],command_network:['radio','phones']}:{}),
@@ -106,7 +106,7 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
   }
   s.boundaries=scenario.map?{rows:scenario.map.rows,columns:scenario.map.columns}:null;
   s.terrain_deck=structuredClone(scenario.terrain_deck??[]);s.setup=structuredClone(setup);s.mission_name=scenario.name??'Company Assault';
-  s.mission_rules={...structuredClone(scenario.rules??{}),hiddenTerrain:!!scenario.map?.hidden};
+  s.mission_rules={...structuredClone(scenario.rules??{}),combatResolver:'action-deck-v1',hiddenTerrain:!!scenario.map?.hidden};
   s.enemy_tactics=s.mission_rules.tactics??'deliberate_defense';
   s.attempt_number=1;
   if(scenario.rules?.missionIdentity)s.mission_instance_id??=execution.mission_instance_id??globalThis.crypto.randomUUID();
@@ -396,6 +396,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     target_steps:pending.target_steps,target_cohesion:pending.target_cohesion,target_pinned:pending.target_pinned,ncm:pending.ncm,total:pending.total,
     parts:structuredClone(pending.parts),modifiers:structuredClone(pending.modifiers),probabilities:structuredClone(pending.probabilities),
     hit_probabilities:structuredClone(pending.hit_probabilities),result:pending.result,hit_effect:pending.hit_effect,after:structuredClone(pending.after),casualty_steps:pending.casualty_steps,
+    ...(s.mission_rules?.combatResolver?{combat_resolver:s.mission_rules.combatResolver,combat_card:structuredClone(pending.combat_card??null),hit_card:structuredClone(pending.hit_card??null)}:{}),
     strongest:pending.strongest?{...structuredClone(pending.strongest),source_id:pending.strongest.known?pending.strongest.source_id:null}:null,
     sources:pending.sources.map(source=>({...structuredClone(source),source_id:source.known?source.source_id:null}))}:null;
   const combat_resolution=projectCombat(pending);
@@ -427,7 +428,7 @@ export function getAfterActionReport(s) {
   return {record_type:'AAR',ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,scenario_version:s.scenario_version,mission_instance_id:s.mission_instance_id??null,attempts:structuredClone(s.attempt_history??[]),seed:s.seed,setup:structuredClone(s.setup),achievements:structuredClone(s.achievements),score:s.achievements.reduce((n,a)=>n+a.points,0),outcome:s.status,turns:s.turn,events,orders:events.filter(e=>e.type==='COMMAND_ISSUED'),casualties:events.filter(e=>e.type==='CASUALTY'),
     formations:events.filter(e=>['FORMATION_CHANGED','FORMATION_RECONSTITUTED','HQ_RECONSTITUTED','COHESION_CHANGED','UNIT_CAPTURED'].includes(e.type)),objectives:events.filter(e=>['OBJECTIVE_CHECK','MISSION_ENDED'].includes(e.type))};
 }
-export function exportReplay(s) { if(s.vire_runtime)return exportVireAdapterReplay(s.vire_runtime.initial_state,s);return {ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
+export function exportReplay(s) { if(s.vire_runtime)return exportVireAdapterReplay(s.vire_runtime.initial_state,s);return {...(s.mission_rules?.combatResolver?{combat_resolver:s.mission_rules.combatResolver}:{}),ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
 export function replayOperation(s,op) {
   if(op.op==='resolveSupportChoice')return resolveSupportChoice(s,op.choice);
   if(op.op==='submitCommand')return submitCommand(s,op.command);
@@ -442,7 +443,8 @@ export function replayOperation(s,op) {
 }
 export function replayMission(scenario,record) {
   if(record.scenario!==scenario.id||record.ruleset!==scenario.ruleset||record.version!==scenario.version||record.rules_version!==RULES_VERSION)
-    throw new Error('Replay rules/scenario version mismatch. Preserve historical exports; use compareReplay for a diagnostic comparison.');
+    throw new Error('Replay rules/scenario version mismatch. Start a new card-pull mission.');
+  if(record.combat_resolver!=='action-deck-v1')throw new Error('Replay combat resolver mismatch. Start a new card-pull mission.');
   if(scenario.rules?.missionIdentity&&!record.mission_instance_id)throw new Error('Normandy replay is missing its mission run identity.');
   let s=createMission(scenario,record.seed,record.setup??{},record.roster_snapshot?{mission_instance_id:record.mission_instance_id,roster:{schema:1,...record.roster_snapshot,applied_missions:{}}}:null,{mission_instance_id:record.mission_instance_id});
   for(const [index,op] of record.operations.entries()) {

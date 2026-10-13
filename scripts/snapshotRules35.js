@@ -1,0 +1,5 @@
+// Preserve the pre-correction engine for read-only historical audits, never live recovery.
+// One-time snapshot provenance. Do not regenerate from a later engine revision.
+import {build} from 'esbuild';
+import {readFileSync} from 'node:fs';
+await build({stdin:{contents:"export * from './src/sim/company/engine.js'; export {stGermain} from './src/scenarios/stGermain.js'; export {trevieres} from './src/scenarios/trevieres.js';",resolveDir:process.cwd(),sourcefile:'rules35-audit-entry.js'},outfile:'src/sim/company/compat/rules35.js',bundle:true,format:'esm',platform:'node',plugins:[{name:'preserve-rules35',setup(build){build.onLoad({filter:/[\\/]company[\\/](battlefield|engine|vireIntegration)\.js$/},async({path})=>({contents:readFileSync(path,'utf8').replace('RULES_VERSION = 36','RULES_VERSION = 35').replace('VIRE_ADAPTER_BASE_RULES_VERSION=36','VIRE_ADAPTER_BASE_RULES_VERSION=35').replace('&&!vehicleOnlyBasicBlocked(s,u,id)&&fireDestination(s,u,id)===id','&&!vehicleOnlyBasicBlocked(s,u,id)'),loader:'js'}));}}]});

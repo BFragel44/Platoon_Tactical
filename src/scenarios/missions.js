@@ -7,6 +7,7 @@ import {cerisy} from './cerisy.js';
 import {companyAssault} from './companyAssault.js';
 import {keepUpTheFire} from './keepUpTheFire.js';
 import {trevieres} from './trevieres.js';
+import {trevieresCardPull} from './trevieresCardPull.js';
 // Keep the development URL compatible; accepted missions use the normal catalog.
 const normandyDevelopment=!trevieres.readiness.playable&&typeof location!=='undefined'&&new URLSearchParams(location.search).get('normandyDev')==='1';
 const trevieresCandidate=normandyDevelopment?{...trevieres,readiness:{...trevieres.readiness,playable:true,stage:'development playtest'}}:trevieres;
@@ -24,6 +25,7 @@ export const missionCatalog=[{id:companyAssault.id,name:'Company Assault',scenar
 if(stGermainDevelopment||stGermain.readiness.playable)missionCatalog.push({id:stGermain.id,name:stGermainDevelopment?`${stGermain.name} · development playtest`:stGermain.name,scenario:stGermainCandidate,unavailable:null});
 for(const scenario of [vire,tinchebray])missionCatalog.push({id:scenario.id,name:scenario.name,scenario,unavailable:scenario.readiness.playable?null:scenario.readiness.missing.join('; ')});
 export const missionById=id=>missionCatalog.find(m=>m.id===id)?.scenario;
+if(typeof location!=='undefined'&&new URLSearchParams(location.search).get('cardPullDev')==='1')missionCatalog.push({id:trevieresCardPull.id,name:trevieresCardPull.name,scenario:trevieresCardPull,unavailable:null});
 export function playableMissionById(id){
  const entry=missionCatalog.find(m=>m.id===id);
  if(!entry)throw new Error('Unknown mission.');

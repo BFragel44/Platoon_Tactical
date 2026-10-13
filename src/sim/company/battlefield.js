@@ -255,7 +255,8 @@ export function refresh(s) {
   const projectedFire=sources.filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)&&!indirectUnits.includes(u)).map(u=>({source:u.id,origin:u.location,value:basicValue(u,distance(s.locations[u.location],s.locations[u.fire]))})).filter(f=>f.value!==null).concat(indirectUnits.map(u=>({source:u.id,origin:u.location,value:-3})));
   for (const u of sources.filter(live)) {
     if (fireTargets(s,u).some(t=>t.location===u.location&&t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]))&&canFire(s,u,u.location))u.fire=u.location;
-    const key=`${u.faction}:${u.location}`,joined=[...(established.get(key)??[])].filter(id=>canFire(s,u,id)&&!vehicleOnlyBasicBlocked(s,u,id));
+    // A shared PDF does not confer another weapon's overhead-fire capability.
+    const key=`${u.faction}:${u.location}`,joined=[...(established.get(key)??[])].filter(id=>canFire(s,u,id)&&!vehicleOnlyBasicBlocked(s,u,id)&&fireDestination(s,u,id)===id);
     if(!u.fire&&joined.length)u.fire=automaticTargetCard(s,u,joined.map(location=>({location})),projectedFire);
     if (!u.fire && !u.indirect && basicValue(u) !== null) {
       const targets = fireTargets(s,u).filter(t => live(t) && t.faction !== u.faction &&
@@ -312,7 +313,7 @@ export function spot(s,u) {
     emit(s,'ENEMY_SPOTTED',`${t.name} spotted at ${s.locations[t.location].name}.`,{actor:t.id,location:t.location});
   }
 }
-export const spottingLocations = s => Object.keys(s.knowledge.suspected).filter(id=>occupants(s,id).some(u=>!friendly(u)&&!s.knowledge.spotted[u.id]));
+export const spottingLocations = s => [...new Set([...Object.keys(s.knowledge.suspected),...values(s.units).filter(u=>!friendly(u)&&live(u)&&u.unspotted_position_public&&!s.knowledge.spotted[u.id]).map(u=>u.location)])].filter(id=>occupants(s,id).some(u=>!friendly(u)&&!s.knowledge.spotted[u.id]));
 export function hasFire(s,id,{includeInactiveMines=true}={}) { return includeInactiveMines&&!!s.locations[id]?.mines || s.fire.some(f=>f.target===id) || s.support.some(f=>f.status==='ACTIVE'&&f.location===id) || s.markers.some(m=>m.location===id&&['GRENADE','GRENADE_MISS','MINES','SNIPER'].includes(m.type)); }
 export function incoming(s,u) { return s.fire.filter(f=>f.target===u.location && (f.origin !== u.location || fireSource(s,f.source)?.faction !== u.faction)); }
 export function combatExposure(s,u) {

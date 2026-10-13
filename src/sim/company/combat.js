@@ -9,7 +9,7 @@ import {reconstitutionFirepower,reconstitutionLoads,reconstitutionDonors} from '
 import { values, live, good, friendly, visible, emit, draw, attempt, randomNumber, pick, shuffle, dropLoad } from './core.js';
 import { adjacent, occupants, los, unitLos, coverAvailable, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire, movementReason,vofOf,fireSource } from './battlefield.js';
 import { seekCover, rally, grenade, concentrate, move, splitTeam, infiltrationReason } from './actions.js';
-import { combatResolutionTable, hitEffectTable, resolveCombatOutcome, resolveHitEffect } from './combatProbability.js';
+import { combatResolutionTable, hitEffectTable } from './combatProbability.js';
 
 export function casualty(s,u,step) {
   const id=`casualty_${s.next_id++}`;
@@ -123,19 +123,23 @@ export function resolvePreparedCombat(s,resolutionId) {
   const resolution=s.pending_combat?.find(r=>r.id===resolutionId);
   if(!resolution||resolution.status!=='PENDING')throw new Error('Combat resolution is unavailable or already resolved.');
   const u=s.units[resolution.target_id],hidden=!resolution.target_visible;
-  const combat=resolveCombatOutcome(resolution.ncm,s.rng);s.rng=combat.rng;
+  const card=draw(s,1,`${visible(s,u)?u.name:'Enemy formation'}: combat result`,hidden)[0];
+  const combat={roll:null,result:card.combat[resolution.ncm+4]};
+  resolution.combat_card={id:card.id,ncm:resolution.ncm,result:combat.result};
   resolution.roll=combat.roll;resolution.result=combat.result;
   emit(s,'COMBAT_RESOLVED',`${visible(s,u)?u.name:'Enemy formation'}: ${combat.result.toLowerCase()} (NCM ${resolution.ncm>=0?'+':''}${resolution.ncm}).`,
     {resolution_id:resolution.id,actor:visible(s,u)?u.id:null,location:resolution.target_location,ncm:resolution.ncm,
-      modifiers:structuredClone(resolution.modifiers),probabilities:resolution.probabilities,roll:combat.roll,result:combat.result},hidden);
+      modifiers:structuredClone(resolution.modifiers),probabilities:resolution.probabilities,roll:combat.roll,result:combat.result,card_id:card.id,resolver:'action-deck-v1'},hidden);
   if(combat.result==='MISS')u.pinned=false;
   if(combat.result==='PIN')u.pinned=true;
   const beforeCasualties=s.casualties.length,beforeEvents=s.events.length;
   if(combat.result==='HIT') {
-    const hit=resolveHitEffect(resolution.target_experience,s.rng);s.rng=hit.rng;resolution.hit_roll=hit.roll;resolution.hit_effect=hit.effect;
+    const hitCard=draw(s,1,`${visible(s,u)?u.name:'Enemy formation'}: HIT effect`,hidden)[0];
+    const hit={roll:null,effect:hitCard.hit[resolution.target_experience]};resolution.hit_roll=hit.roll;resolution.hit_effect=hit.effect;
+    resolution.hit_card={id:hitCard.id,experience:resolution.target_experience,effect:hit.effect};
     emit(s,'HIT_EFFECT_RESOLVED',`${visible(s,u)?u.name:'Enemy formation'}: ${hit.effect} hit effect (${resolution.target_experience}).`,
       {resolution_id:resolution.id,actor:visible(s,u)?u.id:null,experience:resolution.target_experience,
-        probabilities:resolution.hit_probabilities,roll:hit.roll,effect:hit.effect},hidden);
+        probabilities:resolution.hit_probabilities,roll:hit.roll,effect:hit.effect,card_id:hitCard.id,resolver:'action-deck-v1'},hidden);
     applyHit(s,u,hit.effect);
   }
   const changed=s.events.slice(beforeEvents).find(e=>e.type==='FORMATION_CHANGED');

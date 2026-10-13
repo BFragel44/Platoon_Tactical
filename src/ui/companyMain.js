@@ -1,3 +1,9 @@
+import {campaignProgress,previewCampaignMission,commitCampaignMission,resumeCommittedCampaign,resumeCampaignCheckpoint,campaignCheckpoint} from '../sim/company/campaignProgression.js';
+import {saveCampaignRecovery,readCampaignRecovery} from './campaignRecovery.js';
+import {replaceSavedCampaign} from './campaignManagement.js';
+import {experienceAwards,freshExperienceAwards,createExperienceNotifications} from './experienceNotifications.js';
+import {mapBoundaryLayout} from './mapBoundaries.js';
+import {casualtyEvacuationStatus} from './casualtyPresentation.js';
 import {supportCallPreview,friendlyTargetLabel,supportWarning,battalionChoiceReason} from './supportPresentation.js';
 import {applicationMarkup,savedApplications,recoveryKey} from './applicationNavigation.js';
 import {capturePresentationDraft,restorePresentationDraft} from './presentationDraft.js';
@@ -48,12 +54,13 @@ import {fireMarkers,pdfDirections,pdfPaths,fireExplanation} from './fireMarkers.
 import {selectedOrder,completeCombatStage,availableOrderMenu,unavailableOrderReference,retainedGeneralIssuer,unavailableTargetReference,orderConsequences,formationSelectionOptions,groupMovementExclusions} from './orderPresentation.js';
 import {turnNoticeMarkup} from './turnNotice.js';
 import {signalEffectLabel} from './signalPresentation.js';
-import { PHASES } from '../sim/company/engine.js';
+import { PHASES,previewMissionSetup } from '../sim/company/engine.js';
 import {vireControls,bindVireControls,integrateVehicleControls} from './vireControls.js';
 import {applyVireOperation,exportVireAdapterReplay,importVireAdapterReplay} from '../sim/company/vireIntegration.js';
 
 const app=document.querySelector('#app');
 const urlChoices=new URLSearchParams(location.search);
+const connectedCandidate=urlChoices.get('campaignDev')==='1';
 const directDevelopment=['normandyDev','cerisyDev','stGeorgesDev','hill192Dev','stGermainDev','vireDev','tinchebrayDev'].some(key=>urlChoices.get(key)==='1');
 let tinchebrayDevelopment=urlChoices.get('tinchebrayDev')==='1';
 const vireDevelopment=tinchebrayDevelopment||urlChoices.get('vireDev')==='1';
@@ -86,14 +93,24 @@ let commandLinks=false,focusStartingForce=false,recapDialogs=true,showHistorical
 let selectedVehicle=null,vehicleRoute=[];
 let selectedPdf=null,cleanupMap=null,camera=normalizeCamera(),ordersScroll=0,ordersSaveTimer=null;
 let recovery={raw:null,bundle:null,error:null},storageError='',recoveryPending=false,turnStart=mission?checkpoint(mission):null;
+const experienceNotifications=createExperienceNotifications();let experienceMission=null,experienceSeen=[];
 try{if(!vireDevelopment){recovery=readRecovery(localStorage);recoveryPending=recovery.raw!==null;}}catch(e){storageError=`Local storage unavailable: ${e.message}. Export replays manually.`;}
-const presentation=()=>({showHistorical,tacticalDraft,recapDialogs,commandLinks,camera,ordersScroll,selectedVehicle,vehicleRoute,selected,action,target,generalIssuer,contributors,selectedPdf,combatId,combatStage,combatOpen,contactAcknowledged,recoveryResult,reviewId,turnNotice,feedback,feedbackKind});
+const presentation=()=>({experienceSeen,showHistorical,tacticalDraft,recapDialogs,commandLinks,camera,ordersScroll,selectedVehicle,vehicleRoute,selected,action,target,generalIssuer,contributors,selectedPdf,combatId,combatStage,combatOpen,contactAcknowledged,recoveryResult,reviewId,turnNotice,feedback,feedbackKind});
 function persist(previous=null,replace=false){
  if(!mission)return;
+ const identity=mission.mission_instance_id??`${mission.scenario_id}:${mission.seed}`;
+ if(experienceMission!==identity){experienceMission=identity;experienceSeen=[];experienceNotifications.reset();}
+ const awards=experienceAwards(getPlayerView(mission),getVisibleEvents(mission));
+ experienceNotifications.push(freshExperienceAwards(awards,experienceSeen));experienceSeen=awards.map(a=>a.id);
+ if(currentSlot==='card_pull'){
   if(mission.status==='ACTIVE'&&(replace||previous&&(mission.turn!==previous.turn||mission.attempt_number!==previous.attempt_number)))turnNotice=true;
-  if(replace||previous&&(mission.turn!==previous.turn||mission.attempt_number!==previous.attempt_number))turnStart=checkpoint(mission,presentation());
+  const storage={getItem:k=>localStorage.getItem('card-pull-'+k),setItem:(k,v)=>localStorage.setItem('card-pull-'+k,v),removeItem:k=>localStorage.removeItem('card-pull-'+k)};
+  try{if(replace||previous&&(mission.turn!==previous.turn||mission.attempt_number!==previous.attempt_number))turnStart=checkpoint(mission,presentation());saveRecovery(storage,mission,presentation(),{turnStart,replace});recovery=readRecovery(storage);storageError='';recoveryPending=false;}catch(error){storageError=error.message;}return;
+ }
+  if(mission.status==='ACTIVE'&&(replace||previous&&(mission.turn!==previous.turn||mission.attempt_number!==previous.attempt_number)))turnNotice=true;
+  if(replace||previous&&(mission.turn!==previous.turn||mission.attempt_number!==previous.attempt_number))turnStart=campaignCheckpoint(mission,presentation());
  if(currentSlot==='campaign'){
-  try{const connected=readCompanyPreparation(localStorage);if(!connected||connected.roster.company_id!==mission.roster_snapshot?.company_id)throw new Error('The campaign company no longer matches this mission. Export the current replay before starting a different company.');const storage={getItem:key=>localStorage.getItem('connected-'+key),setItem:(key,value)=>localStorage.setItem('connected-'+key,value)};saveRecovery(storage,mission,presentation(),{turnStart,replace});localStorage.setItem('platoon-active-vehicle-mission','campaign_m1');recovery=readRecovery(storage);storageError='';}catch(e){storageError=e.message;}return;
+  try{const connected=readCompanyPreparation(localStorage);if(!connected||connected.roster.company_id!==mission.roster_snapshot?.company_id)throw new Error('The campaign company no longer matches this mission. Export the current replay before starting a different company.');const storage={getItem:key=>localStorage.getItem('connected-'+key),setItem:(key,value)=>localStorage.setItem('connected-'+key,value)};saveCampaignRecovery(localStorage,mission,presentation(),{turnStart,replace});localStorage.setItem('platoon-active-vehicle-mission','campaign_m1');recovery=readRecovery(storage);storageError='';}catch(e){storageError=e.message;}return;
  }
 
   if(mission.vire_runtime){try{selectVehicleMission(missionById(mission.scenario_id));saveVireRecovery(localStorage,mission,presentation(),{replace});localStorage.setItem('platoon-active-vehicle-mission',mission.scenario_id);recovery=readVireRecovery(localStorage);storageError='';}catch(e){storageError=`Vehicle integration save failed: ${e.message}`;}return;}
@@ -103,13 +120,16 @@ function persist(previous=null,replace=false){
 }
 function draftContext(){return mission?JSON.stringify([mission.mission_instance_id??mission.seed,mission.scenario_id,mission.attempt_number,mission.turn,mission.phase,mission.replay.length,mission.vire_runtime?.operations.length??0,selected,action,selectedVehicle]):'';}
 function restorePresentation(p={}){
+ experienceNotifications.reset();experienceMission=mission?(mission.mission_instance_id??`${mission.scenario_id}:${mission.seed}`):null;
+ // A restored checkpoint is history, not a new XP award; this also supports older presentation records.
+ experienceSeen=(mission?.achievements??[]).map(a=>a.key);
  showHistorical=p.showHistorical===true;tacticalDraft=p.tacticalDraft??null;commandLinks=p.commandLinks===true;recapDialogs=p.recapDialogs!==false;camera=normalizeCamera(p.camera);ordersScroll=Number.isFinite(p.ordersScroll)?Math.max(0,p.ordersScroll):0;selected=p.selected??null;selectedVehicle=p.selectedVehicle??null;vehicleRoute=p.vehicleRoute??[];action=p.action??'MOVE';target=p.target??'';generalIssuer=p.generalIssuer??'co';contributors=p.contributors??[];selectedPdf=p.selectedPdf??null;combatId=p.combatId??null;combatStage=completeCombatStage(p.combatStage??'pre');combatOpen=p.combatOpen??true;contactAcknowledged=p.contactAcknowledged??null;turnNotice=p.turnNotice??false;reviewId=p.reviewId??null;recoveryResult=p.recoveryResult??null;feedback=p.feedback??'Saved mission restored.';feedbackKind='Recovery';
 }
 function currentSaveId(){return currentSlot;}
 function restoreSavedEntry(entry,which='latest'){
  if(!entry||entry.error||!entry.saved.bundle)throw new Error(entry?.error??'No readable saved mission.');
  const record=entry.saved.bundle[which];
- const restored=entry.id==='normandy_6'?originalResumeVireCheckpoint(record):entry.id==='normandy_7'?resumeTinchebrayCheckpoint(record):resumeCheckpoint(playableMissionById(record?.replay?.scenario),record);
+ const restored=entry.id==='campaign'?resumeCampaignCheckpoint(record):entry.id==='normandy_6'?originalResumeVireCheckpoint(record):entry.id==='normandy_7'?resumeTinchebrayCheckpoint(record):resumeCheckpoint(playableMissionById(record?.replay?.scenario),record);
  // All validation happens before touching the current tactical session.
  mission=restored.state;currentSlot=entry.id;seed=mission.seed;screen='tactical';navigationError='';storageError='';recovery=entry.saved;turnStart=entry.saved.bundle.turnStart;recoveryPending=false;
  if(mission.vire_runtime)selectVehicleMission(missionById(mission.scenario_id));
@@ -161,15 +181,29 @@ function startMission(definition,nextSeed,setup={}){
     const next=createMission(definition,nextSeed,setup,deployment); // Validate before replacing the active state/save.
     if(campaign&&definition.rules.standaloneRoster)startStandaloneRoster(localStorage,campaign,definition.rules.rosterKey);
     else if(campaign&&!readCampaign(localStorage,definition.rules.rosterKey).record)saveCampaign(localStorage,campaign,definition.rules.rosterKey);
-    localStorage.removeItem('platoon-active-vehicle-mission');screen='tactical';tacticalDraft=null;currentSlot='infantry';mission=next;seed=nextSeed;selectedVehicle=null;vehicleRoute=[];focusStartingForce=true;commandLinks=false;camera=normalizeCamera();ordersScroll=0;combatId=null;combatStage='pre';combatOpen=true;contactAcknowledged=null;selected='co';action='ACTIVATE';target='';contributors=[];selectedPdf=null;recoveryResult=null;reviewId=null;
+if(definition.id!=='normandy_1_card_pull')localStorage.removeItem('platoon-active-vehicle-mission');screen='tactical';tacticalDraft=null;currentSlot=definition.id==='normandy_1_card_pull'?'card_pull':'infantry';mission=next;seed=nextSeed;selectedVehicle=null;vehicleRoute=[];focusStartingForce=true;commandLinks=false;camera=normalizeCamera();ordersScroll=0;combatId=null;combatStage='pre';combatOpen=true;contactAcknowledged=null;selected='co';action='ACTIVATE';target='';contributors=[];selectedPdf=null;recoveryResult=null;reviewId=null;
     feedbackKind='Status';feedback=`${mission.mission_name} started with seed ${seed}.`;recoveryPending=false;persist(null,true);render();
   }
+function adoptCampaignMission(next,p={}){
+ mission=next;currentSlot='campaign';seed=next.seed;screen='tactical';tacticalDraft=null;focusStartingForce=true;selectedPdf=null;contactAcknowledged=null;vehicleRoute=[];recoveryPending=false;
+ if(next.vire_runtime)selectVehicleMission(missionById(next.scenario_id));
+ restorePresentation({selected:'co',action:'ACTIVATE',turnNotice:true,recapDialogs,...p});persist(null,true);render();
+}
+function setupCampaign(record){
+ if(record.stage==='PREPARED'&&!connectedCandidate)throw new Error('Connected launches remain gated pending full campaign validation.');
+ const progress=campaignProgress(record);if(!progress.destination)throw new Error(progress.reason);
+ const id=crypto.randomUUID(),nextSeed=record.history.length?`${record.history[0].replay.seed}:normandy_${record.history.length+1}`:seed;
+ const definition=progress.destination;
+ const result=openMissionSetup(app,definition,nextSeed,setup=>{const committed=commitCampaignMission(localStorage,record,id,nextSeed,setup);adoptCampaignMission(committed.state);},{lockBattlefield:!!definition.rules?.hill192,preview:(_definition,seed,setup={})=>{
+  const prepared=previewCampaignMission(record,id,seed,setup),{vehicle_positions={},jeep,...infantry}=prepared.deployment.setup;
+  const extra=definition.rules?.vire?originalPreviewVireSetup(seed,infantry,vehicle_positions):definition.rules?.tinchebray?previewTinchebraySetup(seed,infantry,vehicle_positions):{};
+  const view=previewMissionSetup(prepared.definition,seed,infantry,prepared.deployment);
+  return {...extra,...view,...(extra.jeep_setup?{jeep_setup:{...extra.jeep_setup,...jeep}}:{}),assumptions:['Prepared campaign company. Surviving identities, strength, experience and skills are retained; support and supplies follow destination content.'],...(view.hill192?{hill192:{...view.hill192,campaign_owned:true}}:{})};
+ }});if(result?.error)throw new Error(result.error);
+}
 function openCampaign(){
  if(screen==='tactical'&&mission)tacticalDraft=capturePresentationDraft(app,draftContext());
- openCompanyPreparation({scenario:trevieres,mission,download,onClose:()=>render(),resume:()=>{const saves=savedApplications(localStorage,missionCatalog);restoreSavedEntry(saves.campaign);},start:record=>openMissionSetup(app,trevieres,seed,setup=>{
-  const next=createMission(trevieres,seed,setup,{mission_instance_id:crypto.randomUUID(),roster:record.roster});
-  mission=next;currentSlot='campaign';screen='tactical';tacticalDraft=null;focusStartingForce=true;commandLinks=false;selectedPdf=null;contactAcknowledged=null;vehicleRoute=[];selected='co';selectedVehicle=null;action='ACTIVATE';target='';contributors=[];camera=normalizeCamera();ordersScroll=0;combatId=null;combatStage='pre';combatOpen=true;reviewId=null;recoveryResult=null;recoveryPending=false;persist(null,true);render();
- })});
+ openCompanyPreparation({scenario:trevieres,mission,download,connectedCandidate,onClose:()=>render(),resume:()=>{const saves=savedApplications(localStorage,missionCatalog);restoreSavedEntry(saves.campaign);},resumeStart:record=>adoptCampaignMission(resumeCommittedCampaign(record).state),start:setupCampaign});
 }
 function setupSelectedMission(previewOnly=false){
  try{
@@ -184,9 +218,18 @@ function renderApplication(){
  cleanupTooltips?.();cleanupHeader?.();cleanupMap?.();clearTimeout(ordersSaveTimer);cleanupTooltips=cleanupHeader=cleanupMap=null;
  document.title='Platoon Tactical';
  const saves=savedApplications(localStorage,missionCatalog);
- app.innerHTML=applicationMarkup({screen,catalog:missionCatalog,saves,current:mission?.mission_name,selectedMission:launcherMission,seed:launcherSeed,error:navigationError||storageError||vehicleBootError});
+ app.innerHTML=applicationMarkup({screen,catalog:missionCatalog,saves,current:mission?.mission_name,selectedMission:launcherMission,seed:launcherSeed,error:navigationError||storageError||vehicleBootError,connectedCandidate});
  for(const b of app.querySelectorAll('[data-screen]'))b.onclick=()=>showScreen(b.dataset.screen);
  for(const b of app.querySelectorAll('[data-campaign]'))b.onclick=openCampaign;
+ for(const b of app.querySelectorAll('[data-new-campaign],[data-delete-campaign]'))b.onclick=()=>{
+  const fresh=b.hasAttribute('data-new-campaign');
+  if(!confirm(fresh?'Replace the saved campaign and its backups with a fresh Normandy company? Export any history you want to keep first. Standalone missions are unaffected.':'Delete the saved campaign, its tactical recovery and campaign backups? This cannot be undone. Export any history you want to keep first. Standalone missions are unaffected.'))return;
+  try{
+   replaceSavedCampaign(localStorage,fresh?trevieres:null,fresh?crypto.randomUUID():null);
+   if(currentSlot==='campaign'){mission=null;tacticalDraft=null;turnStart=null;currentSlot='infantry';}
+   navigationError='';storageError='';render();if(fresh)openCampaign();
+  }catch(error){navigationError='Campaign change failed: '+error.message;render();}
+ };
  for(const b of app.querySelectorAll('[data-return]'))b.onclick=()=>{screen='tactical';render();};
  for(const b of app.querySelectorAll('[data-resume-save]'))b.onclick=()=>resumeSlot(b.dataset.resumeSave);
  for(const b of app.querySelectorAll('[data-export-save]'))b.onclick=()=>{const e=b.dataset.exportSave==='campaign'?saves.campaign:saves.standalone.find(e=>e.id===b.dataset.exportSave);if(e?.saved.raw)download(`${e.id}-original-save.json`,e.saved.raw);};
@@ -202,6 +245,7 @@ function render(){
   if(mission.impulse?.hq==='general')generalIssuer=retainedGeneralIssuer(Object.values(mission.units).filter(u=>u.faction==='friendly').map(u=>({...u,steps:u.steps.length})),generalIssuer);
   const issuer=action==='BN_RECONSTITUTE_CO'?'offmap_bn':mission.impulse?.hq==='general'?generalIssuer:mission.impulse?.hq;
   const v=getPlayerView(mission,'friendly',issuer),events=getVisibleEvents(mission).map(e=>e.type==='HQ_EVENT'||e.type==='HQ_EVENT_CHOICE_REQUIRED'?{...e,text:hqEventExplanation({...e,final_row:mission.boundaries?.rows,hill192:!!mission.mission_rules.hill192,vire:!!mission.mission_rules.vire},id=>v.locations.find(l=>l.id===id)?.name??id)}:e),aar=getAfterActionReport(mission);
+  const boundaryLayout=mapBoundaryLayout(v);
   const unit=v.units.find(u=>u.id===selected)??v.units[0];
   const orderLabel=o=>o.type.startsWith('PYRO_')?`${o.label} — ${signalEffectLabel(v.signal_plan?.[o.type.slice(5).toLowerCase()],v,id=>v.locations.find(l=>l.id===id)?.name??id)}`:o.label;
   const transferName=id=>{const [,donor,kind,key]=id.split(':');return `${v.units.find(u=>u.id===donor)?.name??donor} · ${kind==='RADIO'?'radio/phone':kind==='AMMO'?'ammunition':'equipment'} · ${key}`;};
@@ -252,19 +296,19 @@ function render(){
     ${combat&&combatOpen&&!review?combatScreen(combat,v,name,combatStage):''}
     <div class="company-workspace"><section class="battlefield-column" aria-label="Battlefield">
     ${selectedPath?`<p class="selected-fire-path" role="status">PDF trace: ${esc(selectedPath.label)} Path: ${selectedPath.cards.map(name).map(esc).join(' → ')}. ${esc(v.fire.filter(f=>`${f.origin}|${f.target}|${f.friendly?'friendly':f.source?'enemy':'unknown'}`===selectedPdf).map(f=>fireExplanation(v,f)).join(' '))}</p>`:''}
-    <div class="battlefield-stage"><div class="map-viewport" tabindex="0" aria-label="Scrollable battlefield"><div class="map-canvas"><div class="map-layer"><svg id="fire-overlay" aria-hidden="true"></svg><svg id="command-link-overlay" aria-label="Friendly command network"></svg><div class="company-map" style="grid-template-columns:repeat(${Math.max(...v.locations.map(l=>l.col))-Math.min(...v.locations.map(l=>l.col))+1},minmax(0,1fr))">${[...v.locations].sort((a,b)=>b.row-a.row||a.col-b.col).map(l=>{
+    <div class="battlefield-stage"><div class="map-viewport" tabindex="0" aria-label="Scrollable battlefield"><div class="map-canvas"><div class="map-layer"><svg id="fire-overlay" aria-hidden="true"></svg><svg id="command-link-overlay" aria-label="Friendly command network"></svg><div class="company-map" style="grid-template-columns:repeat(${Math.max(...v.locations.map(l=>l.col))-Math.min(...v.locations.map(l=>l.col))+1},minmax(0,1fr))">${boundaryLayout.boundaries.map(b=>`<div class="mlr-boundary phase-line-boundary" role="separator" aria-label="${esc(b.label)}" style="grid-column:1 / -1;grid-row:${b.gridRow}"><span>${esc(b.label)}</span></div>`).join('')}${[...v.locations].sort((a,b)=>b.row-a.row||a.col-b.col).map(l=>{
       const own=v.units.filter(u=>active(u)&&u.location===l.id),enemy=v.enemies.filter(u=>!u.removed&&u.steps&&u.location===l.id),pc=v.contacts.filter(c=>c.location===l.id&&!c.resolved),fire=v.fire.filter(f=>f.target===l.id),support=v.support.filter(f=>f.location===l.id);
-      return `${v.patrol&&l.row===1&&l.col===Math.min(...v.locations.map(t=>t.col))?`<div class="mlr-boundary" role="separator" aria-label="Main Line of Resistance between Rows 1 and 2" style="grid-column:1 / -1;grid-row:${Math.max(...v.locations.map(t=>t.row))}"><span>MLR · Main Line of Resistance · cross from Row 2 to Row 1 to return</span></div>`:''}<div class="terrain-stack ${!selected||l.id===unit.location||unit.los.includes(l.id)?'':'stack-outside-los'}" style="${v.patrol||v.locations.some(t=>t.outside_boundary)?`grid-column:${l.col-Math.min(...v.locations.map(t=>t.col))+1};grid-row:${Math.max(...v.locations.map(t=>t.row))-l.row+1+(v.patrol&&l.row<=1?1:0)}`:''}" ><article data-location="${l.id}" class="terrain-card ${!selected||l.id===unit.location||unit.los.includes(l.id)?'in-los':'outside-los'} ${combatFocus.has(l.id)||contactLocations.has(l.id)?'combat-focus':''} ${combat?.target_location===l.id?'combat-target':''} ${selectedPath?.cards.includes(l.id)?'selected-pdf-card':''} ${l.staging?'staging':''} ${fire.length||support.length?'incoming':''}">${terrainBorders(l)}<div class="terrain-header"><h3>${esc(l.name)}</h3>${l.staging||l.known===false?'':`<span class="protection">+${l.protection}</span>`}</div>
+      return `<div class="terrain-stack ${!selected||l.id===unit.location||unit.los.includes(l.id)?'':'stack-outside-los'}" style="${boundaryLayout.cardStyle(l)}" ><article data-location="${l.id}" class="terrain-card ${!selected||l.id===unit.location||unit.los.includes(l.id)?'in-los':'outside-los'} ${combatFocus.has(l.id)||contactLocations.has(l.id)?'combat-focus':''} ${combat?.target_location===l.id?'combat-target':''} ${selectedPath?.cards.includes(l.id)?'selected-pdf-card':''} ${l.staging?'staging':''} ${fire.length||support.length?'incoming':''}">${terrainBorders(l)}<div class="terrain-header"><h3>${esc(l.name)}</h3>${l.staging||l.known===false?'':`<span class="protection">+${l.protection}</span>`}</div>
       ${terrainInformation(l,selected&&l.known!==false?unit.los_explanations[l.id].reason:'')}
       ${terrainMarkers(l,pc,mapObjectives??v.objectives)}${v.markers.filter(m=>m.type==='ILLUMINATION'&&m.location===l.id).map(m=>`<span class="contact-badge">${esc(m.delivery)} illumination −${m.center}${m.adjacent?` / adjacent −${m.adjacent}`:''}</span>`).join('')}${l.smoke?'<span class="contact-badge">Screening smoke</span>':''}
       ${contact?.location===l.id?`<section class="card-contact" aria-label="Contact resolution"><h4>${contact.resolved?'Contact result':'Evaluate potential contact'}</h4>${contact.events.map(e=>`<p>${esc(tacticalText(v,e.text))}</p>`).join('')}<button data-contact-progress ${locked?'disabled':''}>${esc(advanceLabel)}</button></section>`:contact&&pc.length&&contact.eligible_locations.includes(l.id)?'<small>Queued this segment</small>':''}
       <div class="fire-markers">${fireMarkers(v,l).map(m=>`<details class="counter-marker"><summary title="${esc(m.label)}">${markerSummary(m)}${m.annotation?`<span class="marker-annotation">${esc(m.annotation)}</span>`:''}</summary><p>${esc(m.detail)}</p></details>`).join('')}</div>
       ${pdfDirections(v,l).map(d=>`<button type="button" class="pdf-badge ${d.side}" data-pdf-path="${esc(`${d.paths[0].origin}|${d.paths[0].target}|${d.paths[0].side}`)}" style="--x:${50+d.dc*45}%;--y:${50-d.dr*45}%;--angle:${d.angle}deg" title="${esc(d.label)}" aria-label="${esc(d.label)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 22 13H15V22H9V13H2Z"/></svg>PDF</button>`).join('')}
       ${formationGrid(l,own,enemy,{selected,movingIds,infiltrating:action==='PLATOON_INFILTRATE'})}${vehicleCounters(mission,l.id)}
-      ${v.casualties.filter(c=>c.location===l.id&&!c.evacuated).map(c=>`<div class="casualty-marker"><b>✚ ${esc(c.label)}</b><small>${c.carrier_name?'Carried by '+esc(c.carrier_name):'Awaiting pickup'} · ${esc(c.cover?l.covers.find(x=>x.id===c.cover)?.type??'cover':'Out of cover')}</small></div>`).join('')}
+      ${v.casualties.filter(c=>c.location===l.id&&!c.evacuated).map(c=>`<div class="casualty-marker"><b>✚ ${esc(c.label)}</b><small>${esc(casualtyEvacuationStatus(v,c))} · ${esc(c.cover?l.covers.find(x=>x.id===c.cover)?.type??'cover':'Out of cover')}</small></div>`).join('')}
       ${v.assets.filter(a=>a.location===l.id).map(a=>`<div class="equipment-marker"><b>▣ ${esc(a.label)}</b><small>${a.carrier_name?'Carried by '+esc(a.carrier_name):'Dropped here · recoverable'}</small></div>`).join('')}
       ${v.historical_losses.filter(e=>e.location===l.id&&(showHistorical||e.actor===selected)).map(e=>`<div class="loss-silhouette"><span aria-hidden="true">♟</span><b>${esc(e.name)}</b><small>Turn ${e.turn} · Historical loss — no tactical effect</small></div>`).join('')}
-      ${v.suspected.includes(l.id)&&!enemy.length?'<p class="suspected">Current unspotted position</p>':v.historical_reports.includes(l.id)&&!enemy.length?'<p class="historical">Historical firing report · not a current spotting target</p>':''}
+      ${v.suspected.includes(l.id)?'<p class="suspected">Current unspotted position</p>':v.historical_reports.includes(l.id)&&!enemy.length?'<p class="historical">Historical firing report · not a current spotting target</p>':''}
       ${fire.length||support.length||pdfDirections(v,l).length?`<details class="card-fire-details"><summary>Fire details</summary>${pdfDirections(v,l).map(d=>`<p>${[...new Set(d.sources)].map(esc).join('<br>')}</p>`).join('')}${fire.length?`<p class="fire-label">Fire affecting card: ${fire.map(f=>`${f.friendly?'Friendly':f.source?'Enemy':'Unidentified'} from ${esc(name(f.origin))}${!([...(f.friendly?v.enemies:v.units)].some(u=>u.location===l.id&&u.steps&&!u.removed))?' · no known opposing recipient':''}`).join('; ')}. Same-card fire affects opposing formations only.</p>`:''}
       ${support.map(f=>`<p class="fire-label">${f.status==='PENDING'?'Pending':'Active'} indirect fire (${f.value})</p>`).join('')}</details>`:''}
       ${terrainFooter(l)}</article>${hillStack(l)}</div>`;
@@ -302,7 +346,7 @@ function render(){
     ${inlineInventory(unit,{locked})}
     <details id="order-eligibility"><summary>All order eligibility</summary>${unit.options.map(o=>`<p><b>${esc(orderLabel(o))}</b>: ${o.available?'Available':esc(o.reason)}</p>`).join('')}</details>
     <details id="named-personnel"><summary>Named personnel</summary><ul class="personnel">${v.personnel.filter(p=>p.origin===unit.id||unit.personnel.includes(p.id)).map(p=>`<li>${esc(p.name)} · ${esc(p.status)}</li>`).join('')}</ul></details>
-    <details id="casualty-evacuation"><summary>Casualty evacuation</summary>${v.casualties.length?v.casualties.map(c=>`<p>${esc(c.label)} · ${c.evacuated?'Evacuated':c.carrier_name?'Carried by '+esc(c.carrier_name):'Awaiting pickup'} · ${esc(name(c.location))}</p>`).join(''):'<p>No friendly casualty steps recorded.</p>'}</details>
+<details id="casualty-evacuation"><summary>Casualty evacuation</summary>${v.casualties.length?v.casualties.map(c=>`<p>${esc(c.label)} · ${esc(casualtyEvacuationStatus(v,c))} · ${esc(name(c.location))}</p>`).join(''):'<p>No friendly casualty steps recorded.</p>'}</details>
     <details id="turn-summary"><summary>Turn summary</summary><p>${previousTurn.filter(e=>e.type==='COMMAND_ISSUED').length} orders · ${previousTurn.filter(e=>e.type==='CASUALTY').length} observed casualty steps · ${previousTurn.filter(e=>e.type==='FORMATION_CHANGED').length} observed formation changes.</p></details>
     <details id="diagnostic-details"><summary>Diagnostics and card draws</summary><button id="fast-forward" ${locked?'disabled':''}>Skip remaining orders and finish turn</button><pre>${esc(JSON.stringify({phase:v.phase,impulse:v.impulse,combat:unit.combat,draws:events.filter(e=>e.type==='CARDS_DRAWN').slice(-20)},null,2))}</pre></details>
     <button class="abort" id="abort" ${locked?'disabled':''}>Abort mission</button></aside></div>${vireControls(mission)}
@@ -328,9 +372,9 @@ function render(){
   if(mission.vire_runtime){
    app.querySelectorAll('[data-vehicle]').forEach(b=>b.onclick=()=>{selectedVehicle=b.dataset.vehicle;vehicleRoute=[];selected=null;ordersScroll=0;persist();render();});
    const button=document.createElement('button');button.id='vire-setup';button.textContent=tinchebrayDevelopment?'New Tinchebray setup':'New Vire setup';app.querySelector('#vire-controls').append(button);
-   button.onclick=()=>openVehicleSetup(missionById(mission.scenario_id),seed);
+   button.onclick=()=>openVehicleSetup(missionById(mission.scenario_id),seed);if(currentSlot==='campaign')button.hidden=true;
   }
-  bindVireControls(app,{submit:operation=>{selectedVehicle=operation.type==='ENGINE_OPERATION'&&operation.operation?.op==='selectHQ'?operation.operation.id:app.querySelector('#vire-firer')?.value??selectedVehicle;const next=submitVehicleInteraction(mission,operation);mission=next;if(operation.type==='PREPARE_VEHICLE_MOVE')vehicleRoute=[];persist();render();if(['PREPARE_VEHICLE_MOVE','STEP_VEHICLE_MOVE'].includes(operation.type))app.querySelector('#focus-unit')?.click();},exportSave:()=>download(tinchebrayDevelopment?'tinchebray-recovery-original.json':'vire-recovery-original.json',localStorage.getItem(VIRE_SAVE_KEY)??'null'),restoreSaved:()=>{const saved=readVireRecovery(localStorage);if(saved.error||!saved.bundle)throw new Error(saved.error??'No vehicle recovery available.');const restored=resumeVireCheckpoint(saved.bundle.latest);mission=restored.state;seed=mission.seed;restorePresentation(restored.presentation);render();},exportReplay:()=>download(tinchebrayDevelopment?'tinchebray-integration-replay.json':'vire-integration-replay.json',exportVireAdapterReplay(mission.vire_runtime.initial_state,mission)),restore:record=>{const restored=record.schema?resumeVireCheckpoint(record.latest):{state:importVireAdapterReplay(record),presentation:{}};if(restored.state.scenario_id!==vire.id)throw new Error('Imported vehicle replay belongs to a different mission.');mission=restored.state;seed=mission.seed;restorePresentation(restored.presentation);persist(null,true);render();}});
+  bindVireControls(app,{submit:operation=>{selectedVehicle=operation.type==='ENGINE_OPERATION'&&operation.operation?.op==='selectHQ'?operation.operation.id:app.querySelector('#vire-firer')?.value??selectedVehicle;const next=submitVehicleInteraction(mission,operation);mission=next;if(operation.type==='PREPARE_VEHICLE_MOVE')vehicleRoute=[];persist();render();if(['PREPARE_VEHICLE_MOVE','STEP_VEHICLE_MOVE'].includes(operation.type))app.querySelector('#focus-unit')?.click();},exportSave:()=>download(tinchebrayDevelopment?'tinchebray-recovery-original.json':'vire-recovery-original.json',localStorage.getItem(recoveryKey(currentSlot))??'null'),restoreSaved:()=>{if(currentSlot==='campaign'){resume('latest');return;}const saved=readVireRecovery(localStorage);if(saved.error||!saved.bundle)throw new Error(saved.error??'No vehicle recovery available.');const restored=resumeVireCheckpoint(saved.bundle.latest);mission=restored.state;seed=mission.seed;restorePresentation(restored.presentation);render();},exportReplay:()=>download(tinchebrayDevelopment?'tinchebray-integration-replay.json':'vire-integration-replay.json',exportVireAdapterReplay(mission.vire_runtime.initial_state,mission)),restore:record=>{const restored=record.schema?resumeVireCheckpoint(record.latest):{state:importVireAdapterReplay(record),presentation:{}};if(restored.state.scenario_id!==vire.id)throw new Error('Imported vehicle replay belongs to a different mission.');if(currentSlot==='campaign'&&restored.state.mission_instance_id!==mission.mission_instance_id)throw new Error('Imported replay belongs to a different campaign deployment.');mission=restored.state;seed=mission.seed;restorePresentation(restored.presentation);persist(null,true);render();}});
   integrateVehicleControls(app,mission,{selectedVehicle,route:vehicleRoute,onRoute:route=>{vehicleRoute=route;persist();render();},onSelect:id=>{selectedVehicle=id;vehicleRoute=[];selected=null;ordersScroll=0;persist();render();}});
   cleanupHeader=bindCommandHeader(app,{openFile:recoveryPending});
  app.querySelector('#nav-home').onclick=()=>showScreen('home');app.querySelector('#nav-missions').onclick=()=>showScreen('missions');app.querySelector('#nav-campaign').onclick=()=>openCampaign();

@@ -178,6 +178,10 @@ export function placePackage(s,pc,p){
   if(profile.kind==='MORTAR'&&profile.vof==='G'&&!p.no_fire){const target=occupants(s,pc.location).find(friendly);if(target)grenade(s,u,target);}
   if(p.infiltration){const success=attempt(s,u,2,'infiltrate',`${u.name}: patrol placement`,true)>0;u.exposed=!success;if(success){const candidate=l.covers.filter(c=>!c.parent&&!occupants(s,l.id).some(v=>v.id!==u.id&&v.cover===c.id&&v.faction==='friendly')).sort((a,b)=>b.value-a.value)[0];u.cover=candidate?.id??u.cover;}}
   if(p.spotted)spot(s,u);
+  // Resolved contact placement establishes a public position, including callers
+  // and units holding fire. Identification still requires a spotting attempt.
+  u.unspotted_position_public=true;
+  if(!s.knowledge.spotted[u.id])s.knowledge.suspected[l.id]=true;
   if(!p.no_fire&&!(p.outflanked&&p.point_blank)&&profile.kind!=='SPOTTER'){s.knowledge.suspected[l.id]=true;emit(s,'CONTACT_FIRE',`Fire from ${l.name}; ${p.spotted?'enemy identified':'source not yet spotted'}.`,{location:l.id,target:pc.location});}
   if(p.incoming){const agency=p.incoming_agency??'enemy_mortar';s.support.push({id:`support_${s.next_id++}`,source:id,agency,ammo:'HE',location:pc.location,status:'ACTIVE',value:p.incoming});s.registered_targets[agency]=pc.location;if(u.missions_remaining!==null)u.missions_remaining--;u.calls_made++;emit(s,'INCOMING_FIRE',`Incoming fire at ${s.locations[pc.location].name}.`,{location:pc.location,value:p.incoming,agency});}
  }

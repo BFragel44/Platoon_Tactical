@@ -46,6 +46,17 @@ describe('Printed terrain borders and LOS',()=>{
    expect(los(s,'r1c1','r1c3')).toBe(want);expect(los(s,'r1c3','r1c1')).toBe(want);
   }
  });
+ it('permits reciprocal uphill LOS from 5.-1 through two lower dark cards to the hill at 2.2',()=>{
+  const s=flat();
+  for(const [row,col] of [[5,-1],[4,0],[3,1],[2,2]]){
+   const id=`r${row}c${col}`;s.locations[id]={...s.locations.r1c1,id,row,col,elevation:1,borders:borders(),staging:false};
+  }
+  s.locations.r2c2.elevation=2;
+  const trace=explainLos(s,'r5c-1','r2c2');
+  expect(trace.visible).toBe(true);expect(trace.path.map(p=>p.location)).toEqual(['r4c0','r3c1']);expect(trace.path.every(p=>p.overlooked)).toBe(true);
+  expect(los(s,'r2c2','r5c-1')).toBe(true);expect(los(s,'r5c-1','r2c2',2)).toBe(false);
+  s.locations.r2c2.elevation=1;expect(los(s,'r5c-1','r2c2')).toBe(false);
+ });
  it('smoke permits LOS in and point blank, but not out or through',()=>{
   const s=flat();s.locations.r1c2.smoke=true;
   expect(los(s,'r1c1','r1c2')).toBe(true);expect(los(s,'r1c2','r1c1')).toBe(false);

@@ -42,13 +42,13 @@ This is the intended next evolution of the game, **not merely an optional cosmet
 
 Three.js is the discussed technical direction, with feasibility acknowledged but no implementation started or final architecture selected. A single 3D location with a squad, cover, animation and sound was suggested as a first experiment; that prototype scope remains a proposal.
 
-## Ideas on hold — no decision to implement
+## Experiments and ideas awaiting a release decision
 
 ### Card-pull NCM combat resolution
 
-The user raised returning combat NCM resolution to card pulls, then explicitly chose to hold off. Keep the current resolver unchanged.
+October 12: the user approved a separate Trévières comparison candidate. It uses real shared-deck combat/HIT draws behind cardPullDev=1; normal missions retain the weighted resolver. See docs/CARD_PULL_COMPARISON.md for evidence and remaining human comparison work.
 
-If revisited, distinguish a visual card reveal of an existing calculated outcome from actual resolution using the card's printed result. Actual finite-deck resolution can change outcome dependencies and requires a deliberate rules/replay compatibility decision. A comparative Trévières prototype was suggested, not approved.
+If revisited, distinguish a visual card reveal of an existing calculated outcome from actual resolution using the card's printed result. Actual finite-deck resolution can change outcome dependencies and requires a deliberate rules/replay compatibility decision. The comparison prototype is now approved and implemented; replacing the normal resolver remains undecided.
 
 ## Maintaining this file
 
@@ -57,3 +57,9 @@ Add future ideas here with their status: agreed but deferred, proposal, or expli
 ## Vehicle usability follow-up — agreed October 11, 2026
 
 M6 passed the user's playtest. Vehicles still need a broader usability pass in the next project phase, alongside the planned 3D/audio/SFX presentation. Refine activation and command visibility, map-led movement, reactions/Quick Shots and crew-HIT prompts, target selection, transport/cargo context and action-result feedback as one coherent flow. Keep the battlefield visible and avoid redundant controls, internal location IDs and empty procedures. Preserve legal command costs, communications, meaningful player decisions, hidden information, deterministic replays and explicit phase stepping. This backlog item is not authorization to begin that redesign now or acceptance of M7.
+
+
+## Connected campaign validation — active October 12, 2026
+
+The user accepted company preparation and authorized clearing remaining campaign gates. Connected Standard sequence/launch/recovery is now an explicit development candidate (?campaignDev=1), tracked in CAMPAIGN_COMPANY_READINESS.md. Complete seven-mission advancement and later-mission browser checks remain required before normal connected release. This does not authorize the deferred vehicle redesign, 3D/audio or card-pull experiments.
+October 12 update: card-pull combat accepted and promoted to normal play in rules38; historical replay compatibility is no longer a release requirement at the user's direction. The remaining combat-screen task is to reduce its footprint while retaining readable cards, NCM, results and expandable details.

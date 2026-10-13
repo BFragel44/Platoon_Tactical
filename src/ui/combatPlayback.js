@@ -7,10 +7,10 @@ export function combatPlayback(events,turn) {
       {actor:e.actor,location:e.location,title:`Incoming fire — NCM ${e.ncm>=0?'+':''}${e.ncm}`,
         text:e.modifiers.map(m=>`${m.label} ${m.value>=0?'+':''}${m.value}`).join(' · '),event:e.id},
       {actor:e.actor,location:e.location,title:`Combat result — ${e.result}`,
-        text:`Seeded roll ${e.roll.toFixed(6)} produced ${e.result}.`,event:e.id},
+        text:e.card_id!==undefined?`Action Card ${e.card_id} produced ${e.result}.`:`Seeded roll ${e.roll.toFixed(6)} produced ${e.result}.`,event:e.id},
     ];
     if(hit)pages.push({actor:e.actor,location:e.location,title:`Hit effect — ${hit.effect}`,
-      text:`${hit.experience} hit-effect roll ${hit.roll.toFixed(6)} produced ${hit.effect}.`,event:hit.id});
+      text:hit.card_id!==undefined?`Action Card ${hit.card_id}, ${hit.experience}: ${hit.effect}.`:`${hit.experience} hit-effect roll ${hit.roll.toFixed(6)} produced ${hit.effect}.`,event:hit.id});
     return pages;
   });
 }
