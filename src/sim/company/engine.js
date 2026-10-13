@@ -155,11 +155,11 @@ export function eligibleHQs(s) {
 }
 function startImpulse(s,id,activation=false) {
   const u=s.units[id]??vehicleHQRecord(s,id);let allowance,cardId=null,base=1,modifiers={};
-  if(id==='general'){const card=draw(s,1,'General initiative')[0];cardId=card.id;base=card.initiative;allowance=s.patrol?patrolInitiative(base):base;}
+  if(id==='general'){const card=draw(s,1,'General initiative',false,{field:{kind:'number',key:'initiative'}})[0];cardId=card.id;base=card.initiative;allowance=s.patrol?patrolInitiative(base):base;}
   else if(u.command_role==='higher_hq')allowance=6;
   else if(u.kind==='STAFF'&&!activation)allowance=1;
   else {
-    const card=draw(s,1,`${u.name}: ${activation?'activation':'initiative'}`)[0];
+    const card=draw(s,1,`${u.name}: ${activation?'activation':'initiative'}`,false,{actor:id,field:{kind:'number',key:activation?'activated':'initiative'}})[0];
     cardId=card.id;base=activation?card.activated:card.initiative;
     const pressure=incoming(s,u).map(f=>f.value);
     if(s.markers.some(m=>m.location===u.location&&m.type==='GRENADE'&&(m.target===u.id||u.cover&&m.cover===u.cover)))pressure.push(-3);
@@ -171,10 +171,11 @@ function startImpulse(s,id,activation=false) {
     allowance=Math.max(activation?1:0,base+Object.values(modifiers).reduce((a,b)=>a+b,0));
   }
   s.impulse={id:`t${s.turn}_i${++s.impulse_number}`,hq:id,commands:allowance+(u?.saved??0),allowance,spent:0,card_id:cardId,base,modifiers,reserve_used:u?.saved??0};
+  if(cardId!==null){const event=s.events.findLast(e=>e.type==='CARDS_DRAWN'&&e.card_ids.includes(cardId));if(event?.draw_context)event.draw_context.details=[`Printed allowance ${base}`,...Object.entries(modifiers).map(([key,value])=>`${key.replaceAll('_',' ')} ${value>=0?'+':''}${value}`),...(s.patrol&&id==='general'?['Combat patrol: halve initiative, rounding down.']:[]),`Saved commands +${s.impulse.reserve_used}`];}
   if(id==='general'&&(s.mission_rules?.reattempts||s.patrol))s.impulse.hq_limit_only=true;
   if(u){u.saved=0;if(s.vire_runtime?.vehicles[id])s.vire_runtime.vehicles[id].saved=0;}
   if(isCompanyCommander(u)&&s.command_obligation){const paid=Math.min(s.command_obligation,s.impulse.commands,visibilityCommandLimits(s.visibility).spend);s.command_obligation-=paid;s.impulse.commands-=paid;s.impulse.spent+=paid;emit(s,'HQ_OBLIGATION',`Company HQ spent ${paid} commands on its higher-HQ obligation.`,{paid,remaining:s.command_obligation});if(!s.command_obligation){const event=s.hq_events.findLast(e=>e.turn===s.turn&&['COMM','SITREP'].includes(e.code));if(event)event.completed=true;}}
-  emit(s,'IMPULSE_STARTED',`${u?.name??'General initiative'}: ${s.impulse.commands} commands available; ${s.impulse.hq_limit_only?`HQ orders retain their ${visibilityCommandLimits(s.visibility).spend===6?'six':'four'}-command limit`:`maximum ${visibilityCommandLimits(s.visibility).spend===6?'six':'four'} may be spent`}.`,{hq:id,allowance,total:s.impulse.commands});
+  emit(s,'IMPULSE_STARTED',`${u?.name??'General initiative'}: ${s.impulse.commands} commands available; ${s.impulse.hq_limit_only?`HQ orders retain their ${visibilityCommandLimits(s.visibility).spend===6?'six':'four'}-command limit`:`maximum ${visibilityCommandLimits(s.visibility).spend===6?'six':'four'} may be spent`}.`,{hq:id,allowance,total:s.impulse.commands,card_id:cardId,...(cardId===null?{no_draw_reason:'Fixed command allowance; no Action Card drawn.'}:{})});
 }
 function finishImpulse(s) {
   const i=s.impulse;if(!i)return;

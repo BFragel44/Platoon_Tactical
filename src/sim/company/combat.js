@@ -123,7 +123,7 @@ export function resolvePreparedCombat(s,resolutionId) {
   const resolution=s.pending_combat?.find(r=>r.id===resolutionId);
   if(!resolution||resolution.status!=='PENDING')throw new Error('Combat resolution is unavailable or already resolved.');
   const u=s.units[resolution.target_id],hidden=!resolution.target_visible;
-  const card=draw(s,1,`${visible(s,u)?u.name:'Enemy formation'}: combat result`,hidden)[0];
+  const card=draw(s,1,`${visible(s,u)?u.name:'Enemy formation'}: combat result`,hidden,{actor:visible(s,u)?u.id:null,field:{kind:'combat',ncm:resolution.ncm},combat:true})[0];
   const combat={roll:null,result:card.combat[resolution.ncm+4]};
   resolution.combat_card={id:card.id,ncm:resolution.ncm,result:combat.result};
   resolution.roll=combat.roll;resolution.result=combat.result;
@@ -134,7 +134,7 @@ export function resolvePreparedCombat(s,resolutionId) {
   if(combat.result==='PIN')u.pinned=true;
   const beforeCasualties=s.casualties.length,beforeEvents=s.events.length;
   if(combat.result==='HIT') {
-    const hitCard=draw(s,1,`${visible(s,u)?u.name:'Enemy formation'}: HIT effect`,hidden)[0];
+    const hitCard=draw(s,1,`${visible(s,u)?u.name:'Enemy formation'}: HIT effect`,hidden,{actor:visible(s,u)?u.id:null,field:{kind:'hit',experience:resolution.target_experience},combat:true})[0];
     const hit={roll:null,effect:hitCard.hit[resolution.target_experience]};resolution.hit_roll=hit.roll;resolution.hit_effect=hit.effect;
     resolution.hit_card={id:hitCard.id,experience:resolution.target_experience,effect:hit.effect};
     emit(s,'HIT_EFFECT_RESOLVED',`${visible(s,u)?u.name:'Enemy formation'}: ${hit.effect} hit effect (${resolution.target_experience}).`,
@@ -182,7 +182,7 @@ export function resolveContacts(s,contactId=null) {
   const counts={NO_CONTACT:{A:0,B:0},CONTACT:{A:7,B:5},ENGAGED:{A:5,B:3},HEAVILY_ENGAGED:{A:3,B:2}};
   for(const pc of eligibleContacts(s).filter(pc=>contactId===null||pc.id===contactId)) {
     const count=counts[s.activity][pc.type];
-    const contact=count===0||draw(s,count,`Evaluate contact ${pc.type} at ${s.locations[pc.location].name}`).some(c=>c.word==='Contact');
+    const contact=count===0||draw(s,count,`Evaluate contact ${pc.type} at ${s.locations[pc.location].name}`,false,{field:{kind:'word',expected:'Contact'}}).some(c=>c.word==='Contact');
     pc.resolved=true;
     emit(s,'CONTACT_EVALUATED',`${s.locations[pc.location].name}: contact marker cleared${contact?'; enemy activity detected':'; no contact'}.`,{location:pc.location,contact});
     if(!contact)continue;

@@ -191,7 +191,7 @@ export function placePackage(s,pc,p){
 export function resolveMissionContact(s,pc){
  const count=s.mission_contacts.draws[s.activity]?.[pc.type];
  if(count===undefined)throw new Error(`Missing ${s.activity}/${pc.type} contact table.`);
- const contact=count===0||draw(s,count,`Evaluate contact ${pc.type} at ${s.locations[pc.location].name}`).some(c=>c.word==='Contact');
+ const contact=count===0||draw(s,count,`Evaluate contact ${pc.type} at ${s.locations[pc.location].name}`,false,{field:{kind:'word',expected:'Contact'}}).some(c=>c.word==='Contact');
  pc.resolved=true;
  pc.revealed=true;
  emit(s,'CONTACT_EVALUATED',`${s.locations[pc.location].name}: ${contact?'enemy activity detected':'no contact'}.`,{location:pc.location,contact});

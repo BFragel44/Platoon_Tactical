@@ -23,7 +23,7 @@ export function discoveredCover(s,l,known=true,enemy=false) {
 }
 export function checkMines(s,u,{discovery=false}={}){
  if(!s.locations[u.location].mines||!live(u))return;
- const hit=draw(s,discovery&&(s.mission_rules.hill192||(s.mission_rules.vire||s.mission_rules.tinchebray))&&eligibleEngineer(u)?1:3,`${visible(s,u)?u.name:'Enemy'}: mine check`,!visible(s,u)).some(c=>c.burst||c.short);
+ const hit=draw(s,discovery&&(s.mission_rules.hill192||(s.mission_rules.vire||s.mission_rules.tinchebray))&&eligibleEngineer(u)?1:3,`${visible(s,u)?u.name:'Enemy'}: mine check`,!visible(s,u),{actor:visible(s,u)?u.id:null,field:{kind:'icons',keys:['burst','short']}}).some(c=>c.burst||c.short);
  if(hit){u.mine_hit=true;s.markers.push({type:'MINES',location:u.location,target:u.id,value:-4});}
  emit(s,'MINE_CHECK',`${visible(s,u)?u.name:'Enemy'} ${hit?'triggered mines; cannot move again this turn':'avoided the mines'}.`,{actor:visible(s,u)?u.id:null,location:u.location,hit},!visible(s,u));
 }
@@ -61,7 +61,7 @@ const ENEMY=[['REINFORCE','UNPIN','UNPIN','UNPIN','UNPIN','UNPIN','RECOVER','REC
 export function higherEvent(s,side,choice){
  if(s.mission_rules?.events==='normandy')return resolveNormandyEvent(s,side,choice);
  if(!s.mission_rules?.events||s.turn===1)return;
- if(!draw(s,1,`${side} higher HQ event check`)[0].hq){emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event.`);return;}
+ if(!draw(s,1,`${side} higher HQ event check`,false,{field:{kind:'icons',keys:['hq']}})[0].hq){emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event.`);return;}
  const table=(side==='friendly'?FRIENDLY:ENEMY)[s.turn<5?0:s.turn<8?1:2],code=table[randomNumber(s,10,`${side} higher HQ event`)-1];
  const effect={side,code,turn:s.turn,lead:Math.max(0,...values(s.units).filter(u=>friendly(u)&&live(u)).map(u=>s.locations[u.location].row)),completed:false};s.hq_events.push(effect);
  const units=values(s.units).filter(u=>live(u)&&u.faction===side);
@@ -92,14 +92,17 @@ export function supportRequest(s,u,agencyId,ammo,target){
  const agency=s.support_agencies[agencyId],base=(agency.ammo_draws?.[ammo]??agency.draws)[u.agency_role??u.id],registered=s.registered_targets[agencyId]===target?1:0;
   if(s.support_inventory?.[agencyId]?.[ammo]===0)throw new Error(`${agency.name} has no ${ammo} missions remaining.`);
  const extra=s.active_skill?.actor===u.id&&s.active_skill.extra&&!s.active_skill.applied;
- const batch=draw(s,Math.max(1,base+registered+({Green:-1,Line:0,Veteran:1}[u.experience]))+(extra?1:0),`${u.name}: ${agency.name} ${ammo}`);
+ const field={kind:'icons',keys:['burst','multi','short']};
+ const batch=draw(s,Math.max(1,base+registered+({Green:-1,Line:0,Veteran:1}[u.experience]))+(extra?1:0),`${u.name}: ${agency.name} ${ammo}`,false,{actor:u.id,field,details:[`Caller allowance ${base}`,`Registered target +${registered}`,`Experience ${u.experience}`,...(extra?['Extra Draw skill +1']:[])]});
  if(extra)s.active_skill.applied=true;
-  if(!batch.some(c=>c.short||c.burst))batch.push(...exhortDraw(s,u,`${agency.name} ${ammo}`));
+  if(!batch.some(c=>c.short||c.burst))batch.push(...exhortDraw(s,u,`${agency.name} ${ammo}`,false,field));
  let destination=target;const short=batch.some(c=>c.short),success=short||batch.some(c=>c.burst);
  if(short)destination=shortRoundDestination(s,u,target);
  if(success&&ammo==='ILLUM'){placeIllumination(s,destination,agencyId,u.id);s.support_inventory[agencyId][ammo]--;s.registered_targets[agencyId]=destination;}
  else if(success){const mission={id:`support_${s.next_id++}`,location:destination,status:'PENDING',value:agency[ammo],source:u.id,agency:agencyId,ammo};s.support.push(mission);if(agency.battalion&&!short&&batch.some(c=>c.multi)){const choices=adjacent(s,destination).filter(l=>!l.staging).map(l=>l.id);if(choices.length>=2)s.pending_support={support_id:mission.id,location:destination,adjacent:choices};}s.registered_targets[agencyId]=destination;if(s.support_inventory?.[agencyId]?.[ammo]!==undefined)s.support_inventory[agencyId][ammo]--;}
  emit(s,'SUPPORT_REQUEST',`${agency.name} ${ammo}: ${success?`${short?'short round; ':''}${ammo==='ILLUM'?'illumination active':'pending'} at ${s.locations[destination].name}`:'request failed'}.`,{actor:u.id,location:destination,success,agency:agencyId,ammo});
+ const call=s.events.findLast(e=>e.type==='CARDS_DRAWN'&&e.draw_context?.actor===u.id&&e.draw_context?.field.kind==='icons');
+ if(call){call.draw_context.details.push(success?'One fire mission expended.':'No fire mission expended.');if(s.support_inventory?.[agencyId]?.[ammo]!==undefined)call.draw_context.details.push(`${s.support_inventory[agencyId][ammo]} ${ammo} missions remaining.`);}
 }
 
 export function applySupportChoice(s,choice){

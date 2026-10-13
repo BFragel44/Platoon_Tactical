@@ -35,7 +35,7 @@ export const cards = Object.fromEntries(data.cards.map(({id, fields:f}) => [id, 
 }]));
 export function newDeck(s) { return { order:shuffle(s, data.cards.map(c => c.id)), discard:[], reshuffles:0, draws:0 }; }
 // Finish the entire attempt, even after success. Reshuffle marker is not a draw.
-export function draw(s, count, purpose, hidden = false) {
+export function draw(s, count, purpose, hidden = false, context = {}) {
   const batch = []; let reshuffle = false;
   for (let i = 0; i < count;) {
     if (!s.deck.order.length) {
@@ -47,27 +47,36 @@ export function draw(s, count, purpose, hidden = false) {
     batch.push(cards[id]); i++;
   }
   emit(s,'CARDS_DRAWN',`${purpose}: ${batch.map(c => c.id).join(', ')}.`,
-    { purpose, card_ids: batch.map(c=>c.id) }, hidden);
+    { purpose, card_ids: batch.map(c=>c.id),draw_context:{actor:context.actor??null,field:context.field??{kind:'card'},allowance:count,details:context.details??[],values:batch.map(c=>drawFieldValue(c,context.field)),combat:context.combat===true,...(context.outcome?{outcome:context.outcome}:{})} }, hidden);
   if (reshuffle) {
     s.deck.order = shuffle(s, [...s.deck.order,...s.deck.discard]); s.deck.discard = []; s.deck.reshuffles++;
     emit(s,'DECK_SHUFFLED','Action deck reshuffled after completing the draw batch.',{},hidden);
   }
   return batch;
 }
+export function drawFieldValue(c,field={kind:'card'}){
+ if(field.kind==='icons')return field.keys.filter(k=>c[k]);
+ if(field.kind==='combat')return c.combat[field.ncm+4];
+ if(field.kind==='hit')return c.hit[field.experience];
+ if(field.kind==='random')return c.random[field.sides-2];
+ if(field.kind==='word')return c.word;
+ if(field.kind==='card')return c.id;
+ return c[field.key]??null;
+}
 export function randomNumber(s, n, purpose, hidden = false) {
   if (n <= 1) return 1;
   if (n > 12) throw new Error('Action card random range exceeds 12');
-  return draw(s,1,purpose,hidden)[0].random[n-2];
+  return draw(s,1,purpose,hidden,{field:{kind:'random',sides:n}})[0].random[n-2];
 }
 export function pick(s, items, purpose, hidden=false) { if(items.length>12){const chosen=shuffle(s,items)[0];emit(s,'RANDOM_SELECTION',`${purpose}: seeded selection from ${items.length} candidates.`,{},hidden);return chosen;}return items[randomNumber(s,items.length,purpose,hidden)-1]; }
-export function exhortDraw(s,u,purpose,hidden=false){
+export function exhortDraw(s,u,purpose,hidden=false,field={kind:'card'}){
  const exhort=s.active_exhort;
  if(!friendly(u)||!exhort||exhort.used||!exhort.actors.includes(u.id))return [];
  exhort.used=true;s.impulse.commands--;s.impulse.spent++;
  if(s.impulse.hq==='general'&&(s.mission_rules?.reattempts||s.patrol)){s.impulse.origin_spent??={};s.impulse.origin_spent[exhort.issuer]=(s.impulse.origin_spent[exhort.issuer]??0)+1;}
  s.units[exhort.issuer].used.push(`${s.impulse.id}:EXHORT`);
  emit(s,'EXHORT_ISSUED',`${s.units[exhort.issuer].name}: exhort failed ${purpose}; one additional card.`,{actor:exhort.issuer,recipient:u.id,purpose});
- return draw(s,1,`Exhort: ${purpose}`,hidden);
+ return draw(s,1,`Exhort: ${purpose}`,hidden,{actor:u.id,field,details:['Exhort: one additional command and card.']});
 }
 export function attempt(s,u, count, icon, purpose, hidden = !visible(s,u),checkCards=null,automatic=!s.impulse,grenadeReturn=false) {
   const leader=s.mission_rules?.leaderBonus&&u.faction==='enemy'&&values(s.units).some(v=>v.kind==='LEADER'&&v.faction==='enemy'&&live(v)&&!v.pinned&&v.cohesion==='GOOD'&&v.location===u.location&&v.cover===u.cover);
@@ -83,17 +92,28 @@ export function attempt(s,u, count, icon, purpose, hidden = !visible(s,u),checkC
    }
   }
   const applies=skill&&!skill.applied&&skill.actor===u.id&&(skill.extra||skill.icon===icon);
-  const batch=draw(s,Math.max(1,count+expMod(u)+(leader?1:0))+(applies&&skill.extra?1:0),purpose,hidden);
+ const field=['spot','grenade','infiltrate','burst','hq'].includes(icon)?{kind:'icons',keys:[icon,...(checkCards?['jam']:[])]}:{kind:'word',expected:icon};
+  const batch=draw(s,Math.max(1,count+expMod(u)+(leader?1:0))+(applies&&skill.extra?1:0),purpose,hidden,{actor:visible(s,u)?u.id:null,field,details:visible(s,u)?[`Base allowance ${count}`,`Experience ${expMod(u)>=0?'+':''}${expMod(u)}`,...(leader?['Leader +1']:[]),...(applies?['Assigned skill applied']:[])]:['Unidentified formation; private modifiers remain concealed.']});
+  const event=s.events.findLast(e=>e.type==='CARDS_DRAWN');
   let successes=batch.filter(c => c[icon] || c.word.toLowerCase() === icon).length;
-  if(checkCards?.(batch)===false){if(applies)skill.applied=true;return 0;}
+  if(checkCards?.(batch)===false){if(applies)skill.applied=true;event.draw_context.outcome='Attempt prevented by its card condition.';return 0;}
   if(applies){skill.applied=true;if(!skill.extra)successes=Math.max(1,successes);}
   if(!successes&&!automatic){
-   const extra=exhortDraw(s,u,purpose,hidden);
+   const extra=exhortDraw(s,u,purpose,hidden,field);
    if(checkCards?.(extra)!==false)successes=extra.filter(c=>c[icon]||c.word.toLowerCase()===icon).length;
   }
+  event.draw_context.outcome=successes?`Qualifying result found${applies&&!skill.extra?' with assigned skill':''}.`:'No qualifying result found.';
   return successes;
 }
+export function annotatePublicDraws(before,next) {
+ const fresh=next.events.slice(before.events.length),group=`action_${before.events.length+1}`;
+ for(const e of fresh)if(e.type==='CARDS_DRAWN'&&!e.action_group){
+  e.action_group=group;
+  e.draw_outcomes=fresh.filter(v=>!v.hidden&&!['CARDS_DRAWN','DECK_SHUFFLED','PHASE_ENTERED','COMMAND_RESOLVED'].includes(v.type)).map(v=>({id:v.id,type:v.type,text:v.text}));
+ }
+}
 export function result(before,next,extra={}) {
+ annotatePublicDraws(before,next);
  synchronizeVireATUnits(next);
  if(next.vire_runtime?.normal_phase_enabled)for(const operation of next.replay.slice(before.replay.length)){
   const id=`core_${next.vire_runtime.operations.length+1}`;

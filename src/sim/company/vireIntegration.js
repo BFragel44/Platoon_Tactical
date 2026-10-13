@@ -13,7 +13,7 @@ import {spotAttempt} from './actions.js';
 import {withdrawEmptyTank} from './vehicleFire.js';
 import {vehicleConcentrateTargets,vehicleConcentrate} from './vehicleInfantryActions.js';
 import {distance,los,unitLos,refresh,fireSource,chain,communication} from './battlefield.js';
-import {live,good,draw,emit,randomNumber,pick} from './core.js';
+import {live,good,draw,emit,randomNumber,pick,annotatePublicDraws} from './core.js';
 import {applyHit,casualty,prepareCombat,resolvePreparedCombat} from './combat.js';
 import {createVehicle,applyVehicleResult,finishVehicleCombatPhase,cleanupVehicleActivation} from './vehicleState.js';
 import {atProfile,groundVehicleResult,resolveATFire,startVehiclePhase,vehiclePhaseOptions,beginVehicleAction,finishVehicleAction} from './vehicleCombat.js';
@@ -123,7 +123,7 @@ function resolveVehicleVOF(s,vehicle,id,{moving=false,mineOnly=false}={}){
    for(const f of s.support.filter(f=>!mineOnly&&f.location===vehicle.location&&f.status==='ACTIVE'))candidates.push({modifier:-1+(s.locations[vehicle.location].burst??0)});
    for(const marker of s.markers.filter(m=>m.target===vehicle.id&&m.location===vehicle.location))if(marker.type==='MINES'||!mineOnly&&marker.type==='SNIPER'&&s.units[marker.source]?.fire===vehicle.location&&!s.units[marker.source]?.pinned)candidates.push({modifier:marker.type==='SNIPER'?1+vehicleSmoke(s,vehicle.location):-2});
    if(candidates.length){
-    const c=draw(s,1,'VOF against vehicle',hidden)[0],modifier=Math.min(...candidates.map(c=>c.modifier))+atProfile(vehicle.profile).defense+(s.locations[vehicle.location].protection??0)+(moving?1:0)-(vehicle.pinned?1:0);
+    const c=draw(s,1,'VOF against vehicle',hidden,{field:{kind:'number',key:'at'}})[0],modifier=Math.min(...candidates.map(c=>c.modifier))+atProfile(vehicle.profile).defense+(s.locations[vehicle.location].protection??0)+(moving?1:0)-(vehicle.pinned?1:0);
     const outcome=applyVehicleResult(vehicle,{id:operation.id,result:groundVehicleResult(Number(c.at)+modifier)});
     installOutcome(s,vehicle,outcome);
     s.vire_runtime.vehicles[vehicle.id]=outcome.vehicle;
@@ -300,7 +300,7 @@ export function applyVireOperation(state,operation){
   const pending=runtime.pending_hits.find(h=>h.id===operation.hit);
   if(!pending||pending.resolved)throw new Error('Crew HIT unavailable.');
   const u=s.units[pending.unit_id];if(!live(u))throw new Error('Crew step unavailable.');
-  const c=draw(s,1,'Vehicle crew / passenger HIT',u.faction==='enemy'&&!s.knowledge.spotted[u.id])[0],effect=c.hit[u.experience];
+  const c=draw(s,1,'Vehicle crew / passenger HIT',u.faction==='enemy'&&!s.knowledge.spotted[u.id],{actor:u.faction==='friendly'?u.id:null,field:{kind:'hit',experience:u.experience}})[0],effect=c.hit[u.experience];
   if(!effect)throw new Error('Unsupported crew HIT effect.');applyHit(s,u,effect);pending.resolved=true;pending.card_id=c.id;pending.effect=effect;
  }else if(operation.type==='HOLD_VEHICLE'){
   if(s.phase!=='AT_COMBAT'||runtime.move&&!runtime.move.complete||runtime.quick||runtime.reaction?.eligible.length||runtime.pending_hits.some(h=>!h.resolved))throw new Error('Resolve pending vehicle procedures before holding.');
@@ -355,7 +355,7 @@ export function applyVireOperation(state,operation){
  }else throw new Error('Unknown Vire adapter operation.');
  if(runtime.end_vof?.length===0&&!runtime.phase_complete&&!runtime.pending_hits.some(h=>!h.resolved))completePhase(s);
  synchronizeJeepPassengers(s);if(runtime.basic_fire_enabled)refresh(s);
- finishOrderedAction(s);s.vire_runtime.applied.push(operation.id);s.vire_runtime.operations.push(structuredClone(operation));return s;
+ finishOrderedAction(s);s.vire_runtime.applied.push(operation.id);s.vire_runtime.operations.push(structuredClone(operation));annotatePublicDraws(state,s);return s;
 }
 export function replayVireOperations(start,operations){return operations.reduce((s,op)=>applyVireOperation(s,op),structuredClone(start));}
 export function exportVireAdapterReplay(start,state){

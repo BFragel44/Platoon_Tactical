@@ -1,0 +1,18 @@
+.battlefield-stage{position:relative}
+.card-draw-host{position:absolute;left:12px;bottom:var(--card-controls-height,72px);width:min(360px,calc(100% - 24px));z-index:45;pointer-events:none}
+.card-draw-panel{pointer-events:auto;display:flex;flex-direction:column;max-height:var(--card-panel-height,380px);background:#203129;border:1px solid #cabb80;border-radius:6px;color:#eee7c8;box-shadow:0 6px 22px #0009;font-size:.78rem}
+.card-draw-scroll{max-height:min(320px,45vh);min-height:0;flex:1 1 auto;overflow:auto;padding:10px}
+.card-draw-panel h3{font-size:.9rem;margin:0 0 8px}.card-draw-panel p{margin:5px 0}
+.card-draw-batch{margin-bottom:8px}.card-draw-batch>small{display:block}
+.card-draw-faces{display:flex;gap:5px;flex-wrap:wrap;margin:6px 0}
+.action-drawn-card{padding:5px!important;flex:1 1 85px;min-width:0;border:1px solid #aeb39a;border-radius:3px;background:#283c2e}
+.action-drawn-card small{font-size:.6rem}.action-drawn-card p{font-size:.72rem;margin:4px 0}
+.action-drawn-card mark{color:#f4df91;background:#425342}
+.card-draw-panel footer{flex-shrink:0;display:flex;gap:6px;align-items:center;flex-wrap:wrap;border-top:1px solid #66735b;padding:7px}
+.card-draw-panel button{padding:4px 7px;font-size:.72rem}.card-draw-panel footer small{flex-basis:100%}
+.card-draw-reveal{animation:card-field-reveal 100ms both;animation-delay:var(--reveal-delay)}
+@keyframes card-field-reveal{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.recent-card-pulls .card-draw-faces{max-width:360px}.recent-card-pulls>details{margin:8px 0}
+.card-draw-active .experience-notifications{left:auto;right:16px;transform:none}
+@media(max-width:700px){.card-draw-active .experience-notifications{top:calc(var(--command-header-height,100px) + 8px);bottom:auto;left:50%;right:auto;transform:translateX(-50%)}.card-draw-scroll{max-height:min(260px,40vh)}}
+@media(prefers-reduced-motion:reduce){.card-draw-reveal{animation:none}}

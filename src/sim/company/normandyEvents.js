@@ -21,7 +21,7 @@ export function resolveNormandyEvent(s,side,choice={}){
   s.pending_event=null;
  }else{
   if(s.turn===1)return emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event on turn 1.`);
-  if(!draw(s,1,`${side} higher HQ event check`)[0].hq)return emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event.`);
+  if(!draw(s,1,`${side} higher HQ event check`,false,{field:{kind:'icons',keys:['hq']}})[0].hq)return emit(s,'HQ_EVENT_NONE',`${side}: no higher HQ event.`);
   const table=side==='friendly'?((s.turn<=6?s.mission_rules.friendly_event_tables?.early:s.mission_rules.friendly_event_tables?.late)??(s.turn<=6?FRIENDLY_EARLY:FRIENDLY_LATE)):(s.turn<(s.mission_rules.enemy_late_start??7)?s.mission_rules.enemy_event_tables?.early:s.mission_rules.enemy_event_tables?.late)??ENEMY;
   code=table[randomNumber(s,10,`${side} higher HQ event`)-1];
   event={side,code,turn:s.turn,lead:leadRow(s),completed:false};s.hq_events.push(event);

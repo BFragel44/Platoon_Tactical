@@ -1,4 +1,5 @@
 import {resultingFormationText} from './combatPlayback.js';
+import {actionCardMarkup} from './cardDraws.js';
 import {supportContext} from './orderPresentation.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sign=n=>`${n>=0?'+':''}${n}`;
@@ -17,7 +18,7 @@ function stakes(r,hidden=false){
 function result(r){
  if(!r||r.status!=='RESOLVED')return '';
  const hit=r.result==='HIT';
- return `<div class="exchange-result ${r.result.toLowerCase()}">${r.combat_card?`<div class="combat-drawn-card" aria-label="Combat Action Card ${r.combat_card.id}"><small>ACTION CARD ${r.combat_card.id} · COMBAT</small><p>NCM <mark>${sign(r.combat_card.ncm)}</mark> → <mark>${esc(r.combat_card.result)}</mark></p></div>`:''}${r.hit_card?`<div class="combat-drawn-card" aria-label="HIT effect Action Card ${r.hit_card.id}"><small>ACTION CARD ${r.hit_card.id} · HIT EFFECT</small><p><mark>${esc(r.hit_card.experience)}</mark> → <mark>${esc(r.hit_card.effect)}</mark></p></div>`:''}<h4>${esc(r.result)}${hit?` · ${esc(r.hit_effect)}`:''}</h4><p>${hit?esc(resultingFormationText(r)):r.result==='MISS'?'No hit; pin removed.':'Formation pinned.'}${hit&&r.casualty_steps?` · ${r.casualty_steps} casualty step(s)`:''}</p></div>`;
+return `<div class="exchange-result ${r.result.toLowerCase()}">${r.combat_card?actionCardMarkup({id:r.combat_card.id,field:{kind:'combat',ncm:r.combat_card.ncm},value:r.combat_card.result}):''}${r.hit_card?actionCardMarkup({id:r.hit_card.id,field:{kind:'hit',experience:r.hit_card.experience},value:r.hit_card.effect}):''}<h4>${esc(r.result)}${hit?` · ${esc(r.hit_effect)}`:''}</h4><p>${hit?esc(resultingFormationText(r)):r.result==='MISS'?'No hit; pin removed.':'Formation pinned.'}${hit&&r.casualty_steps?` · ${r.casualty_steps} casualty step(s)`:''}</p></div>`;
 }
 function formation(r,context,name,template){
  const hidden=!r&&!context?.known&&!supportContext(context),support=!r&&supportContext(context);

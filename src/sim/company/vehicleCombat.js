@@ -86,9 +86,9 @@ export function resolveATFire(state,shot,{ammo,shotId,firerId,targetId,hidden=fa
  if(!Number.isInteger(ammo)||ammo<1)throw new Error('No AT ammunition available.');
  const eligibility=calculateATShot({...shot,card:0});
  const s=structuredClone(state),p=atProfile(shot.firer);
- const attempt=p.grenade_check?draw(s,eligibility.grenade_draws,'AT grenade attempt',hidden):[];
+ const attempt=p.grenade_check?draw(s,eligibility.grenade_draws,'AT grenade attempt',hidden,{field:{kind:'icons',keys:['grenade']}}):[];
  const success=!p.grenade_check||attempt.some(c=>c.grenade);
- const card=success?draw(s,1,'AT combat result',hidden)[0]:null;
+ const card=success?draw(s,1,'AT combat result',hidden,{field:{kind:'number',key:'at'}})[0]:null;
  const result=card?calculateATShot({...shot,card:Number(card.at)}):null;
  const record={id:shotId,firer:firerId,target:targetId,ammo_before:ammo,ammo_after:ammo-1,attempt_cards:attempt.map(c=>c.id),result_card:card?.id??null,result:result?.result??'FAILED_ATTEMPT',sum:result?.sum??null,modifier:eligibility.modifier,quick_shot:!!result?.quick_shot&&ammo>1,quick_shot_draw:!!result?.quick_shot};
  s.vehicle_at_shots??=[];s.vehicle_at_shots.push(record);

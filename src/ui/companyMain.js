@@ -2,6 +2,8 @@ import {campaignProgress,previewCampaignMission,commitCampaignMission,resumeComm
 import {saveCampaignRecovery,readCampaignRecovery} from './campaignRecovery.js';
 import {replaceSavedCampaign} from './campaignManagement.js';
 import {experienceAwards,freshExperienceAwards,createExperienceNotifications} from './experienceNotifications.js';
+import {createCardDrawNotifications,publicDrawGroups,recentDrawMarkup} from './cardDraws.js';
+import './cardDraws.css';
 import {mapBoundaryLayout} from './mapBoundaries.js';
 import {casualtyEvacuationStatus} from './casualtyPresentation.js';
 import {supportCallPreview,friendlyTargetLabel,supportWarning,battalionChoiceReason} from './supportPresentation.js';
@@ -94,6 +96,8 @@ let selectedVehicle=null,vehicleRoute=[];
 let selectedPdf=null,cleanupMap=null,camera=normalizeCamera(),ordersScroll=0,ordersSaveTimer=null;
 let recovery={raw:null,bundle:null,error:null},storageError='',recoveryPending=false,turnStart=mission?checkpoint(mission):null;
 const experienceNotifications=createExperienceNotifications();let experienceMission=null,experienceSeen=[];
+const cardDrawNotifications=createCardDrawNotifications();
+const drawIdentity=()=>mission?`${mission.mission_instance_id??mission.scenario_id+':'+mission.seed}:${mission.attempt_number??1}:${mission.patrol_history?.length??0}`:null;
 try{if(!vireDevelopment){recovery=readRecovery(localStorage);recoveryPending=recovery.raw!==null;}}catch(e){storageError=`Local storage unavailable: ${e.message}. Export replays manually.`;}
 const presentation=()=>({experienceSeen,showHistorical,tacticalDraft,recapDialogs,commandLinks,camera,ordersScroll,selectedVehicle,vehicleRoute,selected,action,target,generalIssuer,contributors,selectedPdf,combatId,combatStage,combatOpen,contactAcknowledged,recoveryResult,reviewId,turnNotice,feedback,feedbackKind});
 function persist(previous=null,replace=false){
@@ -120,6 +124,7 @@ function persist(previous=null,replace=false){
 }
 function draftContext(){return mission?JSON.stringify([mission.mission_instance_id??mission.seed,mission.scenario_id,mission.attempt_number,mission.turn,mission.phase,mission.replay.length,mission.vire_runtime?.operations.length??0,selected,action,selectedVehicle]):'';}
 function restorePresentation(p={}){
+ cardDrawNotifications.prime(drawIdentity(),mission?.events??[]);
  experienceNotifications.reset();experienceMission=mission?(mission.mission_instance_id??`${mission.scenario_id}:${mission.seed}`):null;
  // A restored checkpoint is history, not a new XP award; this also supports older presentation records.
  experienceSeen=(mission?.achievements??[]).map(a=>a.key);
@@ -238,7 +243,7 @@ function renderApplication(){
  if(select){const update=()=>{launcherMission=select.value;const entry=missionCatalog.find(e=>e.id===launcherMission);app.querySelector('#restart').disabled=!entry||!!entry.unavailable;app.querySelector('#preview-setup').disabled=!entry?.scenario?.map;app.querySelector('#mission-availability').textContent=entry?.unavailable?'Unavailable: '+entry.unavailable:entry?.scenario?.briefing??'';};select.onchange=update;update();app.querySelector('#seed').oninput=e=>{launcherSeed=e.target.value;};app.querySelector('#preview-setup').onclick=()=>setupSelectedMission(true);app.querySelector('#restart').onclick=()=>setupSelectedMission();}
 }
 function render(){
- if(screen!=='tactical'||!mission){renderApplication();return;}
+ if(screen!=='tactical'||!mission){cardDrawNotifications.pause();renderApplication();return;}
  document.title=`Platoon Tactical — ${mission.mission_name}`;
  if(mission.vire_runtime)selectVehicleMission(missionById(mission.scenario_id));
   const mapObjectives=mission.patrol?{primary:{location:mission.patrol.plan.primary},ccp:{location:mission.objectives.ccp},cop:{location:mission.patrol.plan.cop},concentration:{location:mission.patrol.plan.concentration},...Object.fromEntries(mission.patrol.plan.route.map((location,i)=>[`route ${i+1}`,{location,completed:i<mission.patrol.visited.length}]))}:null;
@@ -382,6 +387,9 @@ function render(){
  app.querySelector('#recap-dialogs').onchange=e=>{recapDialogs=e.target.checked;persist();render();app.querySelector('#menu-settings').click();app.querySelector('#recap-dialogs').focus();};
   const displayedVehicle=app.querySelector('#vire-controls')&&!app.querySelector('#vire-controls').hidden?app.querySelector('#vire-firer').value:null;
   cleanupMap=bindMapViewport(app,{camera,columns:Math.max(...v.locations.map(l=>l.col))-Math.min(...v.locations.map(l=>l.col))+1,selectedLocation:displayedVehicle?mission.vire_runtime?.vehicles[displayedVehicle]?.location:selected?(unit.transport?.location??unit.location):null,selectedUnit:displayedVehicle??(selected?unit.transport?.id??selected:null),onChange:(value,save)=>{camera=value;if(save){persist();if(storageError&&!app.querySelector('.storage-warning'))render();}},onLayout:()=>drawFirePaths(v)});
+  app.querySelector('#panel-mission').insertAdjacentHTML('beforeend',recentDrawMarkup(events,v.turn));
+  cardDrawNotifications.sync(app.querySelector('.battlefield-stage'),drawIdentity(),events);
+  app.querySelectorAll('[data-replay-draw]').forEach(b=>b.onclick=()=>cardDrawNotifications.replay(publicDrawGroups(events,v.turn).find(g=>g.id===b.dataset.replayDraw)));
  if(focusStartingForce){focusStartingForce=false;app.querySelector('#focus-unit')?.click();}
   const commandToggle=app.querySelector('#command-links');commandToggle.checked=commandLinks;commandToggle.onchange=()=>{commandLinks=commandToggle.checked;persist();render();};
   app.querySelectorAll('[data-inline-unload]').forEach(b=>b.onclick=()=>{if(locked||!selected)return;const before=mission,r=submitCommand(mission,{type:b.dataset.inlineUnload,unit_id:selected,issuer_id:issuer});mission=r.state;feedbackKind='Last order';feedback=r.reason??r.events.filter(e=>!e.hidden).map(e=>e.text).join(' ');if(mission!==before)persist(before);render();});
