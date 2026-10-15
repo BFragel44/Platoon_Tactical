@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Connected campaign validation fixture</title>
+<body><h1>Connected campaign validation fixture</h1><p>Loads the actual fresh-company M1 result and recorded legal preparation choices into this isolated test origin. Does not import a standalone company or change tactical outcomes.</p><button id="load">Load validated M1 preparation</button><p id="result" role="status"></p><a href="/?campaignDev=1">Open connected candidate</a>
+<script type="module">
+import {trevieres} from '/src/scenarios/trevieres.js';
+import {replayMission} from '/src/sim/company/engine.js';
+import {newCompanyCampaign,beginCompanyPreparation,prepareCompany,saveCompanyPreparation,PREPARATION_KEY} from '/src/sim/company/campaignPreparation.js';
+document.querySelector('#load').onclick=async()=>{try{
+ if(localStorage.getItem(PREPARATION_KEY))throw new Error('Test origin already contains a company; no record replaced.');
+ const data=await (await fetch('/output/connected-campaign/m1-m2-39.json')).json();
+ const initial=newCompanyCampaign(trevieres,data.m1.roster_snapshot.company_id);
+ let record=beginCompanyPreparation(initial,replayMission(trevieres,data.m1));
+ for(const operation of data.summary.preparation)record=prepareCompany(record,operation);
+ saveCompanyPreparation(localStorage,record);
+ document.querySelector('#result').textContent='Prepared M1 company saved. Open the connected candidate to set up Cerisy.';
+}catch(e){document.querySelector('#result').textContent=e.message;}};
+</script></body></html>

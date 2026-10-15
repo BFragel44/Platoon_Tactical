@@ -3,7 +3,7 @@ export function objectiveAssessmentMarkup(view){
  if(view.patrol||!view.objective_requirements)return '';
  const {clear_rows,success_timing}=view.objective_requirements,check=view.objective_assessment;
  const rows=clear_rows.length?`<p><b>Required rows ${clear_rows.join(', ')}:</b> ${check?`${check.rows_clear?'Clear':'Not yet clear'} — last assessed at the end of turn ${check.turn}.`:'Not yet assessed this attempt.'}</p>`:'';
- return `<p>Secured requires friendly occupation, resolved contacts and no opposing units. Seeing no enemy counters does not establish clearance. Units can attempt Spot position on their own card; sharing a card does not automatically spot an enemy.</p>${rows}${success_timing==='final_turn'?`<p>Success is assessed at the end of turn ${view.turn_limit}. Meeting the requirements earlier does not end the mission; keep both objectives secured and the required rows clear for the final assessment.</p>`:''}`;
+ return `<p>Secured requires friendly occupation, resolved contacts and no opposing units. Seeing no enemy counters does not establish clearance. Spot position applies only to an existing unspotted enemy position in LOS; potential contacts resolve during contact evaluation. Sharing a card does not automatically spot an enemy.</p>${rows}${success_timing==='final_turn'?`<p>Success is assessed at the end of turn ${view.turn_limit}. Meeting the requirements earlier does not end the mission; keep both objectives secured and the required rows clear for the final assessment.</p>`:''}`;
 }
 export function objectiveStatusMarkup(view,name){
  if(!view.objectives||view.patrol)return '';

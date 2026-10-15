@@ -12,14 +12,14 @@ export const SKILLS={
  AUTO_GRENADE:{label:'Auto Grenade',cost:1,actions:['GRENADE','SKILL_GRENADE_RETURN'],icon:'grenade'},
 };
 const counters=[['SPAWN_TEAM','AUTO_COVER'],['SPAWN_TEAM','AUTO_CONCENTRATE'],['SPAWN_TEAM','AUTO_GRENADE'],['GENERAL_INITIATIVE','EXTRA_DRAW'],['SPAWN_TEAM','AUTO_COVER'],['GENERAL_INITIATIVE','EXTRA_DRAW'],['GENERAL_INITIATIVE','EXTRA_DRAW'],['AUTO_INFILTRATE'],['AUTO_INFILTRATE','AUTO_GRENADE'],['PARALYZED_FIRE','AUTO_CONCENTRATE'],['PARALYZED_ASSAULT','AUTO_SPOT'],['PARALYZED_ASSAULT','AUTO_SPOT']];
-export function buySkills(s,purchases,points,{retain=false}={}){
+export function buySkills(s,purchases,points,{retain=false,allowReserve=false}={}){
  const existing=retain?structuredClone(s.skills??[]):[];
  if(!Array.isArray(purchases))throw new Error('Skill purchases must be a list.');
  if(purchases.length+existing.length>counters.length)throw new Error('Skill purchases exceed the printed counter mix.');
  const counts={};for(const p of existing)counts[p.holder]=(counts[p.holder]??0)+1;
  for(const p of purchases){
   const u=s.units[p.holder],skill=SKILLS[p.type];
-  if(!skill||!u||u.faction!=='friendly'||u.removed||!u.steps.length||!['HQ','STAFF'].includes(u.kind)||u.command_role==='higher_hq')throw new Error('Assign a published skill to a surviving company HQ or staff.');
+  if(!skill||!u||u.faction!=='friendly'||(u.removed&&!(allowReserve&&u.removed==='RESERVE'))||!u.steps.length||!['HQ','STAFF'].includes(u.kind)||u.command_role==='higher_hq')throw new Error('Assign a published skill to a surviving company HQ or staff.');
   if((counts[u.id]=(counts[u.id]??0)+1)>3)throw new Error('An HQ or staff can hold at most three skills.');
   points-=skill.cost;if(points<0)throw new Error('Not enough attempt experience for skills.');
  }

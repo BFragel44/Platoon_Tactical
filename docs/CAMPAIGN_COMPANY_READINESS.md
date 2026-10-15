@@ -1,6 +1,6 @@
 # Normandy company preparation
 
-October 12, 2026: preparation reviewed and accepted. Seven accepted standalone missions remain independent. Connected Standard launch/recovery is a development candidate; normal advancement remains gated pending complete connected validation.
+October 13, 2026: connected Standard campaign released in normal navigation after live M3–M7 setup/recovery checks. Preparation was reviewed and accepted October 12. Seven standalone missions remain independent. Earlier dated candidate/gate notes below describe historical validation stages.
 
 ## Source audit
 
@@ -28,9 +28,9 @@ Audit corrections: unused patrol skills retain counters/holder limits without an
 
 ## Candidate and storage
 
-File > Campaign company creates a fresh published M1 company. Set up campaign M1 and Resume saved campaign M1 use its separate checkpoint. Terminal debrief guides reconstitution/promotions, replacements and skills. Finishing shows the prepared company; Mission 2 launch is unavailable.
+Home > Campaign creates a fresh published M1 company. Mission setup and recovery use its separate checkpoint. Terminal debrief guides reconstitution/promotions, replacements and skills. Finishing offers the next authored mission in the Standard sequence when the campaign continuation rules permit it.
 
-Preparation storage: `platoon-normandy-connected-company`, schema 6. Tactical checkpoints use the `connected-` prefix. Standalone companies are not imported or changed. Earlier preparation schemas are explicitly rejected; original bytes remain exportable. Tactical rules remain 34, vehicle adapter base 34, with strict historical replay/recovery rejection and export access.
+Preparation storage: `platoon-normandy-connected-company`, schema 6. Tactical checkpoints use the `connected-` prefix. Standalone companies are not imported or changed. Earlier preparation schemas are explicitly rejected; original bytes remain exportable. Current tactical rules and vehicle adapter base are 39; incompatible records retain original export access. No historical replay migration is included.
 
 ## Implemented handoffs
 
@@ -44,7 +44,7 @@ Preparation storage: `platoon-normandy-connected-company`, schema 6. Tactical ch
 - [x] Prepared skills enter immutable roster snapshots, setup and attempt records; live use and replay preserve one-use exhaustion. Physical counter/holder restrictions remain enforced.
 - [x] M6/M7 initial and event support crews, ammunition, activation and support availability reset through destination content/factories. Old support casualties remain unresolved.
 - [x] A completed three-patrol M3 battlefield is stored in the same company's terminal history. Campaign M4 automatically uses it and rejects foreign, missing or modified sources. Standalone M4 loading remains unchanged.
-- [x] `commitPreparedCompanyDeployment` prepares and commits the destination roster before deployment. Reloaded next-mission debrief uses that roster; mismatched mission IDs and stale commits reject. This transaction API does not enable connected launch.
+- [x] `commitPreparedCompanyDeployment` prepares and commits the destination roster before deployment. Reloaded next-mission debrief uses that roster; mismatched mission IDs and stale commits reject. Normal connected launch now uses this transaction API.
 
 ## Validation
 
@@ -57,13 +57,13 @@ Preparation storage: `platoon-normandy-connected-company`, schema 6. Tactical ch
 - [x] Previous full regression: 117 files / 1,753 tests; six Company Assault and six KUTF policies with exact replay. Separate regenerated rules-34 M4/M5 runs preserve previous outcomes; original rules-33 files remain unchanged.
 - [x] Human preparation acceptance: user reviewed and accepted October 12, 2026.
 - [x] Connected Standard campaign sequence/launch/recovery candidate behind ?campaignDev=1; ordered same-company starts, committed-start recovery and independent tactical storage.
-- [ ] Complete seven-mission connected advancement validation and later-mission live browser checks; normal connected progression remains gated.
+- [x] Seven-mission transaction validation and live M3–M7 setup/launch/reload/resume checks completed; connected Standard progression enabled in normal navigation. Controlled offensive completion fixtures are not claimed as tactical victories.
 
 Latest campaign-wide audit follow-up: 96 tests pass across preparation, roster, Hill foundation and historical compatibility. The normal-selection/interrupted-preparation browser script passes under schema 6. Latest preparation work changes no tactical resolution/version. Production build passes with the existing bundle-size warning. Readiness evidence should distinguish these focused follow-up checks from the previous full regression run.
 
 ## Remaining boundaries
 
-Normal connected progression stays unavailable until end-to-end campaign advancement/carryover validation. Preparation acceptance is complete. No automatic conversion of standalone/historical companies. Vehicle presentation redesign and 3D/audio remain separate later work. Preparation never assigns unsupported individual casualty outcomes.
+Normal connected Standard progression is available. Preparation acceptance and launch/carryover/recovery validation are complete. No automatic conversion of standalone/historical companies. Vehicle presentation redesign and 3D/audio remain separate later work. Preparation never assigns unsupported individual casualty outcomes.
 
 First-player blocker verification (October 11): Jeep Hold operation, compact tactical storage, original exports, historical rejection, failed-write backup rollback and M7 browser reload validated. Command previews and preparation guidance were refined without ungating connected progression. Rules 35 validation and remaining full manual runs are tracked in `CAMPAIGN_FIRST_PLAYER_LOG.md`.
 
@@ -89,3 +89,36 @@ Final validation: full regression **127 files / 1,832 tests pass**; final focuse
 
 October 12 simulation correction: current rules are now 36. Live M1 exposed invalid colocated PDF joining across friendly troops; each joining weapon now validates its own path. Historical rules35 records still reject for live recovery and remain exportable/read-only auditable. Full tactical validation details and regenerated M4/M5 records are in CAMPAIGN_FIRST_PLAYER_LOG.md. This correction does not clear the connected seven-mission launch gate.
 October 12 follow-up: shared rules 37 fixes missing non-firing contact positions, keeps their unspotted markers current after movement, and permits command-paid own-card searches. Original rules36 exports remain preserved and strictly rejected for current live recovery. The connected campaign acceptance boundary is unchanged.
+# Connected validation evidence — 2026-10-13 (rules 39)
+
+Normal connected progression remains gated. The preparation UI is accepted; this entry distinguishes actual tactical execution from controlled transaction coverage.
+
+- `node scripts/connectedCampaignValidation.js` creates a fresh published M1 company in isolated storage, executes the recorded legal `spot-correction-39` choices against that company, and checks every operation. M1 succeeds on attempt 2 after 126 orders. No standalone roster, outcome, deck or enemy state is imported or changed.
+- Preparation restores two vacant HQ/staff counters by transferring surviving steps, allocates one eligible Veteran return and six Green replacements, and purchases two Auto Spot skills. Every preparation choice is persisted and reread. M1's immutable deployment snapshot survives; M2 starts with the same company, surviving identities, prepared strength and printed skill counters. Tactical skill IDs are regenerated for the new attempt as designed.
+- Natural public-view Cerisy policy: 122 orders, defeat on both attempts. Exact current replay and terminal recovery match. Standard campaign advancement correctly stops; this is **not** evidence of a successful seven-mission tactical campaign. Preparation left six surviving steps unassigned, so it is also not an optimal company reconstruction policy.
+- `test/campaignSequenceHandoffs.test.js` covers all seven ordered deployment/debrief/preparation transactions, committed-start reload, immutable previous history, M3 terrain into M4, fresh mission-owned M6/M7 crews, no eighth mission and standalone save isolation. Offensive terminal states are explicitly synthetic. M3/M5 use legal phase stepping and three actual patrol preparations, with stationary patrol defeats. This fixture is **not** a winning campaign playthrough or later-mission browser acceptance.
+- Campaign preparation, roster, management and progression fixtures: 84 passing checks; complete-sequence fixture: one passing check. Production build passes with the existing bundle-size warning.
+- Final broad regression: **1,868 passed, 13 skipped**, 135 passing files and three skipped files (`output/connected-campaign/regression-39.txt`). No failures.
+- Browser on isolated `127.0.0.1:5179`: explicit fixture control loads the actual M1 replay plus its legal preparation choices. In `?campaignDev=1`, Review prepared company → Set up Cerisy → Start mission works. Home → reload → Resume Cerisy restores turn 1 / phase 3.1. Evidence: `output/connected-campaign/m2-browser-resume.png`. User-origin saves remain untouched.
+- Remaining release gate: later connected missions need live setup/recovery checks, and broader tactical connected execution is still pending. Do not replace the Standard defeat with an invented victory to advance this record.
+
+# Normal connected campaign release — October 13, 2026
+
+The remaining live handoff checks are complete. Normal Home/Campaign now offers all seven Standard campaign missions in order, with no `campaignDev` flag required. The old URL still works. Offensive defeat/abort stops progression; completed combat patrol defeat may continue. Standalone saves and companies are unchanged. No tactical rules-version or storage-schema change.
+
+On isolated origin `127.0.0.1:5181`, prepared records from the controlled seven-mission transaction fixture were loaded through an explicit test control, then exercised through the actual application: Review prepared company → next mission setup → Start → Home → reload → named campaign Resume for **M3, M4, M5, M6 and M7**. Repeated the whole set at the normal `/` URL after release; all recovered turn 1 / phase 3.1. This is live launch/recovery coverage, not five complete tactical playthroughs or a winning campaign claim. M1/M2 actual tactical execution is recorded in the preceding evidence entry.
+
+M4 preview and recovered terrain use the same-company M3 source `sequence-m3`. Browser checks exposed setup label CSS overriding `hidden`; the source/import controls are now both disabled and hidden. Standalone source/import controls remain available. M6 recovered a custom Sherman HQ at Staging 2 plus optional Jeep; M7 recovered a custom M10 HQ at Staging 3. Live exports verified persistent company step/person identities, ten fresh Sherman crew steps, eight fresh M10 crew steps, old Sherman people outside active strength, and exact checkpoint recovery. Mortar section/team aliases are checked through canonical section ownership.
+
+Evidence: `output/connected-campaign/normal-handoff-browser-results.json`, `m3-normal-resume.png` through `m7-normal-resume.png`, `live-vehicle-checks.json`, and the copied live M6/M7 exports. Focused release checks: 89 pass; production build passes with the existing bundle-size warning. Company preparation remains text-heavy; its later refinement does not gate progression. A winning seven-mission tactical run remains useful playtest evidence, not a launch requirement.
+
+Additional normal-browser recovery: M7 phase 3.2.1 survives Home/reload/Resume; Recover committed mission start returns to 3.1. The controlled terminal campaign record shows the completion summary with zero next-mission buttons (`normal-campaign-complete.png`).
+
+Release regression: **1,868 passed, 13 skipped**, 135 passing files / three skipped, exit 0 (`release-regression-39.txt`). Windows reported `EPERM` shutting down the St. Germain release worker after its tests passed; an immediate isolated rerun of that file passed all three tests and exited cleanly. Normal completed-company → fresh company → M1 setup/start/reload also passes. Production build and diff whitespace check pass.
+# Command-desk usability acceptance candidate — October 14, 2026
+
+The approved company workflow redesign is implemented without changing transaction/storage APIs or tactical rules39. Debrief is previewed before its explicit single revision-checked commit; preparation uses a persistent roster and guided reorganization, replacements, skills and Ready screens. Transfers show signed additions/removals, promotions name formation/step/cost, and secondary controls hold exports/rule detail. Closing retains committed operations.
+
+Reattempts and patrols retain their separate reducers. A pure personnel projection updates strength, capacity, deployment and promotion/skill costs; final submission is validated by the simulation before replacing live state. Embarked vehicle riders are exposed through an isolated preparation projection. Public map previews conceal unknown terrain and show no enemy information. Start resets camera/selection; returning without starting does not replace the tactical mission.
+
+Validated actual M1 success → debrief/preparation → M2 and failed M2 → reactive donor/promotion edits → attempt two in the browser. Current replay, recovery and AAR match exactly. Controlled patrol and Vire rider reattempt checks pass, as do narrow company/reattempt layouts and keyboard trapping. Evidence is in `output/command-desk/` and CAMPAIGN_FIRST_PLAYER_LOG.md. Missing images were not reproduced; asset loading was checked separately from the corrected obsolete AAR fragment. Deferred tactical/AAR refinements remain in FOR_LATER.md.

@@ -53,7 +53,7 @@ export function terrainInformation(l,explanation=''){
 export function terrainFooter(l){
  if(l.known===false||l.staging)return '';
  const vehicle=({Slow:'SLOW',No:'NO',slow:'SLOW',no:'NO'})[l.trafficability];
- return `<footer class="terrain-footer"><span title="Applies to Incoming and on-map mortar indirect fire.">Burst ${signed(l.burst??0)}</span>${vehicle?`<b title="Vehicle trafficability reference; vehicles remain deferred.">${vehicle}</b>`:''}</footer>`;
+ return `<footer class="terrain-footer"><span title="Applies to Incoming and on-map mortar indirect fire.">Burst ${signed(l.burst??0)}</span>${vehicle?`<b title="Vehicle trafficability: movement follows vehicle terrain restrictions.">${vehicle}</b>`:''}</footer>`;
 }
 export function hillStack(l){
  if(l.known===false||l.staging)return '';

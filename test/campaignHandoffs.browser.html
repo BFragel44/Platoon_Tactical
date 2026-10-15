@@ -1,0 +1,16 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Later campaign handoff checks</title><body>
+<h1>Later campaign handoff checks</h1><p>Controlled transaction fixtures. Offensive terminal outcomes are synthetic; patrols are legally phase-stepped. These inputs check live setup/recovery, not a winning campaign. Use only the isolated validation origin.</p>
+<label>Prepared destination<select id="destination"><option value="3">M3</option><option value="4">M4</option><option value="5">M5</option><option value="6">M6</option><option value="7">M7</option><option value="complete">Completed campaign</option></select></label><button id="load">Load test handoff</button><p id="result" role="status"></p><a href="/">Open campaign</a>
+<script type="module">
+import {PREPARATION_KEY,readCompanyPreparation} from '/src/sim/company/campaignPreparation.js';
+import {CAMPAIGN_SAVE_KEY} from '/src/ui/campaignRecovery.js';
+document.querySelector('#load').onclick=async()=>{try{
+ if(location.port!=='5181')throw new Error('Only the dedicated 5181 validation origin is permitted.');
+ const old=readCompanyPreparation(localStorage);if(old&&old.id!=='sequence-fixture')throw new Error('Unrelated campaign found; no record replaced.');
+ const n=document.querySelector('#destination').value,data=await(await fetch(`/output/connected-campaign/handoffs/m${n}.json`)).json();
+ localStorage.setItem(PREPARATION_KEY,JSON.stringify(data.record));
+ localStorage.removeItem(PREPARATION_KEY+'-previous');
+ localStorage.removeItem(CAMPAIGN_SAVE_KEY);localStorage.removeItem(CAMPAIGN_SAVE_KEY+'-previous');
+ document.querySelector('#result').textContent=`M${n} controlled prepared company loaded. Standalone slots untouched.`;
+}catch(e){document.querySelector('#result').textContent=e.message;}};
+</script></body></html>

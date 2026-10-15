@@ -86,3 +86,11 @@
 .experience-notification p{margin:8px 0}
 .experience-notification small{display:block}
 .experience-notification button{margin-top:10px;padding:4px 10px}
+.mission-setup-dialog [hidden]{display:none!important;}
+.active-hq-event{position:relative;margin:4px 8px;flex:none;color:#e8dfb4;font-size:14px}.active-hq-event>summary{cursor:pointer;padding:6px 10px;background:#293b2c;border-left:3px solid #d3bd76}.active-hq-event[open]>section{position:relative;background:#203127;padding:10px 14px;border:1px solid #7f805b}.active-hq-event p{line-height:1.5;margin:6px 0}
+.compact-unit .casualty-carrier{background:#f0e3bb;color:#432d22;border:1px solid #d3b075;font-size:10px;white-space:normal}.casualty-marker{border-left:3px solid #e5cea0;padding:6px 8px;line-height:1.4}.casualty-marker small{font-size:12px}
+.company-orders{font-size:14px;line-height:1.45}.company-orders .field{font-size:13px}.company-orders select{font-size:13px}.compact-unit-name{line-height:1.25;overflow-wrap:anywhere}.card-fire-details,.map-reference{font-size:13px;line-height:1.5}
+.aar{max-width:1000px;margin:16px auto;line-height:1.6}.aar h3{margin-bottom:6px}.aar-summary{display:flex;gap:16px;flex-wrap:wrap;padding:12px 0}.aar-summary b{font-size:1.3em}.aar details{margin:12px 0;border-top:1px solid #65715e;padding-top:10px}.aar summary{cursor:pointer;font-weight:bold}.aar li{margin:8px 0}.aar .event-turn{white-space:nowrap;color:#d7c78e}
+.active-hq-details{position:absolute;top:100%;left:0;z-index:60;width:min(540px,calc(100vw - 32px));max-height:45vh;overflow:auto;background:#203127;border:1px solid #7f805b;padding:10px;box-shadow:0 8px 20px #0008}.active-hq-details section+section{border-top:1px solid #65715e;padding-top:8px}
+.aar{font-size:16px}.aar li,.aar p,.aar summary{font-size:15px}.active-hq-event summary{font-size:14px}.active-hq-details{box-sizing:border-box;font-size:14px}
+.compact-unit .compact-unit-name{font-size:11px}.compact-unit>small{font-size:10px}.terrain-card .terrain-header h3{font-size:14px;line-height:1.3}.unit-hover-details{font-size:13px;line-height:1.5}

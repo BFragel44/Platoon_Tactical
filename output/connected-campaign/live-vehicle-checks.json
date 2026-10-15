@@ -1,0 +1,18 @@
+[
+  {
+    "mission": "6",
+    "crew_steps": 10,
+    "company_identity": true,
+    "persistent_people": true,
+    "custom_hq_location": "r0c2",
+    "exact_recovery": true
+  },
+  {
+    "mission": "7",
+    "crew_steps": 8,
+    "company_identity": true,
+    "persistent_people": true,
+    "custom_hq_location": "r0c3",
+    "exact_recovery": true
+  }
+]

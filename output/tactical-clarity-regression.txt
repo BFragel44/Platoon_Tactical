@@ -1,0 +1,57 @@
+
+ RUN  v4.1.11 C:/Users/brett/OneDrive/Javascript/Platoon_Tactical
+
+[vitest-pool]: Failed to terminate forks worker for test files C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/test/vireIntegration.test.js. Error: kill EPERM
+    at ChildProcess.kill (node:internal/child_process:511:26)
+    at ForksPoolWorker.stop (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3179:8)
+    at file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3057:118
+    at Traces.$ (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+    at PoolRunner.stop (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3057:23)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'kill'
+}
+[vitest-pool]: Timeout terminating forks worker for test files C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/test/vireIntegration.test.js.
+[vitest-pool]: Failed to terminate forks worker for test files C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/test/applicationNavigation.test.js. Error: kill EPERM
+    at ChildProcess.kill (node:internal/child_process:511:26)
+    at ForksPoolWorker.stop (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3179:8)
+    at file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3057:118
+    at Traces.$ (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+    at PoolRunner.stop (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3057:23)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'kill'
+}
+[vitest-pool]: Timeout terminating forks worker for test files C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/test/applicationNavigation.test.js.
+[vitest-pool]: Failed to terminate forks worker for test files C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/test/ownCardSpotting.test.js. Error: kill EPERM
+    at ChildProcess.kill (node:internal/child_process:511:26)
+    at ForksPoolWorker.stop (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3179:8)
+    at file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3057:118
+    at Traces.$ (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+    at PoolRunner.stop (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3057:23)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'kill'
+}
+[vitest-pool]: Timeout terminating forks worker for test files C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/test/ownCardSpotting.test.js.
+[vitest-pool]: Failed to terminate forks worker for test files C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/test/missionAssetLoss.test.js. Error: kill EPERM
+    at ChildProcess.kill (node:internal/child_process:511:26)
+    at ForksPoolWorker.stop (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3179:8)
+    at file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3057:118
+    at Traces.$ (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/traces.DT5aQ62U.js:142:27)
+    at PoolRunner.stop (file:///C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/node_modules/vitest/dist/chunks/cli-api.CnMVyzaz.js:3057:23)
+    at processTicksAndRejections (node:internal/process/task_queues:105:5) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'kill'
+}
+[vitest-pool]: Timeout terminating forks worker for test files C:/Users/brett/OneDrive/Javascript/Platoon_Tactical/test/missionAssetLoss.test.js.
+
+ Test Files  137 passed | 3 skipped (140)
+      Tests  1882 passed | 13 skipped (1895)
+   Start at  20:58:57
+   Duration  308.49s (transform 4.02s, setup 0ms, import 31.90s, tests 536.41s, environment 19ms)
+

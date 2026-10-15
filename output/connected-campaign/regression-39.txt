@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 C:/Users/brett/OneDrive/Javascript/Platoon_Tactical
+
+
+ Test Files  135 passed | 3 skipped (138)
+      Tests  1868 passed | 13 skipped (1881)
+   Start at  16:30:54
+   Duration  248.49s (transform 3.03s, setup 0ms, import 22.13s, tests 429.25s, environment 12ms)
+

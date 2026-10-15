@@ -183,4 +183,9 @@
 .reference-table-wrap{overflow-x:auto}.signal-reference table{width:100%;border-collapse:collapse;font-size:12px}
 .signal-reference th,.signal-reference td{text-align:left;vertical-align:top;padding:9px;border-bottom:1px solid #53644c;line-height:1.45}
 .header-navigation nav{flex-wrap:wrap}.header-navigation nav button{white-space:nowrap}
+.header-hq-reference{position:relative;min-width:0;text-align:left}.active-hq-button{display:block;width:100%;max-height:76px;overflow:hidden;text-align:left;padding:7px 9px;font-size:13px;background:#293b2c;border:1px solid #89936a}.active-hq-button small{display:block;font-size:11px;line-height:1.3;margin-top:3px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}.header-hq-reference .active-hq-details{top:calc(100% + 6px);left:0;width:min(480px,calc(100vw - 32px));max-height:55vh;z-index:70;font-size:14px}.active-hq-details>button{float:right;margin:0 0 8px 10px}.active-hq-details section{clear:both}.active-hq-button[aria-expanded=true]{border-color:#d6c37e;background:#3d4c37}
+.header-hq-reference .active-hq-details{max-width:calc(100vw - 32px)}
+.battlefield-column>.mission-result{box-sizing:border-box;width:100%;flex-shrink:0}.aar{scroll-margin-top:calc(var(--command-header-height,180px) + 12px)}
+@media(max-width:1100px){.header-phase{grid-template-columns:minmax(85px,.65fr) minmax(0,1fr) 115px;gap:8px}}
+@media(max-width:750px){.header-phase{grid-template-columns:80px minmax(0,1fr) 80px;gap:6px}.header-phase-controls{grid-column:3;grid-row:1}.active-hq-button{font-size:12px;padding:6px}.active-hq-button small{font-size:10px}.header-hq-reference .active-hq-details{width:min(420px,calc(100vw - 32px))}}
 @media(max-width:650px){.application-cards{grid-template-columns:1fr}.application-screen{padding:16px}.application-screen nav{margin-bottom:20px}.signal-reference th,.signal-reference td{padding:6px}}

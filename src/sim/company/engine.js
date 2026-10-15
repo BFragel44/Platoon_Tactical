@@ -46,7 +46,7 @@ export const PHASES = [
   ['COMBAT_EFFECTS','3.7.4 · Mutual combat effects','Resolve MISS / PIN / HIT from a common fire snapshot; update fire only at cleanup.'],
   ['CLEANUP','3.8 · Cleanup','Remove temporary markers, evacuate staging casualties, update fire and check the objective.'],
 ];
-export const RULES_VERSION = 38;
+export const RULES_VERSION = 39;
 const phaseInfo = id => PHASES.find(p=>p[0]===id);
 function phaseDescription(s){
   if(s.vire_runtime?.normal_phase_enabled&&s.phase==='AT_COMBAT')return 'Complete vehicle actions, reactions and immediate HITs, then finish end-of-phase VOF before advancing.';
@@ -137,7 +137,8 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
   }
   if(setup.prepared_skills?.length){
    if(!deployment)throw new Error('Prepared skills require an immutable company deployment.');
-   buySkills(s,setup.prepared_skills.map(({holder,type})=>({holder,type})),Infinity);
+   // Prepared company skills remain owned by surviving reserves between patrols.
+   buySkills(s,setup.prepared_skills.map(({holder,type})=>({holder,type})),Infinity,{allowReserve:true});
   }
   emit(s,'MISSION_STARTED',scenario.briefing,{scenario:scenario.id,version:scenario.version,seed:String(seed)});
   revealTerrain(s,{setup:true});

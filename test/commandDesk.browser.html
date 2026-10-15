@@ -1,0 +1,35 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Command desk acceptance inputs</title><body>
+<h1>Command desk acceptance inputs</h1><p>Isolated port 5183 only. Loads previously recorded legal connected M1/M2 runs into the test campaign slot. No user-origin records are touched.</p>
+<button id="m1">Load successful M1 for debrief</button><button id="m2">Load failed M2 first attempt</button><p id="status" role="status"></p><a href="/#aar">Open normal game with stale AAR fragment</a>
+<p>Additional isolated component checks:</p><button id="patrol">Open next-patrol preparation</button><button id="vehicle">Open controlled Vire reattempt</button><button id="patrol-page">Load completed patrol for separate-page check</button><main id="fixture-root"></main>
+<script type="module">
+import '/src/style.css';import '/src/ui/company.css';import '/src/ui/workspace.css';
+import {openReattemptSetup,openPatrolSetup} from '/src/ui/reattemptSetup.js';
+import {stGeorges} from '/src/scenarios/stGeorges.js';
+import {createVireDevelopmentMission} from '/src/sim/company/vireMission.js';
+import {saveRecovery,checkpoint} from '/src/ui/localRecovery.js';
+import {buySkills} from '/src/sim/company/skills.js';
+import {embarkInfantry} from '/src/sim/company/vehicleTransport.js';
+import {trevieres} from '/src/scenarios/trevieres.js';
+import {cerisy} from '/src/scenarios/cerisy.js';
+import {newCompanyCampaign,beginCompanyPreparation,prepareCompany,PREPARATION_KEY,readCompanyPreparation} from '/src/sim/company/campaignPreparation.js';
+import {commitCampaignMission} from '/src/sim/company/campaignProgression.js';
+import {replayMission,createMission,endTurn} from '/src/sim/company/engine.js';
+import {saveCampaignRecovery} from '/src/ui/campaignRecovery.js';
+async function load(m2){try{
+ if(location.port!=='5183')throw Error('Dedicated test origin required.');
+ const data=await(await fetch('/output/connected-campaign/m1-m2-39.json')).json(),old=readCompanyPreparation(localStorage);
+ if(old&&old.id!==data.m1.roster_snapshot.company_id)throw Error('Unrelated company found; no records replaced.');
+ const values=new Map(),storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>values.set(k,v),removeItem:k=>values.delete(k)};
+ let record=newCompanyCampaign(trevieres,data.m1.roster_snapshot.company_id);storage.setItem(PREPARATION_KEY,JSON.stringify(record));
+ let committed=commitCampaignMission(storage,record,data.m1.mission_instance_id,data.m1.seed,data.m1.setup),state=replayMission(trevieres,data.m1);record=committed.record;
+ if(m2){record=beginCompanyPreparation(record,state);for(const op of data.summary.preparation)record=prepareCompany(record,op);storage.setItem(PREPARATION_KEY,JSON.stringify(record));committed=commitCampaignMission(storage,record,data.m2.mission_instance_id,data.m2.seed,data.m2.setup);record=committed.record;
+  const replay=structuredClone(data.m2),retry=replay.operations.findIndex(o=>o.op==='reattempt');if(retry<0)throw Error('Missing first-attempt boundary.');replay.operations=replay.operations.slice(0,retry);replay.attempt_records=replay.attempt_records.slice(0,1);state=replayMission(cerisy,replay);
+ }
+ localStorage.setItem(PREPARATION_KEY,JSON.stringify(record));saveCampaignRecovery(localStorage,state,{selected:'co',turnNotice:false},{replace:true});document.querySelector('#status').textContent=`${m2?'M2 first-attempt defeat':'M1 success'} ready. Open normal game, then Resume campaign.`;
+}catch(e){document.querySelector('#status').textContent=e.message;}}
+document.querySelector('#m1').onclick=()=>load(false);document.querySelector('#m2').onclick=()=>load(true);
+document.querySelector('#patrol-page').onclick=()=>{if(location.port!=='5183')throw Error('Dedicated test origin required.');let s=createMission(stGeorges,'prep-page-check');for(let i=0;i<10&&s.status==='ACTIVE';i++)s=endTurn(s).state;const p={selected:'hq1',camera:{zoom:.8,left:100,top:300},turnNotice:false};saveRecovery(localStorage,s,p,{turnStart:checkpoint(s,p),replace:true});document.querySelector('#status').textContent='Completed patrol ready. Resume standalone M3 in the normal game.';};
+document.querySelector('#patrol').onclick=()=>{let s=createMission(stGeorges,'desk-patrol');buySkills(s,[{holder:'co',type:'GENERAL_INITIATIVE'},{holder:'co',type:'SPAWN_TEAM'},{holder:'co',type:'SPAWN_TEAM'},{holder:'staff',type:'AUTO_INFILTRATE'},{holder:'staff',type:'AUTO_COVER'},{holder:'staff',type:'AUTO_COVER'},{holder:'hq1',type:'AUTO_GRENADE'},{holder:'hq2',type:'AUTO_CONCENTRATE'}],Infinity,{allowReserve:true});for(let i=0;i<10&&s.status==='ACTIVE';i++)s=endTurn(s).state;const before=JSON.stringify(s);openPatrolSetup(document.querySelector('#fixture-root'),s,n=>document.querySelector('#status').textContent=`Patrol ${n.attempt_number} started. Original mission unchanged: ${JSON.stringify(s)===before}.`);};
+document.querySelector('#vehicle').onclick=()=>{const s=createVireDevelopmentMission('desk-vehicle');s.vire_runtime.vehicles.sherman_hq=embarkInfantry(s,s.vire_runtime.vehicles.sherman_hq,['s11']);s.status='DEFEAT';const before=JSON.stringify(s);openReattemptSetup(document.querySelector('#fixture-root'),s,n=>document.querySelector('#status').textContent=`Vehicle attempt ${n.attempt_number} started; ${n.units.s11.steps.length} dismounted rifle steps. Original mission unchanged: ${JSON.stringify(s)===before}.`);};
+</script></body></html>

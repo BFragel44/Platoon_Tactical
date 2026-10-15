@@ -1,0 +1,12 @@
+{
+  "attempt": 2,
+  "turn": 1,
+  "phase": "FRIENDLY_EVENTS",
+  "donors": 3,
+  "promoted_steps": 1,
+  "company_hq_steps": 1,
+  "squad_steps": 2,
+  "exact_replay": true,
+  "exact_recovery": true,
+  "exact_aar": true
+}

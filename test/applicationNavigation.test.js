@@ -24,7 +24,7 @@ it('isolates comparison recovery and keeps it out of the normal mission catalog'
 });
 it('renders fresh Home without creating a company or tactical save',()=>{
  const store=storage(),saves=savedApplications(store,missionCatalog),html=applicationMarkup({screen:'home',catalog:missionCatalog,saves});
- expect(store.data.size).toBe(0);expect(saves.standalone).toEqual([]);expect(html).toContain('Start Normandy campaign');expect(html).toContain('Choose a mission');expect(html).not.toContain('data-return');expect(html).toContain('later connected launches remain gated');
+ expect(store.data.size).toBe(0);expect(saves.standalone).toEqual([]);expect(html).toContain('Start Normandy campaign');expect(html).toContain('Choose a mission');expect(html).not.toContain('data-return');expect(html).toContain('seven Normandy missions as a connected Standard campaign');expect(html).not.toContain('launches remain gated');
 });
 it('lists actual mission names and dispatches all independent recovery slots without writing',()=>{
  const store=storage(),infantry=createMission(companyAssault,'navigation'),vire=createVireDevelopmentMission('navigation'),m7=createTinchebrayDevelopmentMission('navigation');

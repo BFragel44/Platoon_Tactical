@@ -100,12 +100,11 @@ function prepareAttempt(state,choices,patrol){
  }
  for(const l of values(s.locations))if(!l.staging&&values(s.units).filter(u=>friendly(u)&&live(u)&&u.location===l.id).reduce((n,u)=>n+u.steps.length,0)>16)throw new Error(`Reattempt deployment exceeds the 16-step limit at ${l.name}.`);
  if(patrol){
-  if((choices.skills??[]).some(p=>state.units[p.holder]?.platoon!==state.patrol.plan.platoon))throw new Error('Assign patrol skills to its eligible platoon HQ.');
   if(!values(s.units).some(u=>friendly(u)&&live(u)&&u.platoon===plan.platoon&&u.kind==='SQUAD'))throw new Error('Deploy a squad from the selected patrol platoon.');
   if(values(s.units).some(u=>friendly(u)&&live(u)&&u.platoon===plan.platoon&&u.location===plan.cop))throw new Error('Start the patrolling platoon and its attachments on Row 1.');
   const copPlatoons=new Set(values(s.units).filter(u=>friendly(u)&&live(u)&&u.location===plan.cop&&u.platoon).map(u=>u.platoon));if(copPlatoons.size>1)throw new Error('Only one platoon may occupy the Combat Outpost.');
  }
- points=buySkills(s,choices?.skills??[],points,{retain:patrol});
+ points=buySkills(s,choices?.skills??[],points,{retain:patrol,allowReserve:patrol});
  s.attempt_history??=[];
  s.attempt_history.push({number:s.attempt_number??1,outcome:patrol?s.patrol_history.at(-1).outcome:s.status,turns:s.turn,score:s.achievements.reduce((sum,a)=>sum+a.points,0),event_count:s.events.length,casualties:structuredClone(s.casualties),prisoners:structuredClone(s.prisoners)});
  s.attempt_number=(state.attempt_number??1)+1;s.attempt_points_spent=(patrol?patrolPoints:s.achievements.reduce((sum,a)=>sum+a.points,0))-points;

@@ -13,6 +13,8 @@ import {hill192} from '../src/scenarios/hill192.js';
 import {stGeorges} from '../src/scenarios/stGeorges.js';
 import {describe,it,expect} from 'vitest';
 import {trevieres} from '../src/scenarios/trevieres.js';
+import {previewMissionSetup} from '../src/sim/company/engine.js';
+import {skillOptions,buySkills} from '../src/sim/company/skills.js';
 import {createMission,abortMission,exportReplay,replayMission,advancePhase,submitCommand,selectHQ,eligibleHQs,endTurn,preparePatrol} from '../src/sim/company/engine.js';
 import {newCompanyCampaign,beginCompanyPreparation,prepareCompany,saveCompanyPreparation,readCompanyPreparation,preparedCompanyDeployment,commitPreparedCompanyDeployment} from '../src/sim/company/campaignPreparation.js';
 const storage=()=>{const data={};return {getItem:k=>data[k]??null,setItem:(k,v)=>data[k]=v};};
@@ -257,6 +259,16 @@ it('validates prepared skill holders against actual deployed strength',()=>{
  const {r,s}=terminal();let p=beginCompanyPreparation(r,s);for(let i=0;i<3;i++)p=prepareCompany(p,{type:'NEXT'});
  const d=preparedCompanyDeployment(p,'bad-skill',cerisy);d.prepared_skills=[{holder:'missing',type:'AUTO_SPOT'}];
  expect(()=>createMission(cerisy,'skills',{},d)).toThrow(/surviving company HQ/);
+});
+it('carries three First Sergeant skills into patrol reserves without making them usable off map',()=>{
+ const {r,s}=terminal();s.achievements=[{points:9}];let p=beginCompanyPreparation(r,s);p=prepareCompany(prepareCompany(p,{type:'NEXT'}),{type:'NEXT'});
+ for(const [holder,type] of [['co','GENERAL_INITIATIVE'],['co','SPAWN_TEAM'],['co','SPAWN_TEAM'],['staff','AUTO_INFILTRATE'],['staff','AUTO_COVER'],['staff','AUTO_COVER'],['hq1','AUTO_GRENADE'],['hq2','AUTO_CONCENTRATE']])p=prepareCompany(p,{type:'SKILL',purchase:{holder,type}});
+ p=prepareCompany(p,{type:'NEXT'});const before=structuredClone(p),d=preparedCompanyDeployment(p,'patrol-reserve-skills',stGeorges),setup={positions:{staff:'RESERVE',hq2:'RESERVE'}};
+ expect(()=>previewMissionSetup(stGeorges,'reserve-skills',setup,d)).not.toThrow();const mission=createMission(stGeorges,'reserve-skills',setup,d);
+ expect(mission.units.staff.removed).toBe('RESERVE');expect(mission.skills.filter(x=>x.holder==='staff')).toHaveLength(3);expect(mission.skills).toHaveLength(8);
+ expect(skillOptions(mission,mission.units.staff,'SEEK_COVER')).toEqual([]);expect(skillOptions(mission,mission.units.hq2,'CONCENTRATE')).toEqual([]);
+ expect(()=>buySkills(mission,[{holder:'staff',type:'AUTO_COVER'}],3)).toThrow('surviving company HQ');expect(replayMission(stGeorges,exportReplay(mission))).toEqual(mission);expect(p).toEqual(before);
+ const dead=structuredClone(d);dead.roster.formations.staff.step_ids=[];expect(()=>createMission(stGeorges,'no-steps',setup,dead)).toThrow(/surviving company HQ/);
 });
 
 

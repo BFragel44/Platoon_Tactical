@@ -18,10 +18,11 @@ it('publishes an unspotted position for non-firing contact packages without iden
  expect(getPlayerView(s).suspected).not.toContain(pc.location);
  s.knowledge.spotted[enemy.id]={...enemy};expect(getPlayerView(s).suspected).not.toContain('r2c2');
 });
-it('offers own-card spotting without an occupancy oracle or a firing report',()=>{
+it('offers own-card spotting only for a current unspotted position',()=>{
  const empty=fixture(),hidden=structuredClone(empty);
  hidden.units.secret={...structuredClone(hidden.units.s11),id:'secret',name:'Concealed unit',faction:'enemy',kind:'SPOTTER',vof:null,fire:null};
- expect(eligibleTargets(empty,empty.units.s11,'SPOT')).toEqual(eligibleTargets(hidden,hidden.units.s11,'SPOT'));
+ hidden.units.secret.unspotted_position_public=true;
+ expect(eligibleTargets(empty,empty.units.s11,'SPOT')).toEqual([]);
  expect(eligibleTargets(hidden,hidden.units.s11,'SPOT')).toContain(hidden.units.s11.location);
  expect(getPlayerView(hidden).enemies).toEqual([]);expect(secureStatus(hidden,hidden.objectives.secondary).secured).toBe(false);
  const goodCard=Object.values(cards).find(c=>c.spot);hidden.deck.order=[goodCard.id,goodCard.id,goodCard.id,...hidden.deck.order];
@@ -31,10 +32,12 @@ it('offers own-card spotting without an occupancy oracle or a firing report',()=
  result.state.units.secret.removed='BROKEN';result.state.units.secret.steps=[];
  expect(secureStatus(result.state,result.state.objectives.secondary).secured).toBe(true);
 });
-it('empty searches consume a command and draw without declaring the card clear',()=>{
+it('rejects potential-contact-only and empty-card spotting without spending commands or cards',()=>{
  const s=fixture(),before=s.deck.draws,r=submitCommand(s,{type:'SPOT',unit_id:'s11',issuer_id:'s11',target_id:s.units.s11.location});
- expect(r.accepted).toBe(true);expect(r.state.impulse.commands).toBe(3);expect(r.state.deck.draws).toBeGreaterThan(before);
- expect(r.events.find(e=>e.type==='OBSERVATION').text).toContain('no additional enemy identified');
+ expect(r.accepted).toBe(false);expect(r.state).toBe(s);expect(r.state.impulse.commands).toBe(4);expect(r.state.deck.draws).toBe(before);
+ s.contacts.pc_test={id:'pc_test',location:s.units.s11.location,type:'C',resolved:false};
+ expect(eligibleTargets(s,s.units.s11,'SPOT')).toEqual([]);
+ expect(submitCommand(s,{type:'SPOT',unit_id:'s11',issuer_id:'s11',target_id:s.units.s11.location}).accepted).toBe(false);
 });
 it('explains casualties already on a relocated CCP versus delivered casualties',()=>{
  const v={objectives:{ccp:'r1c4'}};

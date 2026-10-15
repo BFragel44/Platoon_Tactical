@@ -1,0 +1,9 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tactical clarity review</title></head><body><h1>Tactical clarity · controlled public fixture</h1><p>No saved mission is read or changed.</p><div id="event"></div><main id="formations" style="max-width:370px"></main><div id="report"></div><script type="module">
+import '../src/style.css';import '../src/ui/company.css';import '../src/ui/workspace.css';
+import {afterActionMarkup} from '../src/ui/tacticalClarity.js';import {formationGrid} from '../src/ui/formationGrid.js';
+import {commandHeader,bindCommandHeader} from '../src/ui/commandHeader.js';import {createMission,getPlayerView} from '../src/sim/company/engine.js';import {trevieres} from '../src/scenarios/trevieres.js';
+const l={id:'r1c1',name:'1.1 Farm',elevation:0,covers:[]};
+const s=createMission(trevieres,'header-hq-review');s.turn=4;s.hq_events=[{turn:4,side:'friendly',code:'SITREP',completed:false}];document.querySelector('#event').innerHTML=commandHeader({v:getPlayerView(s),name:id=>id,recovery:{},advanceLabel:'Resolve segment',phaseIndex:0});bindCommandHeader(document.querySelector('#event'));
+document.querySelector('#formations').innerHTML=formationGrid(l,[{id:'s11',name:'1/1 Rifle Squad',kind:'SQUAD',steps:2,cohesion:'GOOD',experience:'Line',inventory:{casualties:[{id:'c1'}]},tactical_ready:true}],[],{});
+document.querySelector('#report').innerHTML=afterActionMarkup({outcome:'SUCCESS',orders:[{turn:2,text:'1/1 Rifle Squad moved to 1.1 Farm.'}],casualties:[{turn:3,text:'1/1 Rifle Squad suffered one casualty step.'}],formations:[{turn:3,text:'An Assault Team was formed.'}],objectives:[{turn:10,text:'The primary objective is secure.'}],achievements:[{turn:10,text:'Secure the primary objective',points:5}],score:5});
+</script><style>body{padding:16px}#formations{margin:24px 0}</style></body></html>

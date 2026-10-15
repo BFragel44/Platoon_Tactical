@@ -1,0 +1,42 @@
+[
+  {
+    "mission": 3,
+    "normal_url": "http://127.0.0.1:5181/",
+    "setup": true,
+    "start": true,
+    "reload_resume": true,
+    "phase": "3.1"
+  },
+  {
+    "mission": 4,
+    "normal_url": "http://127.0.0.1:5181/",
+    "setup": true,
+    "start": true,
+    "reload_resume": true,
+    "phase": "3.1"
+  },
+  {
+    "mission": 5,
+    "normal_url": "http://127.0.0.1:5181/",
+    "setup": true,
+    "start": true,
+    "reload_resume": true,
+    "phase": "3.1"
+  },
+  {
+    "mission": 6,
+    "normal_url": "http://127.0.0.1:5181/",
+    "setup": true,
+    "start": true,
+    "reload_resume": true,
+    "phase": "3.1"
+  },
+  {
+    "mission": 7,
+    "normal_url": "http://127.0.0.1:5181/",
+    "setup": true,
+    "start": true,
+    "reload_resume": true,
+    "phase": "3.1"
+  }
+]

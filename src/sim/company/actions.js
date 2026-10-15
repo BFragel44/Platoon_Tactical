@@ -39,6 +39,7 @@ export const ACTIONS = {
 };
 export const costOf = type => ['SKILL_GENERAL','SKILL_SPAWN_A','SKILL_SPAWN_F','SKILL_EXTRA_AUTOMATIC','SKILL_GRENADE_RETURN'].includes(type)?0:type.startsWith('PLATOON_') ? 2 : 1;
 const hq = u => ['HQ','STAFF'].includes(u.kind);
+const canDeployPyrotechnic = u => good(u) || live(u) && !u.pinned && ['A','F'].includes(u.cohesion);
 const genericInit = s => s.impulse?.hq === 'general';
 const reconstructionTeams=(s,u,issuerId)=>occupants(s,u.location).filter(t=>t.faction===u.faction&&live(t)&&t.steps.length===1&&['A','F'].includes(t.cohesion)&&!t.pinned&&(s.mission_rules?.missionIdentity||t.kind==='LAT')&&(s.mission_rules?.missionIdentity||t.cover===u.cover)&&s.units[issuerId]&&chain(s.units[issuerId],t,'RECONSTITUTE')&&communication(s,s.units[issuerId],t));
 const HQ_ORIGIN_ACTIONS=['ACTIVATE','RECONSTITUTE','RECONSTITUTE_HQ','DETACH','DETACH_FIRE_TEAM','DESIGNATE_CCP','PLATOON_CONCENTRATE','PLATOON_GRENADE','CREATE_RUNNER','DISPATCH_RUNNER','DISMISS_RUNNER','SIGNAL_ADVANCE','SIGNAL_CEASE'];
@@ -65,6 +66,7 @@ export function platoonCombatGroup(s,h,target,type){
  const action=type==='PLATOON_CONCENTRATE'?'CONCENTRATE':'GRENADE';
  return occupants(s,h.location).filter(u=>friendly(u)&&u.platoon===h.platoon&&good(u)&&communication(s,h,u)&&!orderReason(s,{type:action,unit_id:u.id,issuer_id:h.id,target_id:target.id}));
 }
+const restorableHQ=(s,t)=>t&&friendly(t)&&t.kind==='HQ'&&!t.steps.length&&!t.embarked_on&&!['RESERVE','EMBARKED','GUARD'].includes(t.removed)&&(!s.patrol||!t.platoon||t.platoon===s.patrol.plan.platoon);
 export function eligibleTargets(s,u,type) {
   if(type==='TRANSFER_EQUIPMENT')return values(s.units).filter(v=>v.id!==u.id&&live(v)&&friendly(v)&&v.location===u.location&&v.cover===u.cover).flatMap(v=>[
    ...[...new Set(v.radios)].map(net=>`transfer:${v.id}:RADIO:${net}`),
@@ -80,12 +82,12 @@ export function eligibleTargets(s,u,type) {
   if(type==='CREATE_RUNNER')return values(s.units).filter(v=>friendly(v)&&live(v)&&(good(v)||!v.pinned&&['A','F'].includes(v.cohesion))&&communication(s,companyCommander(s),v)&&chain(companyCommander(s),v,type)).map(v=>v.id);
   if(type==='DISPATCH_RUNNER')return values(s.units).filter(t=>friendly(t)&&live(t)&&['HQ','STAFF'].includes(t.kind)&&!isCompanyCommander(t)&&t.command_role!=='higher_hq').map(t=>t.id);
   if(['ENTER_COVER','INFILTRATE_WITHIN'].includes(type)) return ['open',...s.locations[u.location].covers.filter(c=>(!friendly(u)||c.known)&&coverAvailable(s,u,c)).map(c=>c.id)];
-  if(type==='SPOT') return [...new Set([...(friendly(u)&&!s.locations[u.location]?.staging?[u.location]:[]),...spottingLocations(s).filter(id=>occupants(s,id).some(t=>t.faction!==u.faction&&!s.knowledge.spotted[t.id]&&unitLos(s,u,t)))])];
+  if(type==='SPOT') return s.locations[u.location]?.staging?[]:spottingLocations(s).filter(id=>occupants(s,id).some(t=>t.faction!==u.faction&&!s.knowledge.spotted[t.id]&&unitLos(s,u,t)));
   if(type==='INDIRECT') return values(s.locations).filter(l=>!l.staging&&distance(s.locations[u.location],l)<=u.range).map(l=>l.id);
   if(type.endsWith('_ILLUM'))return values(s.locations).filter(l=>!l.staging&&(type==='HANDHELD_ILLUM'||l.known!==false)&&(type!=='HANDHELD_ILLUM'||l.id===u.location||adjacent(s,u.location).some(a=>a.id===l.id))).map(l=>l.id);
   if((['SHIFT_FIRE'].includes(type)||type.startsWith('CALL_'))) return values(s.locations).filter(l=>!l.staging&&seesCard(s,u,l.id)).map(l=>l.id);
   if(['GRENADE','RIFLE_GRENADE','CONCENTRATE'].includes(type)) return areaTargets(s,u).filter(t=>unitLos(s,u,t,type==='RIFLE_GRENADE'?1:type==='GRENADE'?(u.grenade_range??(vofOf(u)==='G'?rangeOf(u):0)):rangeOf(u))).map(t=>t.id);
-  if(type==='RECONSTITUTE_HQ') return values(s.units).filter(t=>friendly(t)&&t.kind==='HQ'&&!live(t)).map(t=>t.id);
+  if(type==='RECONSTITUTE_HQ') return values(s.units).filter(t=>restorableHQ(s,t)).map(t=>t.id);
   if(type==='RECONSTITUTE') return values(s.units).filter(t=>t.faction===u.faction&&t.kind==='SQUAD'&&!live(t)).map(t=>t.id);
   if(type==='PICKUP_RADIO') return s.assets.filter(a=>a.location===u.location&&(!s.mission_rules?.specialEnemies||((a.cover??null)===(u.cover??null)&&a.faction===u.faction))&&['RADIO','EQUIPMENT','AMMO'].includes(a.type)&&!a.destroyed).map(a=>a.id);
   if(type==='PICKUP_CASUALTY') return s.casualties.filter(c=>{const donor=c.carrier&&s.units[c.carrier];return c.faction===u.faction&&!c.evacuated&&(donor?s.mission_rules?.missionIdentity&&donor.id!==u.id&&live(donor)&&donor.location===u.location&&donor.cover===u.cover:c.location===u.location&&c.cover===u.cover);}).map(c=>c.id);
@@ -150,7 +152,7 @@ export function orderReason(s,c) {
   if(type.startsWith('PYRO_')){
    const key=type.slice(5).toLowerCase();
    if(key.endsWith('_signal')&&(s.visibility?.light??0)>=2)return 'Colored smoke cannot signal during Moon +2 or higher (rules §4.4.1).';
-   if(!(good(u)||live(u)&&!u.pinned&&['A','F'].includes(u.cohesion))||!u.assets[key])return 'Need a Good Order unit or unpinned Assault/Fire Team carrying this device.';
+   if(!canDeployPyrotechnic(u)||!u.assets[key])return 'Need a Good Order unit or unpinned Assault/Fire Team carrying this device.';
    if(!s.signal_plan?.[key]||!eligibleTargets(s,u,type).includes(target))return 'Choose the device’s assigned offensive order and an eligible signal card.';
   }
   if(type.endsWith('_RUNNER')){
@@ -206,7 +208,7 @@ export function orderReason(s,c) {
   if(type==='DEPLOY_FIRE_TEAM'&&(!good(u)||(!u.named||u.steps.length!==1)))return 'Only a good-order one-step named formation can deploy its named Fire Team; command/observer capability is lost until recovered.';
   if(type==='RALLY'&&!u.pinned) return 'This unit is not pinned.';
   if(type==='RECOVER'&&(u.pinned||!['P','L','F'].includes(u.cohesion))) return 'Remove the pin first; only paralyzed, litter or fire teams need recovery.';
-  if(type==='SPOT'&&(u.pinned||['P','L'].includes(u.cohesion)||!eligibleTargets(s,u,type).includes(target))) return 'Need an unpinned spotting-capable unit on terrain; search its own card or observe a current unspotted position in LOS.';
+  if(type==='SPOT'&&(u.pinned||['P','L'].includes(u.cohesion)||!eligibleTargets(s,u,type).includes(target))) return 'Need an unpinned spotting-capable unit and a current unspotted enemy position in LOS. Potential contacts resolve during contact evaluation.';
   if(type==='SHIFT_FIRE'&&(!u.fire||!s.locations[target]||!seesCard(s,issuer??u,target)||!canFire(s,u,target)||
     (s.knowledge.suspected[target]&&!targetsAt(s,u,target).length))) return 'Need an existing fire direction and an eligible destination visible to the issuer. Spot suspected enemies first.';
   if(type==='SHIFT_FIRE'&&(coverOf(s,u)?.type==='Bunker'||s.mission_rules?.specialEnemies&&coverOf(s,u)?.type==='Pillbox')) return 'Fortification occupants cannot shift their firing arc.';
@@ -249,13 +251,13 @@ export function orderReason(s,c) {
   }
   if(type==='INDIRECT'&&(!good(u)||u.kind!=='MORTAR'||u.steps.length<2||u.exposed||c.target_id===u.location||enclosedWeaponCover(coverOf(s,u))||s.locations[u.location].terrain==='woods'||
     !s.locations[target]||!issuer||!seesCard(s,issuer,target)||distance(s.locations[u.location],s.locations[target])>u.range||!targetsAt(s,u,target).length)) return 'Need an unexposed two-step mortar outside woods and enclosed cover, in communication with an HQ that sees the spotted target.';
-  if(type==='HANDHELD_ILLUM'&&(!s.visibility||!good(u)||!u.assets.illum||coverOf(s,u)?.type==='Deep Bunker'||!s.locations[target]||distance(s.locations[u.location],s.locations[target])>1))return 'Need handheld illumination, good order outside a Deep Bunker, and a card here or adjacent.';
+  if(type==='HANDHELD_ILLUM'&&(!s.visibility||!canDeployPyrotechnic(u)||!u.assets.illum||coverOf(s,u)?.type==='Deep Bunker'||!s.locations[target]||distance(s.locations[u.location],s.locations[target])>1))return 'Need handheld illumination, an eligible unpinned unit outside a Deep Bunker, and a card here or adjacent.';
   if(type==='RIFLE_GRENADE'&&(!good(u)||!u.assets.rifle_grenade))return 'No rifle-grenade asset on this good-order unit.';
   if(type==='WP_ATTACK'&&!u.assets.wp)return 'No WP grenade asset remains on this formation.';
   if(u.mine_hit&&['MOVE','INFILTRATE','SEEK_COVER','ENTER_COVER','INFILTRATE_WITHIN','CLEAR_MINE_PATH'].includes(type))return 'Mines prevent further movement this turn.';
-  if(type==='WP'&&(!good(u)||!u.assets.wp))return 'No WP smoke available on this good-order unit.';
+  if(type==='WP'&&(!canDeployPyrotechnic(u)||!u.assets.wp))return 'Requires WP smoke on a Good Order unit or unpinned Assault/Fire Team.';
   if(type.startsWith('SIGNAL_')&&s.mission_rules?.signals===false)return 'Pyrotechnic signals are not available in this mission.';
-  if(type==='SMOKE'&&(!good(u)||!u.assets.smoke)) return 'No screening smoke available on this good-order unit.';
+  if(type==='SMOKE'&&(!canDeployPyrotechnic(u)||!u.assets.smoke)) return 'Requires screening smoke on a Good Order unit or unpinned Assault/Fire Team.';
   if(type.startsWith('SIGNAL_')&&(!good(u)||!u.assets[type==='SIGNAL_ADVANCE'?'advance':'cease'])) return 'This unit has no remaining asset for that signal.';
   if(['DETACH','DETACH_FIRE_TEAM'].includes(type)&&(!good(u)||!((u.kind==='SQUAD'&&u.steps.length>=3&&u.steps.length<=4)||(['MG','AT','MORTAR'].includes(u.kind)&&u.steps.length===2)))) return 'Detach from a good-order three- or four-step squad or a two-step weapon team.';
   if(['DETACH','DETACH_FIRE_TEAM'].includes(type)){const reason=detachedLoadReason(s,u,c.detached_load);if(reason)return reason;}
@@ -269,6 +271,7 @@ export function orderReason(s,c) {
   }
   if(type==='RECONSTITUTE_HQ') {
     const t=s.units[target];
+    if(!restorableHQ(s,t))return s.patrol&&t?.platoon&&t.platoon!==s.patrol.plan.platoon?'Only the patrolling platoon HQ can be reconstituted during this patrol.':'Choose an eliminated HQ. Reserve, embarked and surviving HQs are not eliminated.';
     if(!issuer||issuer.cohesion!=='GOOD'||!canCommandCompany(issuer)||!good(u)||!t||live(t)||t.kind!=='HQ'||
       (t.platoon ? u.platoon!==t.platoon&&u.kind!=='STAFF' : !['HQ','STAFF','FO'].includes(u.kind))) return 'Company HQ or staff must use an eligible good-order donor to restore an eliminated HQ.';
     if(isCompanyCommander(t)) {
@@ -376,10 +379,9 @@ export function spotAttempt(s,u,id) {
   const l=s.locations[id],countFor=t=>spottingBaseDraws(s,u,t);
   // Attempt against the easiest unit to spot; success reveals the whole card.
   const t=targets.sort((a,b)=>countFor(b)-countFor(a)||a.id.localeCompare(b.id))[0];
-  // An own-card search is offered without consulting hidden occupancy. Empty searches
-  // still spend the command and draw, and never announce that a card is enemy-free.
-  const protection=terrainProtection(l,s.locations[u.location]);
-  const count=t?countFor(t):2+(u.location===id?1:0)+(protection>=3?-1:protection===0?1:0);
+  // Spotting targets actual unspotted positions, never unresolved potential contacts.
+  if(!t)return;
+  const count=countFor(t);
   const success=attempt(s,u,count,'spot',`${u.name}: observe ${l.name}`)>0;
   const found=!!t&&success;
   if(found)spot(s,t);

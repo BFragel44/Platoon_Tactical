@@ -1,0 +1,25 @@
+(node:16692) ExperimentalWarning: Importing JSON modules is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+{
+  seed: 'spot-correction-39',
+  first: 'DEFEAT',
+  outcome: 'SUCCESS',
+  attempt: 2,
+  orders: 126,
+  contacts: 9,
+  enemies: 7,
+  objective_check: {
+    id: 'event_1973',
+    sequence: 1973,
+    turn: 10,
+    phase: 'CLEANUP',
+    impulse: null,
+    type: 'OBJECTIVE_CHECK',
+    text: 'Mission objectives complete.',
+    secured: true,
+    objectives_held: true,
+    rows_clear: true,
+    hidden: false
+  },
+  exact_replay: true
+}
