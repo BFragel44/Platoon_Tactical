@@ -1,4 +1,5 @@
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+import {hqEventTitle} from './hqEventPresentation.js';
 const meaningful=new Set(['HQ_EVENT','HQ_EVENT_NONE','HQ_EVENT_FORMATION','AUTOMATIC_RECOVERY','UNIT_CAPTURED','ENEMY_CASUALTY_CAPTURED','UNIT_MOVED','UNIT_WITHDREW','ASSETS_DROPPED']);
 const transitions=new Set(['PATROL_PREPARED','MISSION_REATTEMPTED']);
 export function currentAttemptEvents(events){
@@ -26,6 +27,13 @@ export function segmentReviews(events) {
   });
 }
 export function segmentResultMarkup(review,name) {
+  const headquarters=review.events.find(e=>e.type==='HQ_EVENT');
+  if(headquarters){
+    const description=headquarters.text??'',split=description.match(/^(.+?[.!?])(?:\s+([\s\S]*))?$/),brief=split?.[1]??description,details=split?.[2];
+    const results=review.events.filter(e=>!['HQ_EVENT','HQ_EVENT_NONE'].includes(e.type));
+    const resultText=results.length?results.map(e=>`<p>${esc(e.text)}</p>`).join(''):`<p>${esc(headquarters.condition??(headquarters.side==='enemy'?'Event resolved. Concealed enemy results remain hidden.':'Event is in effect.'))}</p>`;
+    return `<dialog class="tactical-dialog hq-event-dialog" id="segment-result" aria-labelledby="segment-result-title"><header><h2 id="segment-result-title">${headquarters.side==='enemy'?'Enemy':'Friendly'} Higher HQ Events</h2><p class="hq-event-context">${review.attemptLabel?esc(review.attemptLabel)+' · ':''}Turn ${review.turn}</p></header><h3 class="hq-event-title">${esc(hqEventTitle(headquarters))}</h3><p class="hq-event-description">${esc(brief)}</p><section class="hq-event-result" aria-label="Event result"><h4>Result</h4>${resultText}</section>${details||headquarters.expires?`<details class="hq-event-details"><summary>Event details</summary>${details?`<p>${esc(details)}</p>`:''}${headquarters.expires?`<p>${esc(headquarters.expires)}.</p>`:''}</details>`:''}<footer><button id="dismiss-segment">Continue</button></footer></dialog>`;
+  }
   return `<dialog class="tactical-dialog" id="segment-result" aria-labelledby="segment-result-title"><h2 id="segment-result-title">${esc(review.label)}</h2><p>${review.attemptLabel?esc(review.attemptLabel)+' · ':''}Turn ${review.turn} · resolved segment</p>${review.events.length?review.events.map(e=>`<p>${e.faction?`<b>${e.faction==='friendly'?'U.S.':'German'}</b> · `:''}${esc(e.text)}${e.location?` <span>At ${esc(name(e.location))}.</span>`:''}${e.from?` <span>${esc(name(e.from))} → ${esc(name(e.target))}.</span>`:''}${e.condition?` <strong>${esc(e.condition)}</strong>`:''}${e.expires?` <span>${esc(e.expires)}.</span>`:''}</p>`).join(''):'<p>No visible changes.</p>'}<button id="dismiss-segment">Continue</button></dialog>`;
 }
 export function inventoryMarkup(unit) {

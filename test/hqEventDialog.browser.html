@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><link rel="stylesheet" href="/src/ui/company.css"></head><body style="background:#121b15"><button id="friendly">Friendly event</button><button id="enemy">Enemy event</button><main></main><script type="module">
+import '/src/style.css';
+import '/src/ui/workspace.css';
+import {segmentResultMarkup} from '/src/ui/segmentResults.js';
+import {hqEventExplanation} from '/src/ui/hqEventPresentation.js';
+function open(side){const e={type:'HQ_EVENT',side,code:side==='friendly'?'LOST':'RALLY'};e.text=hqEventExplanation(e);document.querySelector('main').innerHTML=segmentResultMarkup({turn:2,attemptLabel:'Patrol 2',events:[...(side==='friendly'?[{type:'UNIT_MOVED',text:'1/2 Rifle Squad lost its way and moved to 2.2 Woods; exposed until cleanup.'}]:[]),e]},id=>id);document.querySelector('dialog').showModal();document.querySelector('#dismiss-segment').onclick=()=>document.querySelector('dialog').close();}document.querySelector('#friendly').onclick=()=>open('friendly');document.querySelector('#enemy').onclick=()=>open('enemy');open('friendly');
+</script></body></html>

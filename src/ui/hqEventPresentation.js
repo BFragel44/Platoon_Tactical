@@ -1,3 +1,7 @@
+export function hqEventTitle(e){
+ const titles={LOST:'Lost in the Dark',HOLD_PATROL:'Hold up!',RAIN:'It’s Raining',NO_MORTAR:'Mortar Platoon Displacing',NO_CANNON:'Cannon Company Displacing',ADVANCE_ROUTE:'CO HQ is Screaming for Action',SHIFTING_LINES:'Shifting Lines',SITREP:'Situation Report',COMM:'Comm Trouble',NO_ARTY:'Artillery Displacing',CHECKING_UP:'Checking Up',HOLD:'Hold Position',ADVANCE:'Advance',ADVANCE_PC:'Advance into Contact',RESUPPLY:'Resupply',TANK_SUPPORT:'Tank Support',EVAC:'Casualty Evacuation',DISPLACE_MORTAR:'Mortars Displacing',DISPLACE_LEADER:'Leaders Displacing',DISPLACE_HMG:'Heavy Machine Guns Displacing',RALLY:'Rally',FALL_BACK:'Fall Back',COUNTER_ATTACK:'Counterattack',AMMO:'Machine-Gun Ammunition',REINFORCE:'Reinforcements',UNPIN:'Remove Pins',RECOVER:'Recover Cohesion',BREAK:'Breaking Morale',SURRENDER:'Surrender'};
+ return titles[e.code]??(e.code?e.code.toLowerCase().replaceAll('_',' ').replace(/^./,c=>c.toUpperCase()):'No Higher HQ Event');
+}
 export function hqEventExplanation(e,name=id=>id){
  const through=e.counterattack_ends_after??e.turn+2;
  const next=(e.lead??0)+1;
