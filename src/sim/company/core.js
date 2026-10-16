@@ -132,6 +132,27 @@ export function transportReason(s,u,extraAssets=0) {
 }
 
 // Removal without combat does not destroy carried radios or silently delete loads.
+export function dropItemsReason(s,u,items){
+ if(!Array.isArray(items)||!items.length)return 'Select at least one item and quantity to drop.';
+ const seen=new Set();
+ for(const item of items){
+  if(!item||Object.keys(item).some(k=>!['type','key','quantity'].includes(k))||!['RADIO','EQUIPMENT','AMMO','CASUALTY'].includes(item.type)||typeof item.key!=='string'||['__proto__','constructor','prototype'].includes(item.key)||!Number.isSafeInteger(item.quantity)||item.quantity<1)return 'Choose valid items and positive whole quantities.';
+  const id=`${item.type}:${item.key}`;if(seen.has(id))return 'Select each item only once.';seen.add(id);
+  const stock=item.type==='RADIO'?u.radios.filter(net=>net===item.key).length:item.type==='CASUALTY'?s.casualties.filter(c=>c.id===item.key&&c.carrier===u.id&&!c.evacuated).length:item.type==='AMMO'?(s.mission_rules?.ammo==='tracked'?u.ammo?.[item.key]:0):u.assets[item.key];
+  if(!Number.isSafeInteger(stock)||item.quantity>stock)return 'The selected quantity exceeds the carried stock.';
+ }
+ return null;
+}
+export function dropItems(s,u,items){
+ const reason=dropItemsReason(s,u,items);if(reason)throw new Error(reason);
+ for(const {type,key,quantity} of items){
+  if(type==='CASUALTY'){const c=s.casualties.find(c=>c.id===key);c.carrier=null;c.location=u.location;c.cover=u.cover;continue;}
+  const asset={id:`asset_${s.next_id++}`,type,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction};
+  if(type==='RADIO'){for(let i=0;i<quantity;i++){u.radios.splice(u.radios.indexOf(key),1);s.assets.push({...asset,id:i?`asset_${s.next_id++}`:asset.id,net:key});}}
+  else {const field=type==='AMMO'?u.ammo:u.assets;field[key]-=quantity;s.assets.push({...asset,key,quantity});if(type==='AMMO'&&field[key]===0)u.out_of_ammo=true;}
+ }
+ emit(s,'ASSETS_DROPPED',`${u.name}: selected items dropped without a command or exposure.`,{actor:u.id,location:u.location,items:structuredClone(items),reason:'selective voluntary unload'});
+}
 export function dropLoad(s,u,reason='removed') {
  for(const net of u.radios)s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
  for(const [key,quantity] of Object.entries(u.assets))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});

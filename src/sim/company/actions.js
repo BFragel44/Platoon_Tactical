@@ -5,7 +5,7 @@ import {patrolHoldReason} from './patrolEvents.js';
 import {patrolMovementReason} from './patrols.js';
 import {visibilityCommandLimits} from './visibility.js';
 import {transferEquipmentResupply} from './equipmentRecovery.js';
-import {transportReason,dropLoad} from './core.js';
+import {transportReason,dropLoad,dropItemsReason,dropItems} from './core.js';
 import {SKILLS,skillOptions} from './skills.js';
 import {reconstitutionFirepower,reconstitutionLoads,transferReconstitutionLoads} from './reconstitution.js';
 import {ammoLoadReason,pickUpAmmunition,dropExcessAmmunition,expendAmmunition} from './ammunition.js';
@@ -116,6 +116,7 @@ export function orderReason(s,c) {
   if(s.status!=='ACTIVE') return 'The mission has ended.';
   if(s.mission_rules?.specialEnemies&&['DROP_LOAD','DROP_CASUALTY'].includes(type)){
     if(!live(u)||!friendly(u))return 'Select an available friendly formation.';
+    if(type==='DROP_LOAD'&&c.drop_items!==undefined)return dropItemsReason(s,u,c.drop_items);
     return (type==='DROP_LOAD'&&(u.radios.length||Object.values(u.assets).some(Boolean)||Object.values(u.ammo??{}).some(Boolean))||s.casualties.some(c=>c.carrier===u.id))?null:'No carried items to drop.';
   }
   if(type==='DROP_LOAD')return 'This action is not enabled by the mission.';
@@ -199,6 +200,7 @@ export function orderReason(s,c) {
     if(movedThisImpulse(s,u))return 'Already moved to an adjacent card in this impulse.';
     const reason=movementReason(s,u,target); if(reason) return reason;
     if(type.includes('INFILTRATE')) {const reason=infiltrationReason(s,u,target);if(reason)return reason;}
+    if(c.arrival_cover!==undefined&&c.arrival_cover!=='open'&&!arrivalCoverOptions(s,u,target,type).some(o=>o.id===c.arrival_cover))return 'Choose available known cover at the destination, or arrive outside additional cover.';
   }
   if(['SEEK_COVER','ENTER_COVER','INFILTRATE_WITHIN'].includes(type)){const load=transportReason(s,u);if(load)return load;}
   if(['SEEK_COVER','ENTER_COVER','INFILTRATE_WITHIN'].includes(type)&&s.locations[u.location].staging)return 'Staging is an off-map holding area with no terrain cover.';
@@ -311,7 +313,13 @@ export function infiltrationReason(s,u,target,within=false) {
   return null;
 }
 const fortification = c => c&&['Trench','Bunker','Pillbox'].includes(c.type);
-export function move(s,u,target,infiltrate=false) {
+export function arrivalCoverOptions(s,u,target,type='MOVE'){
+ const location=s.locations[target];if(!location)return [];
+ const group=type.startsWith('PLATOON_')?platoonMoveGroup(s,u,target,type).filter(friendly):[u];
+ const steps=group.reduce((n,v)=>n+v.steps.length,0);
+ return location.covers.filter(c=>c.known&&group.every(v=>coverAvailable(s,v,c,target))&&(!c.capacity||occupants(s,target).filter(v=>v.cover===c.id).reduce((n,v)=>n+v.steps.length,0)+steps<=c.capacity)).map(c=>({id:c.id,label:`${c.type} +${c.value??0}`,steps:occupants(s,target).filter(v=>v.cover===c.id).reduce((n,v)=>n+v.steps.length,0),arriving_steps:steps}));
+}
+export function move(s,u,target,infiltrate=false,arrivalCover) {
   const from=u.location,old=coverOf(s,u),oldExposure=u.exposed;
   layPhoneLine(s,u);
   dropExcessAmmunition(s,u);
@@ -321,7 +329,7 @@ export function move(s,u,target,infiltrate=false) {
   invalidateTargets(s,u);
   u.location=target;u.cover=null;u.fire=null;u.fire_direction=null;u.fire_effect=null;u.indirect=null;
   for(const v of following)if(canFire(s,v,target)){v.fire=target;v.fire_direction=null;v.fire_effect=null;}
-  const cover=s.locations[target].covers.find(c=>(!friendly(u)||c.known)&&coverAvailable(s,u,c,target));
+  const cover=arrivalCover==='open'?null:arrivalCover!==undefined?s.locations[target].covers.find(c=>c.id===arrivalCover):s.locations[target].covers.find(c=>(!friendly(u)||c.known)&&coverAvailable(s,u,c,target));
   if(cover)u.cover=cover.id;
   u.exposed=!(success||(s.locations[from].staging&&s.locations[target].staging)||(fortification(old)&&fortification(cover)));
   for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.location=target;c.transported=true;}
@@ -458,7 +466,7 @@ export function execute(s,c) {
   }
   else if(['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type)) {
     const group=type.startsWith('PLATOON_')?platoonMoveGroup(s,u,c.target_id,type):[u];
-    for(const v of group) {if(movementReason(s,v,c.target_id))continue;move(s,v,c.target_id,type.includes('INFILTRATE'));v.used.push(`${s.impulse.id}:${type.includes('INFILTRATE')?'INFILTRATE':'MOVE'}`);}
+    for(const v of group) {if(movementReason(s,v,c.target_id))continue;move(s,v,c.target_id,type.includes('INFILTRATE'),c.arrival_cover);v.used.push(`${s.impulse.id}:${type.includes('INFILTRATE')?'INFILTRATE':'MOVE'}`);}
   }
   else if(type==='CLEAR_MINE_PATH')markEngineerPath(s,u,attempt(s,u,2,'infiltrate',`${u.name}: minefield path infiltration`)>0);
   else if(type==='SEEK_COVER'||type==='SEEK_COVER_UPPER')seekCover(s,u,type==='SEEK_COVER_UPPER');
@@ -585,6 +593,10 @@ export function submitCommand(state,command) {
    restoreHQ(s,u,companyCommander(s));revealTerrain(s);refresh(s);s.replay.push({op:'submitCommand',command:structuredClone(command)});return result(state,s,{accepted:true});
   }
   if(s.mission_rules?.specialEnemies&&['DROP_LOAD','DROP_CASUALTY'].includes(command.type)){
+    if(command.type==='DROP_LOAD'&&command.drop_items!==undefined){
+      dropItems(s,u,command.drop_items);if(s.phase!=='COMBAT_EFFECTS')refresh(s);
+      s.replay.push({op:'submitCommand',command:structuredClone(command)});return result(state,s,{accepted:true});
+    }
     if(command.type==='DROP_LOAD')dropLoad(s,u,'voluntary unload');
     for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.carrier=null;c.location=u.location;c.cover=u.cover;}
     emit(s,'ASSETS_DROPPED',`${u.name}: carried items unloaded without a command or exposure.`,{actor:u.id,location:u.location});
@@ -631,6 +643,7 @@ export function commandOptions(s,u,issuerId) {
     const targets=eligibleTargets(s,u,type);
     const targeted=type.endsWith('_ILLUM')||type.startsWith('PYRO_')||['SUPPLEMENT','TRANSFER_EQUIPMENT','SWITCH_NETWORK','PLATOON_CONCENTRATE','PLATOON_GRENADE','DISPATCH_RUNNER','CREATE_RUNNER'].includes(type)||['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','CALL_ARTILLERY_TOT','CALL_MORTAR_WP','CALL_ARTILLERY_WP','CALL_CANNON','CALL_CANNON_WP','RIFLE_GRENADE','INDIRECT','RECONSTITUTE','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
     const checks=((targeted||type==='WP_ATTACK')?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id,contributor_ids:type==='RECONSTITUTE'?[u.id,...reconstructionTeams(s,u,issuerId).filter(t=>t.id!==u.id).slice(0,Math.max(0,(s.units[target_id]?.max_steps??3)-1)).map(t=>t.id)]:undefined})}));
+    if(['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type))for(const check of checks)check.arrival_covers=check.reason?[]:arrivalCoverOptions(s,u,check.id,type);
     if(['PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type))for(const check of checks)check.moving_unit_ids=check.reason?[]:platoonMoveGroup(s,u,check.id,type).filter(friendly).map(v=>v.id);
     const displayLabel=type==='RECONSTITUTE_HQ'?'Reconstitute eliminated HQ':type==='DEPLOY_FIRE_TEAM'&&['HQ','STAFF'].includes(u.kind)?'Deploy HQ Fire Team':type==='RECOVER'&&u.named&&u.cohesion==='F'?(['HQ','STAFF'].includes(u.kind)?'Restore HQ command side':u.kind==='FO'?'Restore observer side':'Restore weapon side'):label;
     return {type,contributor_ids:type==='RECONSTITUTE'?reconstructionTeams(s,u,issuerId).map(t=>t.id):undefined,label:displayLabel,exhortable:EXHORT_ACTIONS.includes(type)||type.startsWith('CALL_'),exhort_reason:exhortReason(s,{type,unit_id:u.id,issuer_id:issuerId}),skills:skillOptions(s,skillActor(s,u,type,issuerId),type),cost:s.mission_rules?.specialEnemies&&['DROP_LOAD','DROP_CASUALTY'].includes(type)?0:costOf(type),targeted:targeted||type==='WP_ATTACK',targets:checks,available:checks.some(c=>!c.reason),reason:checks.find(c=>c.reason)?.reason??'No eligible target.'};
