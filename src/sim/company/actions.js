@@ -209,8 +209,13 @@ export function orderReason(s,c) {
   if(type==='RALLY'&&!u.pinned) return 'This unit is not pinned.';
   if(type==='RECOVER'&&(u.pinned||!['P','L','F'].includes(u.cohesion))) return 'Remove the pin first; only paralyzed, litter or fire teams need recovery.';
   if(type==='SPOT'&&(u.pinned||['P','L'].includes(u.cohesion)||!eligibleTargets(s,u,type).includes(target))) return 'Need an unpinned spotting-capable unit and a current unspotted enemy position in LOS. Potential contacts resolve during contact evaluation.';
-  if(type==='SHIFT_FIRE'&&(!u.fire||!s.locations[target]||!seesCard(s,issuer??u,target)||!canFire(s,u,target)||
-    (s.knowledge.suspected[target]&&!targetsAt(s,u,target).length))) return 'Need an existing fire direction and an eligible destination visible to the issuer. Spot suspected enemies first.';
+  if(type==='SHIFT_FIRE'){
+    if(!u.fire)return 'This unit is not maintaining fire to shift.';
+    const originator=genericInit(s)?u:issuer??u;
+    if(!s.locations[target]||!seesCard(s,originator,target))return genericInit(s)?'The firing formation must see the destination during General Initiative.':'The issuing HQ must see the Shift Fire destination.';
+    if(!canFire(s,u,target))return 'The destination is outside this formation’s firing range or firing arc.';
+    if(s.knowledge.suspected[target]&&!targetsAt(s,u,target).length)return 'Spot the suspected enemy position before shifting fire onto it.';
+  }
   if(type==='SHIFT_FIRE'&&(coverOf(s,u)?.type==='Bunker'||s.mission_rules?.specialEnemies&&coverOf(s,u)?.type==='Pillbox')) return 'Fortification occupants cannot shift their firing arc.';
   if(type==='CEASE_FIRE'&&!u.fire&&!u.indirect) return 'This unit is not maintaining fire.';
   if(['CONCENTRATE','GRENADE','WP_ATTACK','RIFLE_GRENADE'].includes(type)) {
@@ -222,7 +227,14 @@ export function orderReason(s,c) {
     if(s.mission_rules?.specialEnemies&&['GRENADE','RIFLE_GRENADE'].includes(type)&&(['AT','MORTAR'].includes(u.kind)&&u.cohesion==='GOOD'||type==='RIFLE_GRENADE')&&enclosedWeaponCover(coverOf(s,u)))return 'This weapon cannot fire from building or fortification cover.';
     if(s.mission_rules?.specialEnemies&&type==='GRENADE'&&u.kind==='MORTAR'&&u.cohesion==='GOOD'&&(u.exposed||t.location===u.location||s.locations[u.location].terrain==='woods'))return 'Mortar teams cannot fire exposed, from woods, or at point blank.';
     if(type==='CONCENTRATE'&&(!u.fire||u.fire!==t.location||!['S','A','A/S','H'].includes(vofOf(u)))) return 'Concentrated fire must follow an existing direction of basic fire.';
-    if(['GRENADE','RIFLE_GRENADE'].includes(type)&&t.location!==u.location&&occupants(s,u.location).some(v=>v.faction===u.faction&&(v.fire||v.temporary_pdf?.target)&&(v.fire??v.temporary_pdf.target)!==t.location)) return 'Ranged grenades must follow the existing direction of fire.';
+    if(['GRENADE','RIFLE_GRENADE'].includes(type)&&t.location!==u.location){
+      // Same-card fire has no PDF; stale weapon state must not block another unit.
+      const pdfs=occupants(s,u.location).filter(v=>v.faction===u.faction).flatMap(v=>[
+        ...(v.fire&&v.fire!==u.location&&canFire(s,v,v.fire)?[v.fire]:[]),
+        ...(v.temporary_pdf?.target&&v.temporary_pdf.target!==u.location?[v.temporary_pdf.target]:[])]);
+      const a=s.locations[u.location],b=s.locations[t.location],follows=id=>{const l=s.locations[id];return l&&Math.sign(l.row-a.row)===Math.sign(b.row-a.row)&&Math.sign(l.col-a.col)===Math.sign(b.col-a.col);};
+      if(pdfs.length&&!pdfs.some(follows))return 'Ranged grenades must follow the existing direction of fire.';
+    }
     if(['GRENADE','RIFLE_GRENADE'].includes(type)&&t.location!==u.location&&occupants(s,u.location).some(v=>v.faction!==u.faction)) return 'Resolve point-blank combat before firing grenades elsewhere.';
     if(u.mission_weapon&&['GRENADE','RIFLE_GRENADE'].includes(type)&&t.location!==u.location){
       const a=s.locations[u.location],b=s.locations[t.location],d=distance(a,b);

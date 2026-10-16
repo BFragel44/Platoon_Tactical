@@ -1,7 +1,7 @@
 import {afterActionMarkup} from './tacticalClarity.js';
 import {clearAarNavigation,startingFormation} from './commandDesk.js';
 import {campaignProgress,previewCampaignMission,commitCampaignMission,resumeCommittedCampaign,resumeCampaignCheckpoint,campaignCheckpoint} from '../sim/company/campaignProgression.js';
-import {saveCampaignRecovery,readCampaignRecovery} from './campaignRecovery.js';
+import {saveCampaignRecovery,readCampaignRecovery,recoverAssaultRangeCheckpoint} from './campaignRecovery.js';
 import {replaceSavedCampaign} from './campaignManagement.js';
 import {experienceAwards,freshExperienceAwards,createExperienceNotifications} from './experienceNotifications.js';
 import {cardDrawIdentity,createCardDrawNotifications,publicDrawGroups,recentDrawMarkup} from './cardDraws.js';
@@ -145,7 +145,16 @@ function restoreSavedEntry(entry,which='latest'){
  restorePresentation(restored.presentation);render();
 }
 function resumeSlot(id,which='latest'){
- try{const saves=savedApplications(localStorage,missionCatalog);restoreSavedEntry(id==='campaign'?saves.campaign:saves.standalone.find(e=>e.id===id),which);}
+ try{const saves=savedApplications(localStorage,missionCatalog),entry=id==='campaign'?saves.campaign:saves.standalone.find(e=>e.id===id);
+  try{restoreSavedEntry(entry,which);}catch(error){
+   if(id!=='campaign'||which!=='latest'||!entry?.saved?.bundle)throw error;
+   const recovered=recoverAssaultRangeCheckpoint(entry.saved.bundle.latest,error);
+   resumeCampaignCheckpoint(entry.saved.bundle.turnStart);
+   // Preserve the original in backup before committing the validated recovery.
+   const bundle=saveCampaignRecovery(localStorage,recovered.state,recovered.checkpoint.presentation,{replace:true,turnStart:entry.saved.bundle.turnStart});
+   restoreSavedEntry({...entry,saved:{...entry.saved,bundle}},'latest');
+  }
+ }
  catch(e){navigationError=e.message+' The original save is unchanged.';storageError=navigationError;render();}
 }
 function resume(which){try{resumeSlot(currentSaveId(),which);}catch(e){storageError=e.message;render();}}

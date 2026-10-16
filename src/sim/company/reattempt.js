@@ -92,7 +92,11 @@ function prepareAttempt(state,choices,patrol){
   u.location=placements[u.id];u.cover=null;
  }
  for(const [id,coverId] of Object.entries(covers)){
-  const u=s.units[id],cover=u&&s.locations[u.location].covers.find(c=>c.id===coverId&&c.discovered);
+  const u=s.units[id];
+  // Old preparation drafts can retain cover on eliminated or consumed counters.
+  // Only formations actually deploying after reconstitution need a cover choice.
+  if(u&&friendly(u)&&(!u.steps.length||u.removed==='RESERVE'||consumed.has(id)))continue;
+  const cover=u&&s.locations[u.location]?.covers.find(c=>c.id===coverId&&c.discovered);
   if(!u||!friendly(u)||!live(u)||!cover)throw new Error(`Choose discovered cover on ${u?.name??id}'s reattempt card.`);
   const taken=values(s.units).filter(v=>v.id!==id&&live(v)&&v.location===u.location&&v.cover===cover.id).reduce((n,v)=>n+v.steps.length,0);
   if(taken+u.steps.length>(cover.capacity??16))throw new Error(`No room under ${cover.type} for ${u.name}.`);

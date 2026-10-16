@@ -32,6 +32,8 @@ This pass does not authorize connected launches beyond M1, a broader vehicle red
 
 ## Intended 3D presentation — deferred until all seven missions are validated
 
+October 16: notification and battlefield sound requirements are inventoried in [SFX_AUDIT.md](SFX_AUDIT.md), including current event hooks, hidden-information rules, cue grouping, vehicle/UI gaps and validation. This is an audit only; audio implementation and asset selection remain future work. Background music is excluded.
+
 This is the intended next evolution of the game, **not merely an optional cosmetic mode**. The user wants terrain, units, audio/SFX and light animation to add life and crunch that cards and counters cannot provide.
 
 - Model terrain and units; make locations and cover visually tangible.
