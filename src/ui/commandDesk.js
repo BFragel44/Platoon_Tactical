@@ -1,17 +1,29 @@
+import {mapBoundaryLayout} from './mapBoundaries.js';
 import './commandDesk.css';
 export const deskEscape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-export function deskHeader(title,subtitle,steps=[],current=''){
- return `<header class="desk-header"><div><p class="desk-kicker">Battalion command … Normandy</p><h2>${deskEscape(title)}</h2><p>${deskEscape(subtitle)}</p></div>${steps.length?`<ol class="desk-sequence" aria-label="Preparation progress">${steps.map(s=>`<li ${s===current?'aria-current="step"':''}>${deskEscape(s)}</li>`).join('')}</ol>`:''}</header>`;
+// Both first setup and later patrols use public controls from the current draft.
+export function preparationMapControls({objectives={},phase_lines={},patrol=null}){
+ const goals=structuredClone(objectives);
+ if(patrol){
+  delete goals.secondary;delete goals.attack;
+  for(const key of ['primary','ccp','cop','concentration'])if(patrol[key])goals[key]={location:patrol[key]};
+  for(const [index,location] of (patrol.route??[]).entries())goals[`Route ${index+1}`]={location};
+ }
+ return {objectives:goals,phaseLines:structuredClone(phase_lines??{}),mlr:patrol?[1,2]:null};
 }
-export function deploymentMapMarkup({locations,objectives={},placements={},selected=null,selectedLabel='',allowed=[]}){
+export function deskHeader(title,subtitle,steps=[],current='',interactive=false){
+ return `<header class="desk-header"><div><p class="desk-kicker">Battalion command … Normandy</p><h2>${deskEscape(title)}</h2><p>${deskEscape(subtitle)}</p></div>${steps.length?`<ol class="desk-sequence" aria-label="Preparation sections">${steps.map((s,i)=>interactive?`<li><button type="button" data-desk-step="${i}" ${s===current?'aria-current="step"':''}>${deskEscape(s)}</button></li>`:`<li ${s===current?'aria-current="step"':''}>${deskEscape(s)}</li>`).join('')}</ol>`:''}</header>`;
+}
+export function deploymentMapMarkup({locations,objectives={},placements={},selected=null,selectedLabel='',allowed=[],phaseLines={},mlr=null}){
  if(!locations.length)return '';
- const min=Math.min(...locations.map(l=>l.col)),max=Math.max(...locations.map(l=>l.col)),top=Math.max(...locations.map(l=>l.row));
+ const layout=mapBoundaryLayout({locations,phase_lines:phaseLines,patrol:mlr?.length?{}:null});
+ const min=Math.min(...locations.map(l=>l.col)),max=Math.max(...locations.map(l=>l.col));
  return `<section class="desk-map" aria-label="Public deployment map"><h3>Deployment map</h3>${selectedLabel?`<p><b>Selected … ${deskEscape(selectedLabel)}</b></p>`:''}<p>Choose a formation, then a permitted card. Unknown terrain remains concealed.</p><div class="desk-map-grid" style="--map-columns:${max-min+1}">${locations.map(l=>{
-  const name=l.staging?l.name:l.known===false?`${l.row}.${l.col} Unrevealed terrain`:l.name;
-  const goals=Object.entries(objectives).filter(([,o])=>(o?.location??o)===l.id).map(([key])=>({primary:'Primary',secondary:'Secondary',attack:'Attack',ccp:'CCP',cop:'Outpost'})[key]??key);
+  const name=l.staging?l.name:l.known===false?`${l.row}.${l.col}`:l.name;
+  const goals=Object.entries(objectives).filter(([,o])=>(o?.location??o)===l.id).map(([key])=>({primary:'Primary',secondary:'Secondary',attack:'Attack',ccp:'CCP',cop:'Outpost',concentration:'Concentration'})[key]??key);
   const occupants=Object.entries(placements).filter(([,id])=>id===l.id).map(([id])=>id);
-  return `<button type="button" class="desk-map-card ${l.known===false?'unknown':''} ${placements[selected]===l.id?'selected':''}" data-deploy-card="${deskEscape(l.id)}" ${allowed.includes(l.id)?'':'disabled'} style="grid-column:${l.col-min+1};grid-row:${top-l.row+1}" aria-label="Deploy selected formation to ${deskEscape(name)}"><b>${deskEscape(name)}</b>${goals.length?`<strong>${goals.map(deskEscape).join(' · ')}</strong>`:''}${occupants.length?`<small>${occupants.length} formation${occupants.length===1?'':'s'}</small>`:''}</button>`;
- }).join('')}</div><p>Only public terrain and friendly deployment choices are shown.</p></section>`;
+  return `<button type="button" class="desk-map-card ${l.known===false?'unknown':''} ${placements[selected]===l.id?'selected':''}" data-deploy-card="${deskEscape(l.id)}" ${allowed.includes(l.id)?'':'disabled'} style="${layout.cardStyle(l)}" aria-label="Deploy selected formation to ${deskEscape(name)}"><b>${deskEscape(name)}</b>${goals.length?`<strong>${goals.map(deskEscape).join(' · ')}</strong>`:''}${occupants.length?`<small>${occupants.length} formation${occupants.length===1?'':'s'}</small>`:''}</button>`;
+ }).join('')}${layout.boundaries.map(line=>`<div class="desk-map-line" style="grid-column:1/-1;grid-row:${line.gridRow}"><span>${deskEscape(line.label.replace(/MLR .*/, 'MLR'))}</span></div>`).join('')}</div><p>Only public terrain and friendly deployment choices are shown.</p></section>`;
 }
 export function bindDeskKeyboard(panel,close,previous=document.activeElement){
  const keyboard=e=>{

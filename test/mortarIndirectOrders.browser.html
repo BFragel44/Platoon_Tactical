@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mortar order checks</title><body>
+<main style="max-width:600px;margin:24px auto"><h1>60mm mortar indirect fire</h1><p>Isolated command-menu check. No campaign data is read or saved.</p>
+<button id="ready">Ready section</button><button id="empty">No ammunition</button><button id="lost">Observer eliminated</button><section id="orders" class="panel" style="margin-top:18px"></section></main>
+<script type="module">
+import '/src/style.css';import '/src/ui/company.css';
+import {createMission} from '/src/sim/company/engine.js';import {trevieres} from '/src/scenarios/trevieres.js';
+import {spot} from '/src/sim/company/battlefield.js';import {commandOptions} from '/src/sim/company/actions.js';
+function render(mode){
+ const s=createMission(trevieres,'mortar-menu-check');s.phase='GENERAL_INITIATIVE';s.impulse={id:'check',hq:'general',commands:6,spent:0};
+ s.units.co.location='r2c2';s.units.co.cover=null;const mortar=s.units.mortar_section;mortar.location='r1c1';mortar.cover=null;s.locations.r1c1.terrain='fields';
+ s.units.enemy={...structuredClone(s.units.s11),id:'enemy',name:'Test enemy',faction:'enemy',location:'r2c3',cover:null,fire:null};spot(s,s.units.enemy);
+ if(mode==='empty')mortar.ammo.MTR=0;if(mode==='lost')s.units.co.removed='ELIMINATED';
+ const option=commandOptions(s,mortar,'co').find(o=>o.type==='INDIRECT');
+ document.querySelector('#orders').innerHTML=`<h2>60mm Mortar Section</h2><p>3 steps · ${mortar.ammo.MTR} mortar ammunition</p><label>Order<select><option>${option.label} (1)</option></select></label><p class="order-help">${option.help}</p><p>Observer: Company HQ · Target: 2.3</p><button ${option.available?'':'disabled'}>Issue order · 1 command</button><p role="status">${option.available?'Ready to fire.':option.reason}</p>`;
+}
+for(const [id,mode]of [['ready','ready'],['empty','empty'],['lost','lost']])document.querySelector('#'+id).onclick=()=>render(mode);render('ready');
+</script></body></html>

@@ -101,11 +101,22 @@ export function beginCompanyPreparation(record,mission){
 }
 export function prepareCompany(record,operation){
  const next=clone(validateRecord(record)),p=next.preparation,r=next.roster;
+ if(operation.type==='REVISIT'){
+  if(!['PREPARATION','PREPARED'].includes(next.stage)||!['RECONSTITUTE','REPLACEMENTS','SKILLS'].includes(operation.phase))throw new Error('No editable company preparation section.');
+  if(next.stage==='PREPARED'){
+   if(!p.before_completion)throw new Error('Restore the preparation completion record before editing.');
+   next.roster=clone(p.before_completion.roster);next.roster.revision=r.revision+1;
+   p.points=p.before_completion.points;p.replacements=clone(p.before_completion.replacements);
+   delete p.before_completion;delete next.history.at(-1).preparation;
+  }
+  next.stage='PREPARATION';p.phase=operation.phase;p.operations.push(clone(operation));next.revision++;return next;
+ }
  if(next.stage!=='PREPARATION')throw new Error('No pending company preparation.');
  const allowed=['RECONSTITUTE','REPLACEMENTS','SKILLS'];
  if(operation.type==='NEXT'){
   const i=allowed.indexOf(p.phase);if(i<0)throw new Error('Preparation already complete.');
   if(i===2){
+   p.before_completion={roster:clone(r),points:p.points,replacements:clone(p.replacements)};
    for(const f of Object.values(r.formations)){if(f.step_ids.length){f.experience=combinedExperience(f.step_ids.map(id=>r.steps[id]));for(const id of f.step_ids)r.steps[id].experience=f.experience;}}
    p.points=0;p.replacements={green:0,veteran:0};p.phase='COMPLETE';next.stage='PREPARED';r.supply_policy='RESET_FROM_DESTINATION_CONTENT';r.revision++;
   }else p.phase=allowed[i+1];
@@ -114,12 +125,13 @@ export function prepareCompany(record,operation){
   const t=r.steps[operation.step],f=r.formations[operation.target];
   if(!t||p.attachment_steps.includes(t.id)||t.disposition!=='ACTIVE'||!f||!p.fieldable.includes(f.id)||p.attachments.includes(f.id)||f.kind==='FO'||f.step_ids.length>=f.capacity)throw new Error('Invalid company transfer.');
   const old=Object.values(r.formations).find(x=>x.step_ids.includes(t.id));if(old&&p.attachments.includes(old.id))throw new Error('Attachments cannot donate company steps.');if(old?.id===f.id)throw new Error('Step already belongs to formation.');
+  if(old?.step_ids.length===1&&(r.prepared_skills??[]).some(s=>s.holder===old.id))throw new Error('A formation holding assigned skills must retain a surviving step.');
   if(['HQ','STAFF'].includes(f.kind)&&!f.step_ids.length){p.new_hq.push(f.id);p.new_hq_steps.push(t.id);t.experience='Green';}
   if(old)old.step_ids=old.step_ids.filter(id=>id!==t.id);p.available=p.available.filter(id=>id!==t.id);f.step_ids.push(t.id);t.formation_id=f.id;
  }else if(operation.type==='PROMOTE'){
   if(p.phase!=='RECONSTITUTE')throw new Error('Promotions precede replacements.');
   const t=r.steps[operation.step],f=Object.values(r.formations).find(x=>x.step_ids.includes(t?.id));
-  if(!f||t.disposition!=='ACTIVE'||p.attachment_steps.includes(t.id)||!p.fieldable.includes(f.id)||p.attachments.includes(f.id)||f.kind==='FO'||p.new_hq.includes(f.id)||p.new_hq_steps.includes(t.id)||p.promoted.includes(t.id)||p.patrol&&!p.eligible_steps.includes(t.id))throw new Error('Step cannot be promoted.');
+  if(!f||t.disposition!=='ACTIVE'||t.id.startsWith(`${next.id}_replacement_`)||p.attachment_steps.includes(t.id)||!p.fieldable.includes(f.id)||p.attachments.includes(f.id)||f.kind==='FO'||p.new_hq.includes(f.id)||p.new_hq_steps.includes(t.id)||p.promoted.includes(t.id)||p.patrol&&!p.eligible_steps.includes(t.id))throw new Error('Step cannot be promoted.');
   const cost=t.experience==='Green'?1:t.experience==='Line'?3:Infinity;if(p.points<cost)throw new Error('Insufficient experience.');
   p.points-=cost;t.experience=t.experience==='Green'?'Line':'Veteran';p.promoted.push(t.id);
  }else if(operation.type==='REPLACE'){

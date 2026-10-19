@@ -1,9 +1,10 @@
 <!doctype html><html lang="en"><meta charset="utf-8"><title>Command desk acceptance inputs</title><body>
 <h1>Command desk acceptance inputs</h1><p>Isolated port 5183 only. Loads previously recorded legal connected M1/M2 runs into the test campaign slot. No user-origin records are touched.</p>
 <button id="m1">Load successful M1 for debrief</button><button id="m2">Load failed M2 first attempt</button><p id="status" role="status"></p><a href="/#aar">Open normal game with stale AAR fragment</a>
-<p>Additional isolated component checks:</p><button id="patrol">Open next-patrol preparation</button><button id="vehicle">Open controlled Vire reattempt</button><button id="patrol-page">Load completed patrol for separate-page check</button><main id="fixture-root"></main>
+<p>Additional isolated component checks:</p><button id="patrol">Open next-patrol preparation</button><button id="vehicle">Open controlled Vire reattempt</button><button id="patrol-page">Load completed patrol for separate-page check</button><button id="setup-preview">Open Cerisy setup preview</button><button id="patrol-preview">Open patrol setup preview</button><main id="fixture-root"></main>
 <script type="module">
 import '/src/style.css';import '/src/ui/company.css';import '/src/ui/workspace.css';
+import {openMissionSetup} from '/src/ui/missionSetup.js';
 import {openReattemptSetup,openPatrolSetup} from '/src/ui/reattemptSetup.js';
 import {stGeorges} from '/src/scenarios/stGeorges.js';
 import {createVireDevelopmentMission} from '/src/sim/company/vireMission.js';
@@ -16,6 +17,8 @@ import {newCompanyCampaign,beginCompanyPreparation,prepareCompany,PREPARATION_KE
 import {commitCampaignMission} from '/src/sim/company/campaignProgression.js';
 import {replayMission,createMission,endTurn} from '/src/sim/company/engine.js';
 import {saveCampaignRecovery} from '/src/ui/campaignRecovery.js';
+document.querySelector('#setup-preview').onclick=()=>openMissionSetup(document.querySelector('#fixture-root'),cerisy,'preview-layout',()=>{});
+document.querySelector('#patrol-preview').onclick=()=>openMissionSetup(document.querySelector('#fixture-root'),stGeorges,'preview-layout',()=>{});
 async function load(m2){try{
  if(location.port!=='5183')throw Error('Dedicated test origin required.');
  const data=await(await fetch('/output/connected-campaign/m1-m2-39.json')).json(),old=readCompanyPreparation(localStorage);

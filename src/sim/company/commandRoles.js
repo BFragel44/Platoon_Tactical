@@ -4,5 +4,15 @@ export const canActivateSubordinates=u=>u?.capabilities?.activate_subordinates??
 export const canCommandCompany=u=>u?.capabilities?.company_orders??(isCompanyCommander(u)||u?.kind==='STAFF');
 export const commandHub=s=>Object.values(s.units).find(u=>u.command_role==='company_commander')??s.units.co;
 export const higherCommander=s=>Object.values(s.units).filter(u=>u.command_role==='higher_hq'&&u.steps.length&&!u.removed&&u.cohesion==='GOOD').sort((a,b)=>(a.capabilities?.higher_priority??99)-(b.capabilities?.higher_priority??99)||a.id.localeCompare(b.id))[0];
+// Numeric priority is the legacy Normandy visitor profile; preserve old records.
+export const higherHQProfile=u=>u?.command_role==='higher_hq'?(u.higher_hq_profile??['REGIMENTAL_STAFF','BATTALION_COMMANDER','BATTALION_STAFF'][u.capabilities?.higher_priority]??null):null;
+export const canUseCompanyNet=(s,u)=>{
+ if(u?.kind==='FO')return false;
+ const profile=higherHQProfile(u);
+ if(profile==='REGIMENTAL_STAFF')return false;
+ if(profile==='BATTALION_STAFF'||profile==='BATTALION_COMMANDER')return u.location===companyCommander(s)?.location;
+ return u?.command_role!=='higher_hq';
+};
+export const canUseBattalionNet=u=>isCompanyCommander(u)||['BATTALION_COMMANDER','BATTALION_STAFF'].includes(higherHQProfile(u));
 // Legacy course/KUTF identifiers remain inside this compatibility adapter.
-export const successionPriority=u=>u?.capabilities?.succession_priority??(u?.id==='xo'?-1:u?.kind==='HQ'?0:u?.id==='artyfo'?1:u?.kind==='STAFF'?2:99);
+export const successionPriority=u=>u?.command_role==='higher_hq'?99:u?.capabilities?.succession_priority??(u?.id==='xo'?-1:u?.kind==='HQ'?0:u?.id==='artyfo'?1:u?.kind==='STAFF'?2:99);

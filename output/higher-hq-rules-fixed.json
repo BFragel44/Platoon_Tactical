@@ -1,0 +1,281 @@
+{
+  "scope": "Higher HQ/staff communications and succession audit",
+  "passed": true,
+  "results": [
+    {
+      "id": "SF-12",
+      "rule": "4.3.3 p.28",
+      "case": "REGIMENTAL_STAFF recovers CO and uses CO TAC from another card",
+      "expected": {
+        "pickup": true,
+        "commandNet": false
+      },
+      "observed": {
+        "pickup": true,
+        "commandNet": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-12",
+      "rule": "4.3.3 p.28",
+      "case": "REGIMENTAL_STAFF recovers CO_PHONE and uses CO TAC from another card",
+      "expected": {
+        "pickup": true,
+        "commandNet": false
+      },
+      "observed": {
+        "pickup": true,
+        "commandNet": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-12",
+      "rule": "4.3.3 p.28",
+      "case": "BATTALION_STAFF recovers CO and uses CO TAC from another card",
+      "expected": {
+        "pickup": true,
+        "commandNet": false
+      },
+      "observed": {
+        "pickup": true,
+        "commandNet": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-12",
+      "rule": "4.3.3 p.28",
+      "case": "BATTALION_STAFF recovers CO_PHONE and uses CO TAC from another card",
+      "expected": {
+        "pickup": true,
+        "commandNet": false
+      },
+      "observed": {
+        "pickup": true,
+        "commandNet": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-13",
+      "rule": "4.1.1 p.18; 4.3.3 p.28",
+      "case": "BATTALION_COMMANDER activates CO over working BN radios from an adjacent card",
+      "expected": {
+        "communication": true,
+        "activated": true
+      },
+      "observed": {
+        "communication": true,
+        "activated": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-13",
+      "rule": "4.1.1 p.18; 4.3.3 p.28",
+      "case": "BATTALION_STAFF activates CO over working BN radios from an adjacent card",
+      "expected": {
+        "communication": true,
+        "activated": true
+      },
+      "observed": {
+        "communication": true,
+        "activated": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-14",
+      "rule": "6.5.2B p.49",
+      "case": "REGIMENTAL_STAFF offered as donor to replace eliminated Company HQ",
+      "expected": {
+        "accepted": false,
+        "visitorConsumed": false
+      },
+      "observed": {
+        "accepted": false,
+        "visitorConsumed": false,
+        "reason": "Visiting higher HQ officers cannot be used to reconstitute company or platoon HQs."
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-14",
+      "rule": "6.5.2B p.49",
+      "case": "BATTALION_COMMANDER offered as donor to replace eliminated Company HQ",
+      "expected": {
+        "accepted": false,
+        "visitorConsumed": false
+      },
+      "observed": {
+        "accepted": false,
+        "visitorConsumed": false,
+        "reason": "Visiting higher HQ officers cannot be used to reconstitute company or platoon HQs."
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-14",
+      "rule": "6.5.2B p.49",
+      "case": "BATTALION_STAFF offered as donor to replace eliminated Company HQ",
+      "expected": {
+        "accepted": false,
+        "visitorConsumed": false
+      },
+      "observed": {
+        "accepted": false,
+        "visitorConsumed": false,
+        "reason": "Visiting higher HQ officers cannot be used to reconstitute company or platoon HQs."
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.3.1 p.27",
+      "case": "Visitor and CO communicate by same-area voice",
+      "expected": {
+        "communication": true
+      },
+      "observed": {
+        "communication": true
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "6.5.2B p.49",
+      "case": "Company XO remains eligible to replace CO",
+      "expected": {
+        "accepted": true
+      },
+      "observed": {
+        "accepted": true
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.0 command reference p.18",
+      "case": "co command authority over hq1",
+      "expected": {
+        "authority": true
+      },
+      "observed": {
+        "authority": true
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.0 command reference p.18",
+      "case": "xo command authority over hq1",
+      "expected": {
+        "authority": true
+      },
+      "observed": {
+        "authority": true
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.0 command reference p.18",
+      "case": "staff command authority over hq1",
+      "expected": {
+        "authority": true
+      },
+      "observed": {
+        "authority": true
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.0 command reference p.18",
+      "case": "staff command authority over xo",
+      "expected": {
+        "authority": false
+      },
+      "observed": {
+        "authority": false
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.0 command reference p.18",
+      "case": "xo command authority over co",
+      "expected": {
+        "authority": false
+      },
+      "observed": {
+        "authority": false
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.0 command reference p.18",
+      "case": "hq1 command authority over s11",
+      "expected": {
+        "authority": true
+      },
+      "observed": {
+        "authority": true
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.0 command reference p.18",
+      "case": "hq1 command authority over s21",
+      "expected": {
+        "authority": false
+      },
+      "observed": {
+        "authority": false
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.0 p.18",
+      "case": "Platoon HQ can command a LAT from another platoon",
+      "expected": {
+        "authority": true
+      },
+      "observed": {
+        "authority": true
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.1.4 p.20",
+      "case": "HQ Fire Team cannot issue movement orders to a subordinate",
+      "expected": {
+        "accepted": false
+      },
+      "observed": {
+        "accepted": false,
+        "reason": "A degraded HQ can only order itself."
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.1.4 p.20",
+      "case": "CO cannot activate HQ on its Fire Team side",
+      "expected": {
+        "available": false
+      },
+      "observed": {
+        "available": false,
+        "reason": "Choose a command-side, unactivated subordinate HQ in communication."
+      },
+      "passed": true
+    }
+  ]
+}

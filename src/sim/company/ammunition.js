@@ -1,6 +1,24 @@
 import {emit,visible} from './core.js';
 
 export const AMMO_CAPACITY={MG:6,MTR:2,RKT:3,GUN:3};
+export function basicFireAmmoKey(u){
+ if(u.out_of_ammo||u.cohesion==='F'&&['S','A/S'].includes(u.fire_team_vof))return null;
+ return u.ammo?.MG!==undefined?'MG':u.kind==='MORTAR'&&u.ammo?.MTR!==undefined&&u.steps.length>1?'MTR':u.ammo?.GUN!==undefined&&u.basic_ammo!==false?'GUN':null;
+}
+export function concentrateAmmoReason(s,u){
+ const key=basicFireAmmoKey(u);
+ return s.mission_rules?.ammo==='tracked'&&key&&(u.ammo[key]??0)<2?'Need two ammunition points: one for successful concentrated fire and one for normal fire this turn.':null;
+}
+export function ammunitionResupplied(s,u,key){
+ const weaponKey=u.kind==='MORTAR'?'MTR':u.kind==='AT'?(u.grenade_ammo??'RKT'):['MG','LMG','HMG'].includes(u.kind)?'MG':u.ammo?.GUN!==undefined?'GUN':null;
+ // Carried ammunition for another weapon cannot restore this counter's weapon.
+ if(weaponKey&&weaponKey!==key)return;
+ u.out_of_ammo=false;
+ if(weaponKey&&u.named&&!['HQ','STAFF','FO','LAT','SQUAD','RUNNER'].includes(u.kind)&&u.steps.length===1&&u.cohesion==='F'){
+  u.cohesion='GOOD';u.experience=u.original_experience??u.experience;
+  emit(s,'COHESION_CHANGED',`${u.name}: ammunition resupply restored its weapon side.`,{actor:visible(s,u)?u.id:null,from:'F',to:'GOOD',reason:'AMMO_RESUPPLY'},!visible(s,u));
+ }
+}
 export function ammoLoadReason(s,u,extra={}){
  if(s.mission_rules?.ammo!=='tracked')return null;
  if(u.kind==='MORTAR'&&u.steps.length>1)return null; // Section has its own ammo bearers.
@@ -58,7 +76,7 @@ export function pickUpAmmunition(s,u,asset){
    u.initial_resources.ammo[asset.key]=(u.initial_resources.ammo[asset.key]??0)+transferred;
   }else if(!source)u.initial_resources.ammo[asset.key]=Math.max(u.initial_resources.ammo[asset.key]??0,u.ammo[asset.key]);
  }
- u.out_of_ammo=false;
+ ammunitionResupplied(s,u,asset.key);
  asset.quantity-=quantity;if(!asset.quantity)s.assets=s.assets.filter(a=>a.id!==asset.id);
  emit(s,'AMMO_RESUPPLIED',`${u.name} picked up ${quantity} ${asset.key} ammunition.`,{actor:u.id,location:u.location,key:asset.key,quantity});
 }

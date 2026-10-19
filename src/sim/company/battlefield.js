@@ -1,7 +1,7 @@
 import {vehicleFireSources,vehicleFireSource,storeVehicleFire,vehicleBasicTargets,vehicleOnlyBasicBlocked} from './vehicleFire.js';
 import {visibilityLosLimit,visibilityFireModifier,illuminationReductionsAt} from './visibility.js';
 import {transportReason} from './core.js';
-import {commandHub,canCommandCompany,isCompanyCommander} from './commandRoles.js';
+import {commandHub,canCommandCompany,isCompanyCommander,canUseCompanyNet,canUseBattalionNet} from './commandRoles.js';
 import {ammoLoadReason} from './ammunition.js';
 import {phoneConnected} from './phoneNetwork.js';
 import { whiteBorder as white, direction } from './terrain.js';
@@ -59,6 +59,14 @@ export function explainUnitCard(s,u,id,max=3){
   return ground;
 }
 export const seesCard=(s,u,id,max=3)=>explainUnitCard(s,u,id,max).visible;
+// A PDF fixes a bearing, not the distance to the currently receiving card.
+export function followsExistingPdf(s,u,target){
+ const a=s.locations[u.location],b=s.locations[target];if(!a||!b)return false;
+ const pdfs=occupants(s,u.location).filter(v=>v.faction===u.faction).flatMap(v=>[
+  ...(v.fire&&v.fire!==u.location&&canFire(s,v,v.fire)?[v.fire]:[]),
+  ...(v.temporary_pdf?.target&&v.temporary_pdf.target!==u.location&&s.locations[v.temporary_pdf.target]?[v.temporary_pdf.target]:[])]);
+ return !pdfs.length||pdfs.some(id=>{const l=s.locations[id];return Math.sign(l.row-a.row)===Math.sign(b.row-a.row)&&Math.sign(l.col-a.col)===Math.sign(b.col-a.col);});
+}
 export function communicationLos(s,from,to) {
   const a=s.locations[from],b=s.locations[to];
   if(!a||!b)return false;
@@ -77,6 +85,10 @@ export function communicationChannels(s,issuer,u,rally=false) {
   if (issuer.location === u.location && issuer.cover === u.cover && (rally || (!issuer.pinned && !u.pinned))) channels.push('Visual / verbal');
     const networkReady=v=>s.mission_rules?.specialEnemies?['GOOD','A','F'].includes(v.cohesion):v.cohesion==='GOOD';
     if (!networkReady(issuer) || !networkReady(u)) return channels;
+  // SCR300 BN TAC is independent of CO TAC hardware/LOS and needs both devices.
+  if(issuer.faction===u.faction&&canUseBattalionNet(issuer)&&canUseBattalionNet(u)&&issuer.radios.includes('BN')&&u.radios.includes('BN'))channels.push('BN radio network · SCR300');
+  // Carriage of a recovered device does not confer permission to use its net.
+  if(!canUseCompanyNet(s,issuer)||!canUseCompanyNet(s,u))return channels;
   if(s.mission_rules?.communications==='phones'){
    const hub=commandHub(s);
    const ready=v=>live(v)&&v.radios.includes('CO_PHONE')&&live(hub)&&hub.radios.includes('CO_PHONE')&&phoneConnected(s,v.location,hub.location);
@@ -93,10 +105,21 @@ export function communicationChannels(s,issuer,u,rally=false) {
 }
 // Keep the historical priority and public return value for command execution.
 export const communication=(s,issuer,u,rally=false)=>communicationChannels(s,issuer,u,rally)[0]??null;
+export function mortarCommunication(s,issuer,u){
+ const direct=communication(s,issuer,u);if(direct)return direct;
+ if(!good(issuer)||!good(u)||u.kind!=='MORTAR'||u.steps.length<2)return null;
+ for(const relay of values(s.units).filter(v=>v.id!==u.id&&good(v)&&v.faction===u.faction&&['HQ','STAFF'].includes(v.kind)&&v.location===u.location&&v.cover===u.cover&&v.radios.some(net=>['CO','CO_PHONE'].includes(net)))){
+  const channel=communication(s,issuer,relay);
+  if(channel)return `${channel} · mortar relay via ${relay.name}`;
+ }
+ return null;
+}
 export function communicationReason(s,issuer,u,rally=false) {
   if(!issuer)return 'No issuing HQ selected.';
   const channel=communication(s,issuer,u,rally);
   if(channel)return channel;
+  if(issuer.kind==='FO'||u.kind==='FO')return 'Forward observers cannot use the CO TAC radio or phone network. The ordering HQ and observer need unpinned voice contact in the same card area (rally excepted), or the observer must act during General Initiative.';
+  if(issuer.command_role==='higher_hq'||u.command_role==='higher_hq')return 'Higher HQ communication requires same-area voice or an eligible working radio network. Regimental staff cannot use CO TAC; battalion visitors must be with Company HQ to use CO TAC. BN TAC needs eligible endpoints with BN radios.';
   if(s.mission_rules?.communications==='simplified')return `${issuer.name} must be an unpinned command-side HQ/staff; the recipient must share its card or be another unpinned HQ/staff.`;
   if(s.mission_rules?.communications==='phones')return `${issuer.name} cannot reach ${u.name}. They need matching-cover voice contact or working CO field phones connected through an intact phone line to Company HQ.`;
   return `${issuer.name} at ${s.locations[issuer.location].name}${issuer.cover?' under cover':''} cannot reach ${u.name} at ${s.locations[u.location].name}${u.cover?' under cover':''}. Same-area voice needs matching cover and unpinned units (rally excepted); CO radios need an uncovered, working Company HQ link. Observer radios only reach fire-support agencies.`;
@@ -130,9 +153,17 @@ export function canFire(s,u,id) {
   return true;
 }
 export const grazingCapable=u=>u.mission_weapon&&u.tripod&&(!u.tripod_good_only||u.cohesion==='GOOD')&&!u.out_of_ammo&&['GOOD','F'].includes(u.cohesion);
+// Aim at an actually visible opposing occupant; an upper story can establish
+// the path, while Basic VOF still affects its entire receiving card (§5.2.1).
+function fireAimElevation(s,u,target){
+  const eligible=fireTargets(s,u).filter(t=>t.location===target&&t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id])&&unitLos(s,u,t,rangeOf(u)));
+  return Math.max(s.locations[target].elevation,...eligible.map(t=>unitElevation(s,t)));
+}
 export function overheadAllowed(s,u,target,intervening){
   if(!u.mission_weapon||u.out_of_ammo||(!grazingCapable(u)&&vofOf(u)!=='H'))return false;
-  const from=unitElevation(s,u),to=s.locations[target].elevation,mid=s.locations[intervening].elevation;
+  const from=unitElevation(s,u),to=fireAimElevation(s,u,target);
+  // Every occupied level must be clear, including mixed ground/upper stories.
+  const mid=Math.max(s.locations[intervening].elevation,...fireTargets(s,u).filter(t=>t.location===intervening).map(t=>unitElevation(s,t)));
   return mid<=Math.min(from,to)&&mid<Math.max(from,to);
 }
 // One weapon/direction can exert VOF on several cards. Overflown cards receive none.
@@ -140,7 +171,7 @@ export function basicFireTargets(s,u,target){
   if(!canFire(s,u,target))return [];
   if(!grazingCapable(u)||target===u.location)return [target];
   const a=s.locations[u.location],b=s.locations[target],dr=Math.sign(b.row-a.row),dc=Math.sign(b.col-a.col);
-  const aimDistance=distance(a,b),slope=Math.sign(b.elevation-unitElevation(s,u)),targets=[];
+  const aimDistance=distance(a,b),aimElevation=fireAimElevation(s,u,target),slope=Math.sign(aimElevation-unitElevation(s,u)),targets=[];
   let previous=unitElevation(s,u);
   for(let i=1;i<=rangeOf(u);i++){
     const id=`r${a.row+dr*i}c${a.col+dc*i}`,l=s.locations[id];
@@ -150,9 +181,9 @@ export function basicFireTargets(s,u,target){
       continue;
     }
     if(!canFire(s,u,id))break;
-    const change=Math.sign(l.elevation-previous);
+    const level=i===aimDistance?aimElevation:l.elevation,change=Math.sign(level-previous);
     if(change&&change!==slope)break;
-    targets.push(id);previous=l.elevation;
+    targets.push(id);previous=level;
     if(screen(s,id))break;
   }
   return targets;
@@ -251,7 +282,7 @@ export function refresh(s) {
     if(u.fire)establish(`${u.faction}:${u.location}`,u.fire);
   }
   const selectionSnapshot={units:structuredClone(s.units)};
-  const indirectUnits=values(s.units).filter(u=>live(u)&&u.indirect&&!u.exposed&&u.steps.length>=2&&u.cohesion==='GOOD'&&!u.pinned&&u.indirect!==u.location&&!['Building','Bunker','Deep Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type)&&s.locations[u.location].terrain!=='woods');
+  const indirectUnits=values(s.units).filter(u=>live(u)&&u.indirect&&!u.out_of_ammo&&u.ammo?.MTR!==0&&!u.exposed&&u.steps.length>=2&&u.cohesion==='GOOD'&&!u.pinned&&u.indirect!==u.location&&!['Building','Bunker','Deep Bunker','Cave','Pillbox'].includes(coverOf(s,u)?.type)&&s.locations[u.location].terrain!=='woods');
   const projectedFire=sources.filter(u=>live(u)&&u.fire&&canFire(s,u,u.fire)&&!indirectUnits.includes(u)).map(u=>({source:u.id,origin:u.location,value:basicValue(u,distance(s.locations[u.location],s.locations[u.fire]))})).filter(f=>f.value!==null).concat(indirectUnits.map(u=>({source:u.id,origin:u.location,value:-3})));
   for (const u of sources.filter(live)) {
     if (fireTargets(s,u).some(t=>t.location===u.location&&t.faction!==u.faction&&(!friendly(u)||s.knowledge.spotted[t.id]))&&canFire(s,u,u.location))u.fire=u.location;
@@ -331,7 +362,7 @@ export function combatExposure(s,u) {
   const candidates=[...fire.map(f=>({kind:f.indirect?'ON_MAP_INDIRECT':'BASIC_FIRE',source_id:f.source,origin:f.origin,value:f.value+smoke+(f.indirect?terrain.burst:0),vof:f.value,smoke,burst:f.indirect?terrain.burst:0,blast:false})),
     ...indirect.map(f=>({kind:'OFF_MAP_SUPPORT',source_id:null,origin:f.location,value:f.value+terrain.burst,vof:f.value,smoke:0,burst:terrain.burst,blast:true,label:f.agency?`Incoming ${f.agency.includes('mortar')?'mortar':'artillery'} ${f.ammo??'HE'}`:f.value===-3?'Incoming mortar fire':'Incoming artillery'})),
     ...effects.map(m=>({kind:m.type,source_id:m.source??null,origin:m.origin??s.units[m.source]?.location??m.location,value:m.value+(m.type==='SNIPER'?smoke:0),vof:m.value,smoke:m.type==='SNIPER'?smoke:0,burst:0,blast:m.type==='GRENADE',...(m.label?{label:m.label}:{}),...(m.weapon?{label:m.weapon==='WP'?'WP grenade effect':'On-map mortar grenade effect'}:{})}))];
-  if(miss&&!fire.length&&!indirect.length&&!grenades.length) candidates.push({value:0+smoke,blast:false});
+  if(miss&&!fire.length&&!indirect.length&&!grenades.length) candidates.push({...(s.mission_rules?.grenadeMissVisibility===true?{kind:'BASIC_FIRE'}:{}),value:0+smoke,blast:false});
   const stack=cover ? occupants(s,u.location).filter(t=>t.cover===cover.id).reduce((n,t)=>n+t.steps.length,0) : 0;
   for(const c of candidates){if(s.visibility){const kind=({BASIC_FIRE:'basic',ON_MAP_INDIRECT:'on_map_indirect',SNIPER:'sniper'})[c.kind]??'off_map';c.visibility=visibilityFireModifier(s.visibility,illuminationReductionsAt(s.markers.filter(m=>m.type==='ILLUMINATION'),u.location,s.locations),kind);c.value+=c.visibility;}c.overcrowding=c.blast?-Math.max(0,stack-3):0;c.value+=c.overcrowding;}
   candidates.sort((a,b)=>a.value-b.value||String(a.source_id??a.kind).localeCompare(String(b.source_id??b.kind)));

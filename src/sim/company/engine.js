@@ -107,7 +107,7 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
   }
   s.boundaries=scenario.map?{rows:scenario.map.rows,columns:scenario.map.columns}:null;
   s.terrain_deck=structuredClone(scenario.terrain_deck??[]);s.setup=structuredClone(setup);s.mission_name=scenario.name??'Company Assault';
-  s.mission_rules={...structuredClone(scenario.rules??{}),combatResolver:'action-deck-v1',hiddenTerrain:!!scenario.map?.hidden};
+  s.mission_rules={...structuredClone(scenario.rules??{}),combatResolver:'action-deck-v1',...(execution.grenade_miss_visibility===false?{}:{grenadeMissVisibility:true}),hiddenTerrain:!!scenario.map?.hidden};
   s.enemy_tactics=s.mission_rules.tactics??'deliberate_defense';
   s.attempt_number=1;
   if(scenario.rules?.missionIdentity)s.mission_instance_id??=execution.mission_instance_id??globalThis.crypto.randomUUID();
@@ -431,7 +431,7 @@ export function getAfterActionReport(s) {
   return {record_type:'AAR',ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,scenario_version:s.scenario_version,mission_instance_id:s.mission_instance_id??null,attempts:structuredClone(s.attempt_history??[]),seed:s.seed,setup:structuredClone(s.setup),achievements:structuredClone(s.achievements),score:s.achievements.reduce((n,a)=>n+a.points,0),outcome:s.status,turns:s.turn,events,orders:events.filter(e=>e.type==='COMMAND_ISSUED'),casualties:events.filter(e=>e.type==='CASUALTY'),
     formations:events.filter(e=>['FORMATION_CHANGED','FORMATION_RECONSTITUTED','HQ_RECONSTITUTED','COHESION_CHANGED','UNIT_CAPTURED'].includes(e.type)),objectives:events.filter(e=>['OBJECTIVE_CHECK','MISSION_ENDED'].includes(e.type))};
 }
-export function exportReplay(s) { if(s.vire_runtime)return exportVireAdapterReplay(s.vire_runtime.initial_state,s);return {...(s.mission_rules?.combatResolver?{combat_resolver:s.mission_rules.combatResolver}:{}),ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
+export function exportReplay(s) { if(s.vire_runtime)return exportVireAdapterReplay(s.vire_runtime.initial_state,s);return {...(s.mission_rules?.grenadeMissVisibility===true?{grenade_miss_visibility:true}:{}),...(s.mission_rules?.combatResolver?{combat_resolver:s.mission_rules.combatResolver}:{}),ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
 export function replayOperation(s,op) {
   if(op.op==='resolveSupportChoice')return resolveSupportChoice(s,op.choice);
   if(op.op==='submitCommand')return submitCommand(s,op.command);
@@ -449,7 +449,9 @@ export function replayMission(scenario,record) {
     throw new Error('Replay rules/scenario version mismatch. Start a new card-pull mission.');
   if(record.combat_resolver!=='action-deck-v1')throw new Error('Replay combat resolver mismatch. Start a new card-pull mission.');
   if(scenario.rules?.missionIdentity&&!record.mission_instance_id)throw new Error('Normandy replay is missing its mission run identity.');
-  let s=createMission(scenario,record.seed,record.setup??{},record.roster_snapshot?{mission_instance_id:record.mission_instance_id,roster:{schema:1,...record.roster_snapshot,applied_missions:{}}}:null,{mission_instance_id:record.mission_instance_id});
+  let s=createMission(scenario,record.seed,record.setup??{},record.roster_snapshot?{mission_instance_id:record.mission_instance_id,roster:{schema:1,...record.roster_snapshot,applied_missions:{}}}:null,{mission_instance_id:record.mission_instance_id,grenade_miss_visibility:record.grenade_miss_visibility===true});
+  // Missing discriminator means historical behavior: never change old finite-deck outcomes.
+  if(record.grenade_miss_visibility!==undefined&&record.grenade_miss_visibility!==true)throw new Error('Unsupported grenade miss visibility rules.');
   for(const [index,op] of record.operations.entries()) {
     const r=replayOperation(s,op);
     if(r.accepted===false||r.reason||r.state===s)throw new Error(`Replay operation ${index+1} rejected: ${r.reason??'mission already ended'}`);

@@ -34,6 +34,6 @@ describe('command desk drafts and public presentation',()=>{
  });
  it('chooses a surviving HQ and never selects an eliminated command counter',()=>{const s=fixture();s.units.co.removed='ELIMINATED';expect(startingFormation(s)).toBe('hq1');});
  it('does not expose unrevealed terrain names or private contents on the deployment map',()=>{
-  const html=deploymentMapMarkup({locations:[{id:'r2c1',row:2,col:1,name:'Secret Orchard',known:false,enemies:['hidden']}],allowed:[]});expect(html).toContain('2.1 Unrevealed terrain');expect(html).not.toContain('Secret Orchard');expect(html).not.toContain('hidden');
+  const html=deploymentMapMarkup({locations:[{id:'r2c1',row:2,col:1,name:'Secret Orchard',known:false,enemies:['hidden']}],allowed:[]});expect(html).toContain('2.1');expect(html).not.toContain('Unrevealed terrain');expect(html).not.toContain('Secret Orchard');expect(html).not.toContain('hidden');
  });
 });

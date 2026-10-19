@@ -1,0 +1,73 @@
+{
+  "scope": "Normandy infantry special formations, first-pass audit",
+  "passed": true,
+  "results": [
+    {
+      "id": "SF-01",
+      "rule": "7.18.3",
+      "case": "Resupply a named HMG flipped by ammunition exhaustion",
+      "expected": {
+        "accepted": true,
+        "cohesion": "GOOD"
+      },
+      "observed": {
+        "accepted": true,
+        "cohesion": "GOOD",
+        "ammo": 2,
+        "exposed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-02",
+      "rule": "7.10.1, 7.18.2",
+      "case": "Empty mortar on named Fire Team side makes a point-blank hand-grenade attempt",
+      "expected": {
+        "accepted": true
+      },
+      "observed": {
+        "accepted": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-03",
+      "rule": "7.4, 7.5, 7.10.1",
+      "case": "Bazooka crew makes a hand-grenade attempt from Building cover",
+      "expected": {
+        "accepted": true
+      },
+      "observed": {
+        "accepted": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-04",
+      "rule": "7.18.4",
+      "case": "Concentrate fire with only one MG point remaining for the turn",
+      "expected": {
+        "available": false
+      },
+      "observed": {
+        "available": false,
+        "reason": "Need two ammunition points: one for successful concentrated fire and one for normal fire this turn."
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-05",
+      "rule": "7.3.2",
+      "case": "CO observes through a radio-equipped HQ colocated with a radioless mortar",
+      "expected": {
+        "accepted": true
+      },
+      "observed": {
+        "accepted": true,
+        "observerToRelay": true,
+        "relaySharesMortarArea": true
+      },
+      "passed": true
+    }
+  ]
+}

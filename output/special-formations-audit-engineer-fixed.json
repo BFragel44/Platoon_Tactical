@@ -1,0 +1,229 @@
+{
+  "scope": "Special formations follow-up audit",
+  "passed": false,
+  "results": [
+    {
+      "id": "SF-06",
+      "rule": "4.3.3, 7.16.1",
+      "case": "Observer recovers CO radio and receives a remote company order",
+      "expected": {
+        "pickupAccepted": true,
+        "commandNet": false,
+        "remoteOrderAvailable": false
+      },
+      "observed": {
+        "pickupAccepted": true,
+        "commandNet": true,
+        "remoteOrderAvailable": true,
+        "reason": null
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-07",
+      "rule": "7.10.1; Normandy CSR 7",
+      "case": "Enemy ranged grenade targets a nearer card along its existing PDF direction",
+      "expected": {
+        "withoutPdf": true,
+        "withSameDirectionPdf": true
+      },
+      "observed": {
+        "withoutPdf": true,
+        "withSameDirectionPdf": false
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-08",
+      "rule": "Normandy CSR 10, p.15",
+      "case": "hill192: engineer infiltrates a known mined card; infiltration succeeds",
+      "expected": {
+        "pathProcedure": true,
+        "minesRemain": false,
+        "exposed": false
+      },
+      "observed": {
+        "pathProcedure": true,
+        "minesRemain": false,
+        "exposed": false,
+        "actualInfiltrationSuccess": "1/1 Rifle Squad infiltrated to 2.2 Farm.",
+        "engineerResult": {
+          "id": "event_7",
+          "sequence": 7,
+          "turn": 1,
+          "phase": "GENERAL_INITIATIVE",
+          "impulse": "audit",
+          "type": "ENGINEER_PATH_ATTEMPT",
+          "text": "1/1 Rifle Squad: clear path marked.",
+          "actor": "s11",
+          "location": "r2c2",
+          "infiltration_success": true,
+          "hit": false,
+          "cleared": true,
+          "hidden": false
+        }
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-08",
+      "rule": "Normandy CSR 10, p.15",
+      "case": "hill192: engineer infiltrates a known mined card; infiltration fails",
+      "expected": {
+        "pathProcedure": true,
+        "minesRemain": true,
+        "exposed": false
+      },
+      "observed": {
+        "pathProcedure": true,
+        "minesRemain": true,
+        "exposed": false,
+        "actualInfiltrationSuccess": "1/1 Rifle Squad moved to 2.2 Farm.",
+        "engineerResult": {
+          "id": "event_7",
+          "sequence": 7,
+          "turn": 1,
+          "phase": "GENERAL_INITIATIVE",
+          "impulse": "audit",
+          "type": "ENGINEER_PATH_ATTEMPT",
+          "text": "1/1 Rifle Squad: path marking failed.",
+          "actor": "s11",
+          "location": "r2c2",
+          "infiltration_success": false,
+          "hit": false,
+          "cleared": false,
+          "hidden": false
+        }
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-08",
+      "rule": "Normandy CSR 10, p.15",
+      "case": "vire: engineer infiltrates a known mined card; infiltration succeeds",
+      "expected": {
+        "pathProcedure": true,
+        "minesRemain": false,
+        "exposed": false
+      },
+      "observed": {
+        "pathProcedure": true,
+        "minesRemain": false,
+        "exposed": false,
+        "actualInfiltrationSuccess": "1/1 Rifle Squad infiltrated to 2.2 Farm.",
+        "engineerResult": {
+          "id": "event_7",
+          "sequence": 7,
+          "turn": 1,
+          "phase": "GENERAL_INITIATIVE",
+          "impulse": "audit",
+          "type": "ENGINEER_PATH_ATTEMPT",
+          "text": "1/1 Rifle Squad: clear path marked.",
+          "actor": "s11",
+          "location": "r2c2",
+          "infiltration_success": true,
+          "hit": false,
+          "cleared": true,
+          "hidden": false
+        }
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-08",
+      "rule": "Normandy CSR 10, p.15",
+      "case": "vire: engineer infiltrates a known mined card; infiltration fails",
+      "expected": {
+        "pathProcedure": true,
+        "minesRemain": true,
+        "exposed": false
+      },
+      "observed": {
+        "pathProcedure": true,
+        "minesRemain": true,
+        "exposed": false,
+        "actualInfiltrationSuccess": "1/1 Rifle Squad moved to 2.2 Farm.",
+        "engineerResult": {
+          "id": "event_7",
+          "sequence": 7,
+          "turn": 1,
+          "phase": "GENERAL_INITIATIVE",
+          "impulse": "audit",
+          "type": "ENGINEER_PATH_ATTEMPT",
+          "text": "1/1 Rifle Squad: path marking failed.",
+          "actor": "s11",
+          "location": "r2c2",
+          "infiltration_success": false,
+          "hit": false,
+          "cleared": false,
+          "hidden": false
+        }
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-08",
+      "rule": "Normandy CSR 10, p.15",
+      "case": "tinchebray: engineer infiltrates a known mined card; infiltration succeeds",
+      "expected": {
+        "pathProcedure": true,
+        "minesRemain": false,
+        "exposed": false
+      },
+      "observed": {
+        "pathProcedure": true,
+        "minesRemain": false,
+        "exposed": false,
+        "actualInfiltrationSuccess": "1/1 Rifle Squad infiltrated to 2.2 Farm.",
+        "engineerResult": {
+          "id": "event_7",
+          "sequence": 7,
+          "turn": 1,
+          "phase": "GENERAL_INITIATIVE",
+          "impulse": "audit",
+          "type": "ENGINEER_PATH_ATTEMPT",
+          "text": "1/1 Rifle Squad: clear path marked.",
+          "actor": "s11",
+          "location": "r2c2",
+          "infiltration_success": true,
+          "hit": false,
+          "cleared": true,
+          "hidden": false
+        }
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-08",
+      "rule": "Normandy CSR 10, p.15",
+      "case": "tinchebray: engineer infiltrates a known mined card; infiltration fails",
+      "expected": {
+        "pathProcedure": true,
+        "minesRemain": true,
+        "exposed": false
+      },
+      "observed": {
+        "pathProcedure": true,
+        "minesRemain": true,
+        "exposed": false,
+        "actualInfiltrationSuccess": "1/1 Rifle Squad moved to 2.2 Farm.",
+        "engineerResult": {
+          "id": "event_7",
+          "sequence": 7,
+          "turn": 1,
+          "phase": "GENERAL_INITIATIVE",
+          "impulse": "audit",
+          "type": "ENGINEER_PATH_ATTEMPT",
+          "text": "1/1 Rifle Squad: path marking failed.",
+          "actor": "s11",
+          "location": "r2c2",
+          "infiltration_success": false,
+          "hit": false,
+          "cleared": false,
+          "hidden": false
+        }
+      },
+      "passed": true
+    }
+  ]
+}

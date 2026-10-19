@@ -1,0 +1,176 @@
+{
+  "scope": "Normandy tripod/overhead audit; FPL mission eligibility reviewed separately",
+  "passed": false,
+  "results": [
+    {
+      "id": "SF-15",
+      "rule": "5.2.2 pp.35–36; 7.2.3 p.51",
+      "case": "Friendly intervening unit on ground at level 1; gun and enemy at level 2",
+      "expected": {
+        "engaged": true
+      },
+      "observed": {
+        "engaged": true,
+        "interveningLevel": 1,
+        "fireTargets": [
+          "r3c2"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-15",
+      "rule": "5.2.2 pp.35–36; 7.2.3 p.51",
+      "case": "Friendly intervening unit in upper story at level 2; gun and enemy at level 2",
+      "expected": {
+        "engaged": false
+      },
+      "observed": {
+        "engaged": true,
+        "interveningLevel": 2,
+        "fireTargets": [
+          "r3c2"
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-15",
+      "rule": "5.2.2 pp.35–36; 7.2.3 p.51",
+      "case": "Enemy on ground at level 1; gun and intervening friendly at level 1",
+      "expected": {
+        "engaged": false
+      },
+      "observed": {
+        "engaged": false,
+        "targetLevel": 1,
+        "fireTargets": []
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-15",
+      "rule": "5.2.2 pp.35–36; 7.2.3 p.51",
+      "case": "Enemy in upper story at level 2; gun and intervening friendly at level 1",
+      "expected": {
+        "engaged": true
+      },
+      "observed": {
+        "engaged": false,
+        "targetLevel": 2,
+        "fireTargets": []
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-16",
+      "rule": "7.2.1 p.51; 7.11.1 p.56",
+      "case": "A+ tripod HMG with ample MG ammo attempts Concentrate Fire",
+      "expected": {
+        "accepted": true
+      },
+      "observed": {
+        "accepted": false,
+        "reason": "Concentrated fire must follow an existing direction of basic fire."
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-16",
+      "rule": "7.2.1 p.51; 7.11.1 p.56",
+      "case": "A tripod HMG with ample MG ammo attempts Concentrate Fire",
+      "expected": {
+        "accepted": true
+      },
+      "observed": {
+        "accepted": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-16",
+      "rule": "7.12 p.56",
+      "case": "A+ tripod HMG: jam-card handling in the concentration procedure",
+      "expected": {
+        "jammed": true
+      },
+      "observed": {
+        "jammed": false,
+        "remainingSteps": 1
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-16",
+      "rule": "7.12 p.56",
+      "case": "A tripod HMG: jam-card handling in the concentration procedure",
+      "expected": {
+        "jammed": true
+      },
+      "observed": {
+        "jammed": true,
+        "remainingSteps": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "7.2.2 p.51; 7.18.4 p.61",
+      "case": "Three-card grazing fire expends one normal MG ammunition point",
+      "expected": {
+        "contributions": 3,
+        "ammoSpent": 1
+      },
+      "observed": {
+        "contributions": 3,
+        "ammoSpent": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.2.5 p.27; 7.2.1 p.51; 7.18.2 p.61",
+      "case": "exposed HMG: fire footprint",
+      "expected": {
+        "contributions": 0
+      },
+      "observed": {
+        "contributions": 0,
+        "values": []
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.2.5 p.27; 7.2.1 p.51; 7.18.2 p.61",
+      "case": "pinned HMG: fire footprint",
+      "expected": {
+        "contributions": 3
+      },
+      "observed": {
+        "contributions": 3,
+        "values": [
+          2,
+          2,
+          2
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.2.5 p.27; 7.2.1 p.51; 7.18.2 p.61",
+      "case": "out of ammo HMG: fire footprint",
+      "expected": {
+        "contributions": 1
+      },
+      "observed": {
+        "contributions": 1,
+        "values": [
+          0
+        ]
+      },
+      "passed": true
+    }
+  ]
+}

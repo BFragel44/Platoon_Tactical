@@ -1,6 +1,8 @@
 import {deskHeader} from './commandDesk.js';
 import {campaignProgress,NORMANDY_SEQUENCE} from '../sim/company/campaignProgression.js';
-import {previewPreparationChoices,commitPreparationChoices,projectedFormationExperience,promotionExplanation} from './preparationChoices.js';
+import {previewPreparationChoices,commitPreparationChoices,projectedFormationExperience,promotionExplanation,navigateCompanyPreparation,COMPANY_PREPARATION_PHASES} from './preparationChoices.js';
+import {replayMission} from '../sim/company/engine.js';
+import {importVireAdapterReplay} from '../sim/company/vireIntegration.js';
 import {SAVE_KEY,readRecovery} from './localRecovery.js';
 import {campaignResumeReason} from './applicationNavigation.js';
 import {readCompanyPreparation,startFreshCompanyCampaign,saveCompanyPreparation,newCompanyCampaign,beginCompanyPreparation,prepareCompany,PREPARATION_KEY} from '../sim/company/campaignPreparation.js';
@@ -44,23 +46,37 @@ export function openCompanyPreparation({scenario,mission=null,start,resume,downl
    if(p.phase==='SKILLS')actions+=`<label>Skill<select id="skill">${Object.entries(SKILLS).map(([id,s])=>`<option value="${id}" ${selectedSkill===id?'selected':''}>${esc(s.label)} … ${s.cost} XP</option>`).join('')}</select></label><p id="skill-effect"></p><button id="skill-buy">Assign skill</button><p id="skill-preview" role="status"></p>`;
    actions+=`<button id="next" class="primary">${p.phase==='SKILLS'?'Finish preparation':p.phase==='RECONSTITUTE'?'Continue to replacements':'Continue to skills'}</button>`;
   }
-  dialog.innerHTML=deskHeader('Company personnel file',subtitle,['Reorganize & promote','Replacements','Skills','Ready'],stage)+`<p role="alert" class="desk-status">${esc(error)}</p><div class="desk-layout"><section class="desk-sheet"><h3>Company roster</h3><p>Select a formation to inspect its steps.</p><div class="desk-roster-scroll">${p?.phase==='RECONSTITUTE'?`<h4>Unassigned survivors … ${p.available.length}</h4>${stepChoices(p.available,'Unassigned team')}`:''}<table><thead><tr><th>Formation</th><th>Strength</th><th>Experience</th></tr></thead><tbody>${roster}</tbody></table></div></section><section class="desk-sheet desk-actions">${actions}${p?`<details><summary>Preparation rules & support</summary><p>Green to Line costs 1 XP; Line to Veteran costs 3. One level per eligible step. Newly rebuilt HQs remain Green. Unspent experience expires when preparation is finished.</p><p>Supporting attachments replenish from their parent organizations. ${p.returned_passengers?.length??0} surviving passenger steps returned without using replacements.</p><p>Formation experience is finalized on completion; the roster shows the projected combined level.</p></details>`:''}</section></div><footer class="desk-footer"><button id="close">Return</button><details><summary>Records & recovery</summary><button id="export" ${!r?'disabled':''}>Export campaign record</button><button id="tactical-export" ${!saved.raw?'disabled':''}>Export campaign mission save</button>${r?.active_deployment?.start_checkpoint?'<button id="recover-start">Recover committed mission start</button><p>Restarts the committed deployment at its beginning. Export an unreadable tactical save first.</p>':''}${r?.stage==='PREPARED'?'<button id="new">Start another fresh campaign (keeps backup)</button>':''}</details></footer>`;
+  dialog.innerHTML=deskHeader('Company personnel file',subtitle,['Reorganize & promote','Replacements','Skills','Ready'],stage,!!p&&r.stage!=='DEPLOYMENT')+`<p role="alert" class="desk-status">${esc(error)}</p><div class="desk-layout"><section class="desk-sheet"><h3>Company roster</h3><p>Select a formation to inspect its steps.</p><div class="desk-roster-scroll">${p?.phase==='RECONSTITUTE'?`<h4>Unassigned survivors … ${p.available.length}</h4>${stepChoices(p.available,'Unassigned team')}`:''}<table><thead><tr><th>Formation</th><th>Strength</th><th>Experience</th></tr></thead><tbody>${roster}</tbody></table></div></section><section class="desk-sheet desk-actions">${actions}${p?`<details><summary>Preparation rules & support</summary><p>Green to Line costs 1 XP; Line to Veteran costs 3. One level per eligible step. Newly rebuilt HQs remain Green. Unspent experience expires when preparation is finished.</p><p>Supporting attachments replenish from their parent organizations. ${p.returned_passengers?.length??0} surviving passenger steps returned without using replacements.</p><p>Formation experience is finalized on completion; the roster shows the projected combined level.</p></details>`:''}</section></div><footer class="desk-footer"><button id="close">Return</button><details><summary>Records & recovery</summary><button id="export" ${!r?'disabled':''}>Export campaign record</button><button id="tactical-export" ${!saved.raw?'disabled':''}>Export campaign mission save</button>${r?.active_deployment?.start_checkpoint?'<button id="recover-start">Recover committed mission start</button><p>Restarts the committed deployment at its beginning. Export an unreadable tactical save first.</p>':''}${r?.stage==='PREPARED'?'<button id="new">Start another fresh campaign (keeps backup)</button>':''}</details></footer>`;
   const bind=(id,fn)=>{const b=dialog.querySelector('#'+id);if(b)b.onclick=()=>{try{fn();error='';}catch(e){error=e.message;}if(dialog.isConnected)render();};};
   const dispatch=operation=>commitPreparationChoices(localStorage,r,[operation]);
+  for(const button of dialog.querySelectorAll('[data-desk-step]'))button.onclick=()=>{
+   try{
+    const phase=COMPANY_PREPARATION_PHASES[Number(button.dataset.deskStep)];
+    if(phase===p.phase)return;
+    let source=mission;
+    if(r.stage==='PREPARED'&&!p.before_completion&&phase!=='COMPLETE'&&source?.mission_instance_id!==p.id){
+     const replay=r.history.at(-1).replay,definition=NORMANDY_SEQUENCE.find(s=>s.id===replay.scenario);
+     source=replay.format?importVireAdapterReplay(replay):replayMission(definition,replay);
+    }
+    saveCompanyPreparation(localStorage,navigateCompanyPreparation(r,phase,source),r.revision);error='';
+   }catch(e){error=e.message;}
+   render();dialog.querySelector(`[data-desk-step="${button.dataset.deskStep}"]`)?.focus({preventScroll:true});
+  };
+
   bind('new',()=>startFreshCompanyCampaign(localStorage,newCompanyCampaign(scenario,crypto.randomUUID())));
   for(const [id,fn]of [['restore',()=>resume()],['resume',()=>start(r)],['launch-next',()=>start(r)],['recover-start',()=>resumeStart(r)]])bind(id,()=>{fn();close(false);});
   bind('debrief',()=>saveCompanyPreparation(localStorage,beginCompanyPreparation(r,mission),r.revision));
   bind('transfer',()=>{commitPreparationChoices(localStorage,r,selectedSteps.map(step=>({type:'TRANSFER',step,target:selectedFormation})));selectedSteps=[];});
-  bind('promote',()=>dispatch({type:'PROMOTE',step:selectedSteps[0]}));
+  bind('promote',()=>{dispatch({type:'PROMOTE',step:selectedSteps[0]});selectedSteps=[];});
   for(const level of ['green','veteran'])bind(level,()=>dispatch({type:'REPLACE',level,target:selectedFormation}));
   bind('skill-buy',()=>dispatch({type:'SKILL',purchase:{type:selectedSkill,holder:selectedFormation}}));
   bind('next',()=>{dispatch({type:'NEXT'});selectedSteps=[];});
   bind('export',()=>download('normandy-connected-company.json',localStorage.getItem(PREPARATION_KEY)??'null'));
   bind('tactical-export',()=>download('normandy-campaign-mission-original.json',localStorage.getItem('connected-'+SAVE_KEY)??'null'));
   bind('close',()=>close());
-  for(const button of dialog.querySelectorAll('[data-expand-formation]'))button.onclick=()=>{expanded=expanded===button.dataset.expandFormation?null:button.dataset.expandFormation;render();dialog.querySelector(`[data-expand-formation="${CSS.escape(button.dataset.expandFormation)}"]`)?.focus({preventScroll:true});};
+  for(const button of dialog.querySelectorAll('[data-expand-formation]'))button.onclick=()=>{const previousSteps=new Set(r?.roster.formations[expanded]?.step_ids??[]);selectedSteps=selectedSteps.filter(id=>!previousSteps.has(id));expanded=expanded===button.dataset.expandFormation?null:button.dataset.expandFormation;render();dialog.querySelector(`[data-expand-formation="${CSS.escape(button.dataset.expandFormation)}"]`)?.focus({preventScroll:true});};
   function update(){
-   const visible=new Set([...dialog.querySelectorAll('[data-company-step]')].map(n=>n.dataset.companyStep));selectedSteps=[...selectedSteps.filter(id=>!visible.has(id)),...[...dialog.querySelectorAll('[data-company-step]:checked')].map(n=>n.dataset.companyStep)];
+   selectedSteps=[...dialog.querySelectorAll('[data-company-step]:checked')].map(n=>n.dataset.companyStep);
    selectedFormation=dialog.querySelector('#formation')?.value??selectedFormation;selectedSkill=dialog.querySelector('#skill')?.value??selectedSkill;
    if(p?.phase==='RECONSTITUTE'){
     const transfer=previewPreparationChoices(r,selectedSteps.map(step=>({type:'TRANSFER',step,target:selectedFormation})));

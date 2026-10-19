@@ -1,5 +1,29 @@
-import {prepareCompany,saveCompanyPreparation,PREPARATION_KEY} from '../sim/company/campaignPreparation.js';
+import {beginCompanyPreparation,prepareCompany,saveCompanyPreparation,PREPARATION_KEY} from '../sim/company/campaignPreparation.js';
 import {combinedExperience} from '../sim/company/reconstitution.js';
+
+export const COMPANY_PREPARATION_PHASES=['RECONSTITUTE','REPLACEMENTS','SKILLS','COMPLETE'];
+// Older Ready records have no pre-finalization snapshot. Rebuild that snapshot
+// from the recorded debrief and accepted operations, never from tactical RNG.
+export function navigateCompanyPreparation(record,phase,mission=null){
+ const phases=COMPANY_PREPARATION_PHASES,target=phases.indexOf(phase),current=phases.indexOf(record.preparation?.phase);
+ if(target<0||current<0||!['PREPARATION','PREPARED'].includes(record.stage))throw new Error('No editable company preparation section.');
+ if(target===current)return record;
+ let next=record;
+ if(target<current){
+  if(record.stage==='PREPARED'&&!record.preparation.before_completion){
+   const last=record.history.at(-1),operations=record.preparation.operations;
+   if(!mission||mission.mission_instance_id!==last?.mission_id||mission.roster_snapshot?.company_id!==record.roster.company_id||operations.at(-1)?.type!=='NEXT')throw new Error('The recorded mission debrief is needed to reopen this preparation.');
+   const applied=structuredClone(record.roster.applied_missions);delete applied[last.mission_id];
+   const base={...structuredClone(record),stage:'DEPLOYMENT',preparation:null,revision:record.revision-operations.length-1,history:structuredClone(record.history.slice(0,-1)),roster:{schema:record.roster.schema,...structuredClone(last.snapshot),applied_missions:applied}};
+   delete base.active_deployment;
+   const restored=operations.slice(0,-1).reduce((r,op)=>prepareCompany(r,op),beginCompanyPreparation(base,mission));
+   next=structuredClone(record);next.preparation.before_completion={roster:restored.roster,points:restored.preparation.points,replacements:restored.preparation.replacements};
+  }
+  return prepareCompany(next,{type:'REVISIT',phase});
+ }
+ while(next.preparation.phase!==phase)next=prepareCompany(next,{type:'NEXT'});
+ return next;
+}
 
 // Evaluate all choices against immutable drafts before making a single write.
 // Keep the published preparation reducer as the sole authority for eligibility.

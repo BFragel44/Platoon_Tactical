@@ -44,7 +44,7 @@ export function resolveNormandyEvent(s,side,choice={}){
    const profile=pick(s,officers,'Higher HQ visitor');
    const commander=companyCommander(s);
    const id=`higher_${s.next_id++}`;
-   s.units[id]={id,name:profile.replaceAll('_',' '),kind:'STAFF',command_role:'higher_hq',capabilities:{higher_priority:officers.indexOf(profile)},faction:'friendly',location:commander.location,platoon:null,cohesion:'GOOD',experience:'Line',steps:[{id:`${id}_step1`,personnel:[]}],radios:[],assets:{},saved:0,used:[],removed:null,pinned:false,exposed:false,cover:commander.cover,vof:null,range:0,expires_turn:s.turn+1};
+   s.units[id]={id,name:profile.replaceAll('_',' '),kind:'STAFF',command_role:'higher_hq',higher_hq_profile:profile,capabilities:{higher_priority:officers.indexOf(profile)},faction:'friendly',location:commander.location,platoon:null,cohesion:'GOOD',experience:'Line',steps:[{id:`${id}_step1`,personnel:[]}],radios:[],assets:{},saved:0,used:[],removed:null,pinned:false,exposed:false,cover:commander.cover,vof:null,range:0,expires_turn:s.turn+1};
    s.higher_hq_on_map=true;
   }
   if(code==='RESUPPLY'){

@@ -1,5 +1,5 @@
 import {friendlyVireVehiclesAt} from './vireUnits.js';
-import {eligibleEngineer} from './engineers.js';
+import {eligibleEngineer,engineerRulesEnabled} from './engineers.js';
 import {placeIllumination} from './visibility.js';
 import {values,live,friendly,visible,good,emit,draw,randomNumber,pick,dropLoad,exhortDraw} from './core.js';
 import {resolveNormandyEvent} from './normandyEvents.js';
@@ -23,7 +23,7 @@ export function discoveredCover(s,l,known=true,enemy=false) {
 }
 export function checkMines(s,u,{discovery=false}={}){
  if(!s.locations[u.location].mines||!live(u))return;
- const hit=draw(s,discovery&&(s.mission_rules.hill192||(s.mission_rules.vire||s.mission_rules.tinchebray))&&eligibleEngineer(u)?1:3,`${visible(s,u)?u.name:'Enemy'}: mine check`,!visible(s,u),{actor:visible(s,u)?u.id:null,field:{kind:'icons',keys:['burst','short']}}).some(c=>c.burst||c.short);
+ const hit=draw(s,discovery&&engineerRulesEnabled(s)&&eligibleEngineer(u)?1:3,`${visible(s,u)?u.name:'Enemy'}: mine check`,!visible(s,u),{actor:visible(s,u)?u.id:null,field:{kind:'icons',keys:['burst','short']}}).some(c=>c.burst||c.short);
  if(hit){u.mine_hit=true;s.markers.push({type:'MINES',location:u.location,target:u.id,value:-4});}
  emit(s,'MINE_CHECK',`${visible(s,u)?u.name:'Enemy'} ${hit?'triggered mines; cannot move again this turn':'avoided the mines'}.`,{actor:visible(s,u)?u.id:null,location:u.location,hit},!visible(s,u));
 }

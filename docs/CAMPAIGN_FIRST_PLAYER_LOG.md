@@ -622,3 +622,150 @@ Approved phone usability addition: laid line cards display a small wire graphic 
 Accepted state transitions compare before/after public field-phone command links. Losing an established phone link produces one grouped, dismissible12-second battlefield notification listing affected surviving formations, noting retained local voice. Public new cut events may supply a card name; otherwise the alert reports loss without inventing a break location/cause. An alternate phone path prevents a false loss alert. Notifications occupy the upper-right battlefield area, leaving bottom card pulls, XP toasts and orders layout independent. Resume/replacement/Home/preparation/AAR reset pending alerts; renders and initial disconnected states do not generate new ones. Added presentation identity/attempt fields do not change tactical state or replay schema.
 
 Five focused suites pass35 tests, including real phone damage resolution into public cut/lost-HQ feedback, hidden-cut projection equality, alternate routing, hub/gap legality, repair/attempt scoping, initial/repeated notification suppression and selective drops/recovery. Browser component fixture verified intact/cut wire, grouped notification and reset suppression; screenshot output/tactical-clarity/phone-wire-alert.png. Production build and whitespace checks pass. User-origin saves and live mission were untouched; this is component/engine validation, not another full phone campaign run.
+
+### 2026-10-16 - Preparation typewriter typography
+
+- Bundled the user-supplied Veteran Typewriter TTF locally, retaining its original license and adding source attribution. The included license permits personal and commercial use.
+- Scoped the font to all beige command-desk screens: company preparation/debrief, mission setup, patrol preparation and mission reattempt. Headings, body copy, tables, location cells and form controls share the font; tactical-map typography remains unchanged.
+- Browser checked the next-patrol roster and Promotions & skills panel at 1280 x 720. Checked a 400 x 800 viewport: the desk remains within the viewport and uses the existing stacked layout. Saved desktop evidence: output/tactical-clarity/command-desk-typewriter.png. Used an isolated test origin, without modifying the live campaign.
+- Production build passed (existing large-bundle advisory only). No simulation or storage changes; no new simulation tests needed for this font-only change.
+
+### 2026-10-16 - Mission setup preview clarity
+
+- Rebuilt the preview header around mission background/conditions and explicit primary/secondary objectives. Removed Mission record and Deployment notes disclosures. Reduced header padding, bounded control widths and compacted the equipment roster with a sticky table header.
+- Moved pyrotechnic assignments into an always-visible section directly below tactical controls, with a compact three-column table and readable dark text. Signal descriptions now reflect current objective and phase-line choices immediately. Opening the preview focuses its heading without jumping to the bottom.
+- Unknown terrain labels now show card coordinates only. Public deployment maps have prominent objective badges and reuse tactical-map boundary placement; setup shows phase lines, patrol MLR, route points, outpost and concentration. Concealed terrain remains concealed.
+- Browser checked Cerisy at desktop 1280 x 720 and 1920 x 1080; all eight signal rows are visible at the larger size. Changed objective/phase-line choices and successfully validated their retained selections and updated signal descriptions. Checked patrol MLR and route markers; checked 400 x 800 stacked layout with no horizontal overflow (385px content/client width). Keyboard Tab from the heading reaches mortar controls. Used isolated port 5184; live campaign storage untouched.
+- 37 focused tests passed across five suites; production build passed with the existing large-bundle advisory. Screenshot: output/tactical-clarity/setup-preview-compact.png.
+
+### 2026-10-16 - Company preparation section navigation
+
+- Replaced the four passive progress rectangles with real section buttons whenever company preparation is editable. Mouse and keyboard can revisit Reorganize & promote, Replacements, Skills and Ready; the selected section retains its current-step indicator.
+- Reopening Ready restores pre-finalization step experience, unspent points and replacement allowances while retaining committed transfers, promotions and skill purchases. Completion snapshots preserve these values for future records; existing Ready records reconstruct the snapshot from the exact recorded mission debrief and accepted preparation operations. Navigation saves through the existing revision-checked transaction, without adding another debrief or touching the tactical map.
+- Retained one-promotion limits and replacement quotas across navigation. Added a replacement-step promotion guard and prevented transferring away the last step of a formation holding assigned skills.
+- Browser checked an existing Ready record without a completion snapshot on isolated port 5185: Ready -> Skills restored 8 XP, assigning General Initiative left 6, all four sections remained accessible, Enter activated Ready, Skills restored the same 6 XP, and closing/reloading retained that state. Buttons wrap cleanly at 400px. User-origin campaign data untouched. Screenshot: output/tactical-clarity/company-preparation-navigation.png.
+- 94 tests passed across navigation, preparation choices, campaign preparation/progression and command-desk suites. Production build passed with the existing bundle-size advisory; diff whitespace check passed.
+
+### 2026-10-16 - Clear hidden promotion selections
+
+- Collapsing or switching an expanded company formation clears that formation's selected steps. Checkbox updates derive selections from the visible roster controls, so hidden steps cannot silently keep a promotion disabled. Unassigned-survivor choices remain visible and available for transfers.
+- A successful promotion clears its selected checkbox; rejected operations retain their selection for correction.
+- Browser verified on isolated port 5185: selected Company HQ, collapsed it, selected XO and confirmed XO alone enabled promotion; promoted XO for 1 XP and observed zero checked steps; then selected XO and switched directly to 1 Platoon HQ, whose single selection again enabled promotion. Live campaign untouched. Evidence: output/tactical-clarity/promotion-selection.png.
+- 13 focused preparation/navigation tests and production build passed (existing bundle-size advisory only).
+
+### 2026-10-16 - Patrol preview objective labels
+
+- Confirmed Normandy M3 patrols use one primary objective, four route points and the return across the MLR. The generic secondary/attack fields are internal aliases, not independent patrol setup choices.
+- Removed the misleading Secondary Objective header and secondary/attack badges from patrol setup previews. The header now explains the return requirement; the COP remains labeled Outpost. Ordinary mission secondary-objective controls are unchanged.
+- Browser checked changing patrol primary from 4.3 to 4.4: header and map both moved the primary marker, with no stale secondary marker. Preserved route/concentration/outpost markers and concealed terrain. Evidence: output/tactical-clarity/patrol-primary-objective.png.
+- 11 focused tests and production build passed (existing bundle-size advisory only).
+
+### 2026-10-17 - 60mm mortar section audit
+
+- Compared the implementation against third-edition rules sections 4.2.4j and 7.3.2 (printed pp. 25, 53). H-rated multistep sections use automatic direct lay with their own LOS, or ordered indirect lay using an eligible communicating HQ observer's LOS. Indirect lay supersedes direct lay, places Heavy Weapons VOF without a PDF, applies target burst/appropriate terrain, and expires at cleanup. One-step G-rated teams instead use ordered grenade attempts for direct lay.
+- Core distinction exists: INDIRECT sets u.indirect and clears u.fire; refresh projects -3 indirect VOF without a PDF; cleanup clears the order. SHIFT_FIRE changes the firing destination of friendly card occupants and clears their indirect orders. Three section steps do not create three separate Heavy Weapons attacks.
+- Confirmed two unresolved validation defects with isolated in-memory reproduction: INDIRECT accepts a mortar with zero MTR ammunition/out_of_ammo and still projects -3; General Initiative accepts an eliminated, zero-step CO as observer. That phase bypasses the ordinary issuer chain/communication guard and INDIRECT only checks issuer existence/LOS. Also uses an unclear label, Direct mortar section, for indirect lay. No gameplay fix applied during this read-only audit.
+- Existing companyClarity/companyConsequences/normandyAmmo suites: 40 tests passed. These existing tests do not cover the two reproduced defects.
+
+### 2026-10-17 - Mortar indirect-fire fixes and explanation
+
+- Resolved the two defects from the preceding audit. INDIRECT now rejects zero MTR stock/depletion and requires a live friendly, good-order HQ/staff observer with command eligibility and communication in every impulse, including General Initiative. It also participates in the existing General Initiative per-origin HQ command limit.
+- Fire projection no longer creates heavy indirect VOF from an exhausted mortar. The final ammunition point still produces its prepared combat exposure before depletion blocks further indirect fire; existing ammunition timing is retained.
+- Renamed the order to Call on-map mortar indirect fire. Its displayed explanation covers observer LOS, mortar range without own LOS, replacing direct fire, ammunition, cleanup expiry, and absence of card draws/PDF arrows. The operation key stays INDIRECT.
+- Added 16 focused cases covering empty/depleted stock, unavailable/empty/pinned/degraded/non-HQ/enemy observers, missing LOS/communication, attachment eligibility, one-step rejection, valid company staff/PLT observers, no random draws on success, unchanged rejected state, last-round combat and cleanup. Together with existing clarity, consequences and ammunition suites: 56 passed.
+- Browser checked the renamed order/help and enabled/disabled states in isolated test/mortarIndirectOrders.browser.html. This is a command-menu component fixture, not a live campaign walkthrough; no campaign data is saved. Evidence: output/tactical-clarity/mortar-indirect-order.png.
+- Production build passed (existing large-bundle advisory only). Historical replay compatibility is outside this change; no compatibility modules or user saves were modified.
+
+### 2026-10-17 - Later patrol preparation map controls
+
+- Confirmed the later-patrol screen did not pass phase lines/MLR into its public deployment map, and only replaced primary/CCP/COP fields while leaving old secondary/attack aliases. Concentration and route choices were missing entirely from that map.
+- Added one shared public-control projection for initial setup, patrols 2/3 and ordinary reattempt deployment. It reads current draft phase lines and patrol plan, projects primary/COP/CCP/concentration/four route points, removes generic patrol secondary/attack aliases, and passes the MLR to the shared tactical boundary renderer. Non-patrol reattempts retain their normal objectives without inventing an MLR. Objective badges wrap within narrow cards.
+- Browser exercised the actual next-patrol preparation component: changing PL1/PL2 to rows 2/3 immediately repositioned both lines; MLR stayed between rows 1/2; changing primary to 4.4, concentration to 4.2 and route points immediately moved the matching markers. Checked default 1280px and 1900px desktop breakpoint. Screenshot: output/tactical-clarity/later-patrol-map-controls.png. Live campaign saves untouched.
+- 34 focused map/setup/command-desk/M3/M5 preparation tests passed, followed by 14 map/setup/Hill192 tests after routing the remaining helper through the shared projection. Production build passed with the existing large-bundle advisory. No tactical state, randomness, storage schema or retained battlefield changes.
+
+### 2026-10-18 - Special formations rules audit, first pass
+
+- Began the requested rules-focused pass with no interface redesign or gameplay changes. Cross-checked series weapon/ammunition rules and Normandy general special rules. Recorded five isolated discrepancies: named weapon resupply fails to restore Good Order; empty named mortar Fire Teams cannot make hand-grenade attacks; Building-cover bazooka crews are incorrectly blocked from hand grenades; concentrated fire lacks ammunition reserve eligibility; the expressly permitted colocated-HQ mortar communications relay is absent.
+- Findings, rule citations, priorities, scope limits and the proposed repair batch: docs/SPECIAL_FORMATIONS_RULES_AUDIT.md. Reproduction command: node scripts/auditSpecialFormations.js. Observations: output/special-formations-audit.json. All probes use in-memory fixtures and leave campaign/tactical saves untouched.
+- 51 existing focused tests passed across mortar indirect orders, Normandy ammunition, Assault Team range, clarity and reconstitution. The uncovered cases remain unfixed and are documented separately from passing regressions. Full special-formation and mission-by-mission certification remains pending.
+
+### 2026-10-18 - Special formation repairs SF-01 through SF-05
+
+- Implemented the approved first repair batch. Appropriate ammunition pickup/direct transfer automatically restores named weapon sides and their original experience without restoring HQ/FO command sides or generic LATs. Incorrect ammunition does not restore a depleted weapon.
+- Separated point-blank hand grenades from ranged-weapon restrictions: empty named mortar Fire Teams can use hand grenades, Building-cover bazooka crews can close assault, and named bazooka Fire Teams lose their ranged launcher capability. Existing bunker/pillbox and Good Order mortar restrictions remain.
+- Added a shared concentration ammunition reserve check to command availability and the actual attack procedure, covering friendly, platoon and enemy calls. Tracked MG/GUN and multistep mortar firing reserves a baseline point; only successful concentrations expend their additional point. Depleted personal small-arms fire stays available.
+- Added dedicated direct-or-relayed mortar communications for both General Initiative and ordinary HQ impulses. A same-area good-order HQ/staff with working CO radio/phone communication may relay even without command eligibility over the mortar; the originating observer still needs eligibility. Relay loss, different area, pinning and broken phone connections reject the order. Other orders do not gain relay communication.
+- Added specialFormationRules and specialFormationReplay suites, including rejection atomicity, ammunition success/failure boundaries, named/generic capability boundaries, and exact replay/checkpoint recovery from legal commands. All five audit probes now pass; preserved original observations and saved repaired observations to output/special-formations-audit-fixed.json. Updated docs/SPECIAL_FORMATIONS_RULES_AUDIT.md.
+- Final focused regression: 298 tests passed across 14 suites, including command-menu, Normandy ammo/phones/equipment/skills, Hill192 and St Germain weapons, vehicle basic fire/passengers, mortar orders and team detachment. Production build passed with the existing bundle-size advisory. No player saves were loaded or modified; no panel redesign or probability changes.
+
+### 2026-10-18 - Special formation follow-up audit
+
+- Recorded SF-06–SF-08 in docs/SPECIAL_FORMATIONS_RULES_AUDIT.md: an FO can gain forbidden CO TAC communication through a recovered radio; the enemy ranged-weapon helper requires an exact PDF target instead of its bearing; engineer infiltration path clearing is restricted to Hill 192 in adjacent/within-card movement despite later mission engineer support.
+- Added scripts/auditSpecialFormationsFollowup.js and output/special-formations-audit-followup.json. Eight isolated observations include two passing Hill 192 controls and six disagreements across the three defects. The script intentionally exits 1 while those defects remain. No live save is read or modified.
+- Reviewed observer agency/network checks, pinned/LAT guards and existing tripod coverage. Engineer repeated-attempt wording remains an interpretation question, not a confirmed bug. FPL and complete command/mission matrices remain pending.
+- 98 focused tests passed across eight suites. This pass changes audit documentation and reproduction tooling only; gameplay fixes await the next implementation batch.
+
+### 2026-10-18 - Engineer repair SF-08
+
+- Shared Normandy engineer-rule eligibility across order validation, mine discovery and adjacent/within-card infiltration. Vire and Tinchebray now use the same path-clearing procedure as Hill 192. Safe successful infiltration clears mines; failed infiltration checks three cards without exposing eligible engineers. Ordinary movement, mine hits and ineligible squads retain their restrictions.
+- Added 31 engineer movement cases, including exact replay/checkpoint recovery from two authored command sequences. All six engineer audit observations pass; output/special-formations-audit-engineer-fixed.json preserves results. SF-06 FO radio access and SF-07 enemy ranged-fire parity remain open.
+- 227 tests passed across ten suites; production build passed with the existing bundle-size advisory. No deployment additions, UI redesign or player save modifications.
+
+### 2026-10-18 - FO communications and enemy ranged-fire repairs
+
+- Closed SF-06: recovered CO radio/phone equipment no longer grants FOs forbidden CO TAC communication. Voice orders, self/General Initiative and own FD agency calls remain available; rejection text explains the restriction.
+- Closed SF-07: friendly/enemy ranged attacks share a valid-PDF bearing check. Different target distances on the same bearing are legal; conflicting directions still reject, and stale/same-card fire does not create a PDF. Existing range/ammo, point-blank, intervening-unit and enclosed-rocket restrictions remain.
+- Added 13 focused cases plus an authored FO pickup/voice-support/movement/rejection sequence with exact replay and recovery. Strengthened the SF-07 audit fixture with a valid colocated long-range PDF and corrected an old Hill 192 test's invalid PDF setup.
+- 304 tests passed across 14 suites; all original/follow-up audit probes pass; production build passed with the existing bundle-size advisory. Saved output/special-formations-audit-followup-fixed.json. No player saves were loaded or modified. All confirmed SF-01–SF-08 defects are closed; remaining broader audit scope is documented separately.
+
+### 2026-10-18 - Pinned and reverse-side infantry audit
+
+- Confirmed SF-09: unpinned Litter/Paralyzed Teams incorrectly return successful point-blank grenades because internal inherited VOF is mistaken for an armed side. SF-10: pinned Paralyzed Teams cannot Seek Cover or Move within a Card despite pinned precedence. SF-11: the pinned/LAT action allowlists incorrectly block the Command & Control network-switch action for otherwise eligible carriers.
+- Added scripts/auditPinnedAndReverseSides.js and output/pinned-reverse-sides-audit.json: 32 isolated observations, 22 passing controls, ten discrepancies across three open findings. Production split-team, grenade and command paths are used; no player saves are loaded or modified. Details and rule references are in docs/SPECIAL_FORMATIONS_RULES_AUDIT.md.
+- 179 existing tests passed across 11 suites. This pass adds audit documentation and probes only. SF-01–SF-08 remain closed; SF-09–SF-11 require a subsequent repair batch.
+
+### 2026-10-18 - Pinned/reverse-side repairs SF-09 through SF-11
+
+- Free grenade responses now require a live armed Good Order/Assault/Fire Team side, excluding Litter and Paralyzed Teams. Pinned Paralyzed Teams may Seek Cover and Move within a Card under the pinned precedence rule, remaining pinned/Paralyzed. Pinned and degraded carriers may switch networks when the existing hardware/replacement/communication/command conditions permit.
+- Added 67 eligibility/response cases and one exact replay/recovery case. The latter uses normal combat to create a pinned Paralyzed survivor and a destroyed compatible radio, then issues legal cover/network orders without injected state or draws.
+- 287 tests passed across 15 suites. All 32 pinned/reverse-side audit observations and earlier special-formation audit scripts pass. Production build passed with the existing bundle-size advisory. Original observations are preserved; repaired results saved in output/pinned-reverse-sides-fixed.json. No player saves were modified; no UI redesign. All confirmed SF-01–SF-11 findings are closed.
+
+### 2026-10-18 - Higher HQ/staff audit
+
+- Confirmed SF-12: regimental/battalion staff visitors recover CO radio/phone devices and gain forbidden remote CO TAC access. Confirmed SF-14: higher visitors can be consumed as Company HQ succession donors through generic STAFF fallback. SF-13 is a conditional missing on-map BN-radio channel, demonstrated with explicitly supplied BN devices at both endpoints, not a proven reachable current-loadout failure.
+- Added scripts/auditHigherHQRules.js and output/higher-hq-rules-audit.json: 21 isolated observations, twelve passing controls, nine discrepancies across the two confirmed defects and conditional gap. Visitors use the actual Checking Up event creation path; fixture changes affect memory only.
+- 232 existing tests passed across twelve suites. Expanded docs/SPECIAL_FORMATIONS_RULES_AUDIT.md with rule citations, repair boundaries and equipment/limited-visibility scope caveats. No gameplay code or player saves changed. SF-01–SF-11 remain closed.
+
+### 2026-10-18 - Higher HQ/staff repairs SF-12 through SF-14
+
+- Preserved explicit visitor profile and legacy priority interpretation. Applied regimental/battalion CO TAC permissions without preventing carriage of recovered radios/phones. Visitors cannot be consumed for company or platoon HQ reconstitution and no longer receive company-staff succession rank.
+- Added a role/device-gated BN SCR300 channel between eligible on-map battalion endpoints and Company HQ. Verified series pp.28–29 and Normandy CSR 1: BN radio does not inherit SCR536 cover/LOS limits, and remains radio when CO TAC uses phones. Visitor event inventory is unchanged; the two-device path remains conditional on actual equipment.
+- Added 24 focused cases and three authored exact replay/recovery sequences covering real Checking Up events, combat loss and staff succession, and explicitly equipped BN activation. Corrected audit R#3 profile selection to random[1] and added an assertion of the selected profile.
+- 302 tests passed across 19 suites; all 21 corrected higher-HQ observations and earlier audit scripts pass. Production build passed with existing bundle-size advisory. Repaired results: output/higher-hq-rules-fixed.json. No player saves were loaded or modified. SF-01–SF-14 closed within documented scope; machine-gun/FPL audit is next.
+
+### 2026-10-18 - Machine-gun grazing/overhead/FPL audit
+
+- Confirmed SF-15: overhead eligibility uses card ground levels for intervening/target positions, ignoring upper-story occupants; this both permits an illegal friendly overflight and blocks a legal elevated-target engagement. Confirmed SF-16: attached HMG A+ classification blocks Concentrate Fire and also misses jam handling in the internal concentration procedure.
+- Added scripts/auditMachineGunRules.js and output/machine-gun-rules-audit.json: twelve isolated observations, eight passing controls and four discrepancies across two open findings. The jam case is explicitly a procedure probe paired with the currently blocked A+ order, not a claim of legal player access today.
+- FPL is restricted to Defensive Missions by series rules. Current Normandy missions are offensive/combat patrols with no FPL entitlement; no FPL UI or gameplay addition is warranted by this audit. Remaining slope interpretation is recorded as a question, not a confirmed defect.
+- 242 existing tests passed across ten suites. Documentation/probes only; no gameplay source or player saves changed. SF-01–SF-14 remain closed; SF-15/SF-16 await repair.
+
+### 2026-10-18 - Machine-gun repairs SF-15/SF-16
+
+- Added A+ to concentration eligibility and weapon jam classification, retaining tripod draws and ammo rules. Overhead paths now consider upper-story occupants, mixed intervening heights and visible elevated targets; grazing uses the target's actual aiming height. Card-wide Basic VOF, nearest-enemy/shift rules, smoke/LOS and weapon-specific capability remain.
+- Added 36 rules cases and two authored exact replay/checkpoint sequences for legal concentration and an upper-story movement intercepting an existing overhead lane. All twelve MG audit observations pass in output/machine-gun-rules-fixed.json, and earlier audit scripts remain passing.
+- 307 tests passed across 14 suites; production build passed with the existing bundle-size advisory. No player saves modified and no FPL/UI additions. All confirmed SF-01–SF-16 findings closed within documented scope.
+
+### 2026-10-18 - Remaining specialist/equipment/breakdown audit
+
+- Visually checked Normandy breakdown charts pp.47–48; rendered references saved under output/specialist-audit/. Confirmed SF-17 German mortar operational survivor incorrectly becomes Fire Team; SF-18 two-step 88mm incorrectly retains a Good Order one-step gun; SF-19 several mission profiles lose the A/S FJ Fire Team (M5 control is correct); SF-20 A/S-plus-S donors incorrectly fail A/S squad firepower eligibility.
+- Added scripts/auditSpecialistBreakdowns.js and output/specialist-breakdowns-audit.json: fifteen observations, three passing controls and twelve disagreements across four findings. M6/M7 profile checks use the shared infantry procedure, not complete vehicle playthroughs.
+- Verified no Normandy mission allocation authorizes demolition charges or flamethrowers; their absence is not a bug. Engineer LATs correctly fail the two-/three-step Good Order squad requirement. Close-range German Fire Team counters were checked visually rather than inferring a bug from an unused stored range value.
+- 294 existing tests passed across eleven suites. Audit documentation/probes only; no gameplay source or player saves modified. SF-01–SF-16 remain closed; SF-17–SF-20 await repair, with historical content/replay boundaries called out explicitly.
+
+
+## 2026-10-18 — Isolated Grenade Miss visibility correction
+
+New missions apply normal light, weather, illumination and smoke modifiers to a lone Grenade Miss (series 7.10.4, p.55). Successful grenade VOF exemptions remain unchanged and the miss penalty is counted once. Replays record the correction explicitly; existing records retain historical outcomes. Player-selected combat order and the combat screen redesign remain deferred together. Focused coverage is in `test/grenadeMissVisibility.test.js` and `scripts/auditCombatResolution.js`.
+
+Validation: 122 focused tests passed across nine suites (three archival cases skipped), all 14 combat audit observations passed, and production build passed. Historical two-attempt M1 replay and recovery remain exact.

@@ -29,3 +29,52 @@
 @media(max-width:1300px) and (min-width:751px){.attempt-desk[data-preparation-stage="3"] .desk-layout{grid-template-columns:390px minmax(0,1fr)}.attempt-desk[data-preparation-stage="3"] .desk-sheet:nth-child(2){grid-template-columns:minmax(0,1fr) minmax(240px,.85fr)}}
 @media(max-width:1100px) and (min-width:751px){.attempt-desk[data-preparation-stage="3"] .desk-layout{grid-template-columns:350px minmax(0,1fr)}.attempt-desk[data-preparation-stage="3"] .desk-sheet:nth-child(2){grid-template-columns:1fr}}
 .attempt-desk .attempt-skills fieldset{padding:6px;margin:6px 0;grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}.attempt-desk .attempt-skills legend{font-size:13px}.attempt-desk .attempt-skills label{font-size:12px}
+@font-face{font-family:'Veteran Typewriter';src:url('/fonts/veteran-typewriter/veteran-typewriter.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
+.command-desk{font-family:'Veteran Typewriter','Courier New',monospace}
+.command-desk h2,.command-desk h3,.command-desk h4,.command-desk th,.command-desk .desk-kicker,.command-desk .attempt-location{font-family:inherit}
+.command-desk.mission-setup-dialog{--desk-padding:16px;font-size:14px;scroll-padding-top:20px}
+.mission-setup-dialog .desk-header{position:static;margin:0 0 12px;padding:0 0 10px;align-items:center}
+.mission-setup-dialog .desk-header h2{font-size:27px}
+.mission-setup-dialog .desk-header p{margin:4px 0}
+.setup-briefing{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(260px,1fr);gap:20px;margin-bottom:12px;border-bottom:1px solid #a99b7d;padding-bottom:10px}
+.command-desk .setup-briefing h3{font-size:16px;margin:0}
+.command-desk .setup-briefing p{margin:5px 0}
+.mission-setup-dialog .desk-layout{grid-template-columns:minmax(460px,1.1fr) minmax(380px,1fr);gap:14px}
+.mission-setup-dialog .desk-sheet{padding:12px}
+.mission-setup-dialog .desk-actions{position:static}
+.mission-setup-dialog .setup-controls>label{display:inline-grid;width:210px;vertical-align:top;margin:0 12px 8px 0}
+.mission-setup-dialog fieldset{gap:8px;margin:8px 0;padding:8px}
+.mission-setup-dialog fieldset label{width:180px;max-width:100%;margin:0}
+.mission-setup-dialog select,.mission-setup-dialog input{padding:6px;font-size:13px;width:100%}
+.mission-setup-dialog summary{color:#302d24;font-size:16px}
+.command-desk .setup-signals{border-top:3px double #827359;margin-top:12px;padding-top:12px}
+.command-desk .setup-signals h3{font-size:18px;margin:0}
+.setup-signals table{table-layout:fixed;font-size:13px}
+.command-desk .setup-signals th,.command-desk .setup-signals td{padding:5px 4px}
+.setup-signals th:first-child{width:27%}.setup-signals th:nth-child(2){width:29%}
+.command-desk .desk-map-card strong{display:block;width:fit-content;background:#d2b34d;border:1px solid #695218;color:#2c2616;padding:2px 5px;margin:4px 0;font-size:13px}
+.desk-map-line{border-top:3px solid #806337;position:relative;min-height:12px;align-self:center;color:#302d24;font-size:11px;line-height:1}
+.desk-map-line span{position:relative;top:-8px;background:#fff8e7;padding:0 6px;border:1px solid #806337;margin-right:6px}
+.mission-setup-dialog .desk-map-card{min-height:64px}
+.mission-setup-dialog #setup-error{color:#9d3027}
+@media(max-width:950px){.mission-setup-dialog .desk-layout,.setup-briefing{grid-template-columns:1fr}.setup-signals table{font-size:12px}}
+.command-desk.mission-setup-dialog{padding:16px}
+.mission-setup-dialog .desk-header{display:grid;grid-template-columns:minmax(260px,.8fr) minmax(0,2fr);gap:24px}
+.mission-setup-dialog .setup-briefing{margin:0;padding:0;border:0;grid-template-columns:minmax(0,1.5fr) minmax(180px,1fr);font-size:13px}
+.mission-setup-dialog .setup-briefing h3{font-size:15px}
+.mission-setup-dialog .desk-header h2{font-size:25px}
+.mission-setup-dialog .desk-header .desk-kicker{font-size:10px!important}
+.mission-setup-dialog .desk-header>div{max-width:none}
+.mission-setup-dialog .setup-controls fieldset label{width:calc(50% - 8px);max-width:200px}
+@media(max-width:950px){.mission-setup-dialog .desk-header,.mission-setup-dialog .setup-briefing{grid-template-columns:1fr;gap:10px}}
+.mission-setup-dialog .setup-roster{max-height:480px;overflow:auto}
+.mission-setup-dialog .setup-roster table{font-size:13px}
+.mission-setup-dialog .setup-roster th,.mission-setup-dialog .setup-roster td{padding:4px 6px}
+.mission-setup-dialog .setup-roster small{font-size:11px}
+.mission-setup-dialog .setup-roster thead{position:sticky;top:0;background:#fff8e7;z-index:1}
+@media(max-width:600px){.command-desk .setup-signals select{font-size:12px;padding:5px 2px}.setup-signals th:first-child{width:28%}.setup-signals th:nth-child(2){width:32%}.desk-map-line{font-size:10px}}
+.command-desk .desk-sequence li:has(button){padding:0;border:0}
+.command-desk .desk-sequence button{margin:0;border-radius:0;padding:6px 10px;font-size:14px}
+.command-desk .desk-sequence button:hover{background:#cfc2a1}
+.command-desk .desk-sequence button[aria-current]{background:#435545;color:#fff8df;font-weight:bold}
+.command-desk .desk-map-card strong{max-width:100%;overflow-wrap:anywhere}

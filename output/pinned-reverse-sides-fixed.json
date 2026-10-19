@@ -1,0 +1,446 @@
+{
+  "scope": "Pinned and reverse-side infantry audit",
+  "passed": true,
+  "results": [
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Unpinned A team receives failed point-blank grenade",
+      "expected": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Unpinned A team receives successful point-blank grenade",
+      "expected": {
+        "attackerSucceeded": true,
+        "returned": true
+      },
+      "observed": {
+        "attackerSucceeded": true,
+        "returned": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Pinned A team receives failed point-blank grenade",
+      "expected": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Pinned A team receives successful point-blank grenade",
+      "expected": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Unpinned F team receives failed point-blank grenade",
+      "expected": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Unpinned F team receives successful point-blank grenade",
+      "expected": {
+        "attackerSucceeded": true,
+        "returned": true
+      },
+      "observed": {
+        "attackerSucceeded": true,
+        "returned": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Pinned F team receives failed point-blank grenade",
+      "expected": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Pinned F team receives successful point-blank grenade",
+      "expected": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Unpinned L team receives failed point-blank grenade",
+      "expected": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Unpinned L team receives successful point-blank grenade",
+      "expected": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Pinned L team receives failed point-blank grenade",
+      "expected": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Pinned L team receives successful point-blank grenade",
+      "expected": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Unpinned P team receives failed point-blank grenade",
+      "expected": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Unpinned P team receives successful point-blank grenade",
+      "expected": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Pinned P team receives failed point-blank grenade",
+      "expected": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": false,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-09",
+      "rule": "4.2.5 pp.26–27; 7.10.5 p.55",
+      "case": "Pinned P team receives successful point-blank grenade",
+      "expected": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "observed": {
+        "attackerSucceeded": true,
+        "returned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-10",
+      "rule": "4.2.5 p.27: pinned restrictions take precedence",
+      "case": "Unpinned Paralyzed Team attempts SEEK_COVER",
+      "expected": {
+        "available": false
+      },
+      "observed": {
+        "available": false,
+        "reason": "A paralyzed team must recover before moving within its card."
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-10",
+      "rule": "4.2.5 p.27: pinned restrictions take precedence",
+      "case": "Unpinned Paralyzed Team attempts ENTER_COVER",
+      "expected": {
+        "available": false
+      },
+      "observed": {
+        "available": false,
+        "reason": "A paralyzed team must recover before moving within its card."
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-10",
+      "rule": "4.2.5 p.27: pinned restrictions take precedence",
+      "case": "Pinned Paralyzed Team attempts SEEK_COVER",
+      "expected": {
+        "available": true
+      },
+      "observed": {
+        "available": true,
+        "reason": null
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-10",
+      "rule": "4.2.5 p.27: pinned restrictions take precedence",
+      "case": "Pinned Paralyzed Team attempts ENTER_COVER",
+      "expected": {
+        "available": true
+      },
+      "observed": {
+        "available": true,
+        "reason": null
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-11",
+      "rule": "4.2.1j p.22; 4.2.5 p.26: command/control exceptions",
+      "case": "Unpinned A team switches a carried SCR300 to a destroyed device's net",
+      "expected": {
+        "accepted": true,
+        "switched": true
+      },
+      "observed": {
+        "accepted": true,
+        "switched": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-11",
+      "rule": "4.2.1j p.22; 4.2.5 p.26: command/control exceptions",
+      "case": "Pinned A team switches a carried SCR300 to a destroyed device's net",
+      "expected": {
+        "accepted": true,
+        "switched": true
+      },
+      "observed": {
+        "accepted": true,
+        "switched": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-11",
+      "rule": "4.2.1j p.22; 4.2.5 p.26: command/control exceptions",
+      "case": "Unpinned F team switches a carried SCR300 to a destroyed device's net",
+      "expected": {
+        "accepted": true,
+        "switched": true
+      },
+      "observed": {
+        "accepted": true,
+        "switched": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-11",
+      "rule": "4.2.1j p.22; 4.2.5 p.26: command/control exceptions",
+      "case": "Pinned F team switches a carried SCR300 to a destroyed device's net",
+      "expected": {
+        "accepted": true,
+        "switched": true
+      },
+      "observed": {
+        "accepted": true,
+        "switched": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-11",
+      "rule": "4.2.1j p.22; 4.2.5 p.26: command/control exceptions",
+      "case": "Unpinned L team switches a carried SCR300 to a destroyed device's net",
+      "expected": {
+        "accepted": true,
+        "switched": true
+      },
+      "observed": {
+        "accepted": true,
+        "switched": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-11",
+      "rule": "4.2.1j p.22; 4.2.5 p.26: command/control exceptions",
+      "case": "Pinned L team switches a carried SCR300 to a destroyed device's net",
+      "expected": {
+        "accepted": true,
+        "switched": true
+      },
+      "observed": {
+        "accepted": true,
+        "switched": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-11",
+      "rule": "4.2.1j p.22; 4.2.5 p.26: command/control exceptions",
+      "case": "Unpinned P team switches a carried SCR300 to a destroyed device's net",
+      "expected": {
+        "accepted": true,
+        "switched": true
+      },
+      "observed": {
+        "accepted": true,
+        "switched": true
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-11",
+      "rule": "4.2.1j p.22; 4.2.5 p.26: command/control exceptions",
+      "case": "Pinned P team switches a carried SCR300 to a destroyed device's net",
+      "expected": {
+        "accepted": true,
+        "switched": true
+      },
+      "observed": {
+        "accepted": true,
+        "switched": true
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.2.5 pp.26–27",
+      "case": "A team basic fire",
+      "expected": {
+        "canFire": true
+      },
+      "observed": {
+        "canFire": true,
+        "basicValue": -1
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.2.5 pp.26–27",
+      "case": "F team basic fire",
+      "expected": {
+        "canFire": true
+      },
+      "observed": {
+        "canFire": true,
+        "basicValue": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.2.5 pp.26–27",
+      "case": "L team basic fire",
+      "expected": {
+        "canFire": false
+      },
+      "observed": {
+        "canFire": false,
+        "basicValue": null
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "4.2.5 pp.26–27",
+      "case": "P team basic fire",
+      "expected": {
+        "canFire": false
+      },
+      "observed": {
+        "canFire": false,
+        "basicValue": null
+      },
+      "passed": true
+    }
+  ]
+}

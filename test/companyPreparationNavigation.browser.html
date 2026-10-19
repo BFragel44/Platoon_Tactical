@@ -1,0 +1,17 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Preparation navigation check</title><body>
+<button id="open">Open prepared company</button><p id="result"></p>
+<script type="module">
+import '/src/style.css';import '/src/ui/company.css';
+import {openCompanyPreparation} from '/src/ui/campaignPreparation.js';
+import {newCompanyCampaign,beginCompanyPreparation,saveCompanyPreparation,readCompanyPreparation} from '/src/sim/company/campaignPreparation.js';
+import {navigateCompanyPreparation} from '/src/ui/preparationChoices.js';
+import {createMission,abortMission} from '/src/sim/company/engine.js';
+import {trevieres} from '/src/scenarios/trevieres.js';
+if(location.hostname!=='127.0.0.1'||location.port!=='5185')throw Error('Isolated port 5185 required.');
+let record=readCompanyPreparation(localStorage);
+const campaign=newCompanyCampaign(trevieres,'navigation-browser');
+const mission=abortMission(createMission(trevieres,'navigation-browser',{}, {mission_instance_id:'navigation-browser-run',roster:campaign.roster})).state;
+mission.status='SUCCESS';mission.achievements=[{points:8}];
+if(!record){record=navigateCompanyPreparation(beginCompanyPreparation(campaign,mission),'COMPLETE');delete record.preparation.before_completion;saveCompanyPreparation(localStorage,record);}
+document.querySelector('#open').onclick=()=>openCompanyPreparation({scenario:trevieres,mission,download:()=>{},onClose:()=>{const current=readCompanyPreparation(localStorage);document.querySelector('#result').textContent=`Saved ${current.preparation.phase}; ${current.preparation.points} XP; ${current.roster.prepared_skills.length} skills`;}});
+</script></body></html>

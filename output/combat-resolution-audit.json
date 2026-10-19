@@ -1,0 +1,104 @@
+{
+  "scope": "Infantry combat resolution: focused first pass",
+  "passed": true,
+  "results": [
+    {
+      "id": "CR-01-night",
+      "rule": "7.10.4 p.55: lone missed grenade uses standard VOF modifiers",
+      "expected": 2,
+      "observed": 2,
+      "passed": true
+    },
+    {
+      "id": "CR-01-weather",
+      "rule": "7.10.4 p.55: lone missed grenade uses standard VOF modifiers",
+      "expected": 1,
+      "observed": 1,
+      "passed": true
+    },
+    {
+      "id": "grenade-visibility-exemption",
+      "rule": "7.10.2 p.55",
+      "expected": -4,
+      "observed": -4,
+      "passed": true
+    },
+    {
+      "id": "cumulative-grenades",
+      "rule": "7.10.2 p.55",
+      "expected": -8,
+      "observed": -8,
+      "passed": true
+    },
+    {
+      "id": "minimum-NCM",
+      "rule": "6.4 p.45",
+      "expected": -4,
+      "observed": -4,
+      "passed": true
+    },
+    {
+      "id": "MISS-card-count",
+      "rule": "6.4.1–6.4.3 p.47",
+      "expected": 1,
+      "observed": 1,
+      "passed": true
+    },
+    {
+      "id": "MISS-pin-state",
+      "rule": "6.4.2 p.47",
+      "expected": false,
+      "observed": false,
+      "passed": true
+    },
+    {
+      "id": "PIN-card-count",
+      "rule": "6.4.1–6.4.3 p.47",
+      "expected": 1,
+      "observed": 1,
+      "passed": true
+    },
+    {
+      "id": "PIN-pin-state",
+      "rule": "6.4.2 p.47",
+      "expected": true,
+      "observed": true,
+      "passed": true
+    },
+    {
+      "id": "HIT-card-count",
+      "rule": "6.4.1–6.4.3 p.47",
+      "expected": 2,
+      "observed": 2,
+      "passed": true
+    },
+    {
+      "id": "HIT-pin-state",
+      "rule": "6.4.2 p.47",
+      "expected": true,
+      "observed": true,
+      "passed": true
+    },
+    {
+      "id": "experience-column",
+      "rule": "6.4.3 p.47",
+      "expected": "P",
+      "observed": "P",
+      "passed": true
+    },
+    {
+      "id": "frozen-exposures",
+      "rule": "6.4.1 p.47: resolving a two-casualty HIT leaves subsequent exposure unchanged",
+      "expected": true,
+      "observed": true,
+      "passed": true
+    },
+    {
+      "id": "new-teams-not-retargeted",
+      "rule": "6.4.1 p.47",
+      "expected": 2,
+      "observed": 2,
+      "passed": true
+    }
+  ]
+}

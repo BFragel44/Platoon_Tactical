@@ -1,0 +1,257 @@
+{
+  "scope": "Normandy specialists and formation breakdowns",
+  "passed": false,
+  "results": [
+    {
+      "id": "SF-17",
+      "rule": "Normandy breakdown p.48; CSR 4 p.14; series 7.18.1B p.60",
+      "case": "Two-step German 81mm section takes F: unaffected last mortar retains its operational side",
+      "expected": {
+        "operationalMortars": 1
+      },
+      "observed": {
+        "operationalMortars": 0,
+        "teams": [
+          {
+            "side": "F",
+            "vof": "S",
+            "ammo": 6
+          },
+          {
+            "side": "F",
+            "vof": "S",
+            "ammo": 6
+          }
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-17",
+      "rule": "Normandy breakdown p.48; CSR 4 p.14; series 7.18.1B p.60",
+      "case": "Two-step German 81mm section takes C: unaffected last mortar retains its operational side",
+      "expected": {
+        "operationalMortars": 1
+      },
+      "observed": {
+        "operationalMortars": 0,
+        "teams": [
+          {
+            "side": "F",
+            "vof": "S",
+            "ammo": 6
+          }
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-17",
+      "rule": "Normandy breakdown p.48; CSR 4 p.14; series 7.18.1B p.60",
+      "case": "Two-step German 81mm section takes L: unaffected last mortar retains its operational side",
+      "expected": {
+        "operationalMortars": 1
+      },
+      "observed": {
+        "operationalMortars": 0,
+        "teams": [
+          {
+            "side": "F",
+            "vof": "S",
+            "ammo": 6
+          }
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-18",
+      "rule": "Normandy breakdown p.48; series 6.4.3 p.47",
+      "case": "Two-step 88mm gun takes F: no Good Order one-step gun remains",
+      "expected": {
+        "operationalGun": false
+      },
+      "observed": {
+        "operationalGun": true,
+        "remainingSteps": 1,
+        "vof": "H",
+        "side": "GOOD"
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-18",
+      "rule": "Normandy breakdown p.48; series 6.4.3 p.47",
+      "case": "Two-step 88mm gun takes C: no Good Order one-step gun remains",
+      "expected": {
+        "operationalGun": false
+      },
+      "observed": {
+        "operationalGun": true,
+        "remainingSteps": 1,
+        "vof": "H",
+        "side": "GOOD"
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-18",
+      "rule": "Normandy breakdown p.48; series 6.4.3 p.47",
+      "case": "Two-step 88mm gun takes L: no Good Order one-step gun remains",
+      "expected": {
+        "operationalGun": false
+      },
+      "observed": {
+        "operationalGun": true,
+        "remainingSteps": 1,
+        "vof": "H",
+        "side": "GOOD"
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-19",
+      "rule": "Normandy breakdown p.48",
+      "case": "normandy_2: A/S Fallschirmjager squad retains one A/S Fire Team on breakdown",
+      "expected": {
+        "asTeams": 1
+      },
+      "observed": {
+        "asTeams": 0,
+        "ratings": [
+          "S",
+          "S",
+          "S"
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-19",
+      "rule": "Normandy breakdown p.48",
+      "case": "normandy_3: A/S Fallschirmjager squad retains one A/S Fire Team on breakdown",
+      "expected": {
+        "asTeams": 1
+      },
+      "observed": {
+        "asTeams": 0,
+        "ratings": [
+          "S",
+          "S",
+          "S"
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-19",
+      "rule": "Normandy breakdown p.48",
+      "case": "normandy_4: A/S Fallschirmjager squad retains one A/S Fire Team on breakdown",
+      "expected": {
+        "asTeams": 1
+      },
+      "observed": {
+        "asTeams": 0,
+        "ratings": [
+          "S",
+          "S",
+          "S"
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-19",
+      "rule": "Normandy breakdown p.48",
+      "case": "normandy_5: A/S Fallschirmjager squad retains one A/S Fire Team on breakdown",
+      "expected": {
+        "asTeams": 1
+      },
+      "observed": {
+        "asTeams": 1,
+        "ratings": [
+          "S",
+          "S",
+          "A/S"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "SF-19",
+      "rule": "Normandy breakdown p.48",
+      "case": "normandy_6: A/S Fallschirmjager squad retains one A/S Fire Team on breakdown",
+      "expected": {
+        "asTeams": 1
+      },
+      "observed": {
+        "asTeams": 0,
+        "ratings": [
+          "S",
+          "S",
+          "S"
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-19",
+      "rule": "Normandy breakdown p.48",
+      "case": "normandy_7: A/S Fallschirmjager squad retains one A/S Fire Team on breakdown",
+      "expected": {
+        "asTeams": 1
+      },
+      "observed": {
+        "asTeams": 0,
+        "ratings": [
+          "S",
+          "S",
+          "S"
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "SF-20",
+      "rule": "6.5.2 p.49; Normandy breakdown p.48",
+      "case": "An A/S Fire Team plus S Fire Team supplies its original two-step A/S squad firepower",
+      "expected": {
+        "eligible": true
+      },
+      "observed": {
+        "eligible": false,
+        "ratings": [
+          "A/S",
+          "S"
+        ]
+      },
+      "passed": false
+    },
+    {
+      "id": "CONTROL",
+      "rule": "6.5.2 p.49",
+      "case": "Two ordinary S Fire Teams cannot create A/S squad firepower",
+      "expected": {
+        "eligible": false
+      },
+      "observed": {
+        "eligible": false
+      },
+      "passed": true
+    },
+    {
+      "id": "CONTROL",
+      "rule": "Normandy breakdown p.47",
+      "case": "US mortar last pair: one named Fire Team and one operational mortar",
+      "expected": {
+        "operationalMortars": 1,
+        "fireTeams": 1
+      },
+      "observed": {
+        "operationalMortars": 1,
+        "fireTeams": 1
+      },
+      "passed": true
+    }
+  ]
+}
