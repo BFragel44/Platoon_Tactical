@@ -769,3 +769,21 @@ Five focused suites pass35 tests, including real phone damage resolution into pu
 New missions apply normal light, weather, illumination and smoke modifiers to a lone Grenade Miss (series 7.10.4, p.55). Successful grenade VOF exemptions remain unchanged and the miss penalty is counted once. Replays record the correction explicitly; existing records retain historical outcomes. Player-selected combat order and the combat screen redesign remain deferred together. Focused coverage is in `test/grenadeMissVisibility.test.js` and `scripts/auditCombatResolution.js`.
 
 Validation: 122 focused tests passed across nine suites (three archival cases skipped), all 14 combat audit observations passed, and production build passed. Historical two-attempt M1 replay and recovery remain exact.
+
+
+## 2026-10-18 — Player-choice combat order and battlefield resolution view
+
+New missions allow any visible pending receiving formation to resolve once, selected on the real map or in a location-grouped strip. Exposures/NCMs remain frozen; each draw resolves one formation, with a separate experience card on HIT. Hidden recipients resolve after all visible recipients, without publishing their identities, results or counts. Explicit finishing and cleanup remain separate steps.
+
+The combat desk occupies the orders column, with a large NCM, compact condition breakdown, incoming sources and prominent retained results. The map frames the receiver and readable nearby sources, dims unrelated positions and distinguishes primary/additional fire paths. Known sources have counter highlights; unidentified sources keep only their already-public card location. Returning to orders does not lose results. Historical saves retain their original fixed queue through an explicit replay discriminator. Existing campaign save origins were not used during browser acceptance.
+
+Validation: 139 tests passed across 17 focused suites (three archival cases skipped); production build passed. Browser acceptance verified enemy-first selection, HIT card reveal, result retention, hidden-last finishing and return to cleanup/orders on an isolated origin.
+
+
+## 2026-10-18 — Updating a campaign started in a stale browser page
+
+A newly reported M1 save lacked both new-rule discriminators despite the server serving current sources. The live page had created it using its previously loaded code, so preservation logic correctly treated it as historical. Confirmed the actual new connected-campaign factory, committed start, recovery mirror and resume all retain player-choice combat.
+
+Added an explicit “Use updated combat resolution” action for active historical missions. It appends a replayed adoption operation after the existing history; the initial replay discriminator stays historical so earlier card outcomes are not recalculated. Frozen current exposures, deck, RNG, people and positions are retained. The action backs up the original recovery record and preserves the original turn-start checkpoint. New missions continue enabling player choice by default. No turn or tactical order was advanced in the player's live session during diagnosis.
+
+Validation: four focused suites passed (20 tests; three archival cases skipped). A read-only probe of the player's exported turn-two M1 save confirmed unchanged previous operations/deck and exact replay after adoption. Production build checked separately.

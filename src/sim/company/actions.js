@@ -5,7 +5,7 @@ import {patrolHoldReason} from './patrolEvents.js';
 import {patrolMovementReason} from './patrols.js';
 import {visibilityCommandLimits} from './visibility.js';
 import {transferEquipmentResupply} from './equipmentRecovery.js';
-import {transportReason,dropLoad,dropItemsReason,dropItems} from './core.js';
+import {transportReason,dropLoad,dropItemsReason,dropItems,syncCarriedCasualties} from './core.js';
 import {SKILLS,skillOptions} from './skills.js';
 import {reconstitutionFirepower,reconstitutionLoads,transferReconstitutionLoads} from './reconstitution.js';
 import {ammoLoadReason,pickUpAmmunition,dropExcessAmmunition,expendAmmunition,ammunitionResupplied,basicFireAmmoKey,concentrateAmmoReason} from './ammunition.js';
@@ -280,7 +280,7 @@ export function orderReason(s,c) {
     if(!Array.isArray(ids)||ids.length<2||ids.length>4||new Set(ids).size!==ids.length||!ids.includes(u.id)) return 'Choose 2–4 distinct contributing teams, including the selected team.';
     if(ids.length>(squad.max_steps??squad.steps.length)) return `${squad.name} can hold at most ${squad.max_steps??0} steps; choose fewer teams.`;
     if(ids.some(id=>!reconstructionTeams(s,u,c.issuer_id).some(t=>t.id===id))) return s.mission_rules?.missionIdentity?'Every contributor must be an unpinned one-step Fire/Assault Team on the same card and in communication with the ordering HQ.':'Every contributor must be an unpinned one-step Fire/Assault Team in the same area and in communication with the ordering HQ.';
-    if(s.mission_rules?.missionIdentity&&!reconstitutionFirepower(squad,ids.map(id=>s.units[id])))return 'The contributing teams cannot supply this squad’s original weapon firepower.';
+    if(s.mission_rules?.missionIdentity&&!reconstitutionFirepower(squad,ids.map(id=>s.units[id]),!!s.mission_rules?.hitBreakdowns))return 'The contributing teams cannot supply this squad’s original weapon firepower.';
   }
   if(type==='RECONSTITUTE_HQ') {
     const t=s.units[target];
@@ -319,7 +319,7 @@ export function arrivalCoverOptions(s,u,target,type='MOVE'){
  const steps=group.reduce((n,v)=>n+v.steps.length,0);
  return location.covers.filter(c=>c.known&&group.every(v=>coverAvailable(s,v,c,target))&&(!c.capacity||occupants(s,target).filter(v=>v.cover===c.id).reduce((n,v)=>n+v.steps.length,0)+steps<=c.capacity)).map(c=>({id:c.id,label:`${c.type} +${c.value??0}`,steps:occupants(s,target).filter(v=>v.cover===c.id).reduce((n,v)=>n+v.steps.length,0),arriving_steps:steps}));
 }
-export function move(s,u,target,infiltrate=false,arrivalCover) {
+export function move(s,u,target,infiltrate=false,arrivalCover,{forceExposed=false}={}) {
   const from=u.location,old=coverOf(s,u),oldExposure=u.exposed;
   layPhoneLine(s,u);
   dropExcessAmmunition(s,u);
@@ -331,8 +331,9 @@ export function move(s,u,target,infiltrate=false,arrivalCover) {
   for(const v of following)if(canFire(s,v,target)){v.fire=target;v.fire_direction=null;v.fire_effect=null;}
   const cover=arrivalCover==='open'?null:arrivalCover!==undefined?s.locations[target].covers.find(c=>c.id===arrivalCover):s.locations[target].covers.find(c=>(!friendly(u)||c.known)&&coverAvailable(s,u,c,target));
   if(cover)u.cover=cover.id;
-  u.exposed=!(success||(s.locations[from].staging&&s.locations[target].staging)||(fortification(old)&&fortification(cover)));
+  u.exposed=forceExposed||!(success||(s.locations[from].staging&&s.locations[target].staging)||(fortification(old)&&fortification(cover)));
   for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.location=target;c.transported=true;}
+  syncCarriedCasualties(s,u,{transported:true});
   if(infiltrate&&engineerRulesEnabled(s)&&eligibleEngineer(u)&&s.locations[target].mines){u.exposed=oldExposure;markEngineerPath(s,u,success);}else if(s.mission_rules?.specialEnemies)checkMines(s,u);
   emit(s,'UNIT_MOVED',`${u.name} ${success?'infiltrated':'moved'} to ${s.locations[target].name}${u.exposed?'; exposed until cleanup':''}.`,{actor:u.id,from,target,exposed:u.exposed,faction:u.faction},!visible(s,u));
 }

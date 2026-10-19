@@ -504,8 +504,9 @@ and the unresolved slope interpretation are not certified by this batch.
 
 ## Remaining infantry specialists/equipment/breakdown audit — October 18, 2026
 
-Four new discrepancies are confirmed against the printed breakdown charts and
-series rules. SF-01–SF-16 remain closed; this is an audit-only pass.
+The original pass recorded four discrepancies against the printed breakdown charts and
+series rules. SF-18 was withdrawn after visual reinspection on October 19 (see the
+correction below); the other three are now repaired. SF-01–SF-16 remain closed.
 
 The Normandy breakdown charts are predominantly counter artwork, so text
 extraction alone is insufficient. Printed pp.47–48 were rendered and visually
@@ -519,7 +520,7 @@ and twelve disagreements across the following four findings. Results are in
 | ID | Priority | Rule and expected behavior | Reproduced behavior | Repair boundary |
 |---|---|---|---|---|
 | SF-17 | High | Normandy breakdown p.48, CSR 4 p.14 and series §7.18.1B p.60: the final German 81mm pair consists of the affected mortar on its Fire Team side and the unaffected mortar on its operational G! side; surviving teams each retain the section's ammo count. | A two-step section receiving F produces two mortar Fire Teams and no operational mortar. C or L also leaves the unaffected mortar on its Fire Team side. The US control preserves its operational survivor correctly. | Correct the unaffected German survivor's side without converting generic first-step LATs into named mortars. Preserve F/A versus P/L/C results, pinned state, ammo replication, named-team recovery, woods/cover restrictions and non-reconstitution of sections. |
-| SF-18 | High | Normandy breakdown p.48 and §6.4.3 p.47: the two-step 88mm has no Good Order one-step gun side; its last surviving step becomes the chart's Fire Team. | F, C or L on the two-step 88mm leaves the original unit with one step, Good Order and H VOF. It can retain gun capability after unpinning instead of completing its breakdown. | Author/enforce whether a multistep weapon has a legal Good Order one-step side. Do not apply squad-specific breakdown blindly to mortars or two-step weapons that do have one-step sides. Check 75mm gun counter sides separately; only the 88mm chart is asserted here. Preserve people, cargo/ammo disposition and simultaneous combat resolution. |
+| SF-18 | Withdrawn, October 19 | Visual reinspection of Normandy breakdown p.48 shows the two-step 88mm breaking down into a Fire Team **and a one-step operational H gun**. The original audit misread the artwork. | Existing one-step Good Order gun behavior is correct. | Retain this behavior; tests cover one- and two-step guns across all HIT letters and pairs. No 75mm behavior is inferred from this chart. |
 | SF-19 | High | Normandy breakdown p.48: an A/S Fallschirmjäger squad ends with an S Fire Team and an A/S Fire Team. | M2/M3/M4 profiles and the inherited M6/M7 profiles specify `last_step_vof:'S'`, producing only S teams. M5 already specifies A/S and passes. | Align the affected authored profiles with the chart while preserving their first-step S team, Close-range Fire Team limit, experience and lack of belt-fed MG ammunition. Handle scenario/content compatibility deliberately; the prior M5 source audit expressly preserved Cerisy's original content and tests currently assert that historical boundary. |
 | SF-20 | Medium | §6.5.2 p.49: reconstructed squads cannot gain firepower beyond their donors. An A/S Fire Team plus S Fire Team provides the weapons for its original two-step A/S squad. | Actual M5 breakdown teams with A/S and S ratings are rejected by `reconstitutionFirepower`, which requires an A-rated MG team for both A and A/S squads. | Distinguish automatic-rifle A/S firepower from belt-fed A MG firepower in eligibility and donor selection. Preserve rejection of two plain S teams, generic point-blank Assault Team limitations, original squad capacity, experience and carried equipment. Check enemy activity selection as well as friendly reconstitution paths. |
 
@@ -559,3 +560,10 @@ rule-based regressions and legal replay/recovery tests; preserve historical
 content/replay handling rather than silently changing archived mission profiles.
 This closes the planned infantry specialist review pass, not certification of
 every vehicle, mission outcome or historical campaign save.
+
+
+## HIT breakdown repairs — October 19, 2026
+
+SF-17, SF-19 and SF-20 are repaired for new missions. The unaffected German mortar remains operational, A/S Fallschirmjäger runtime profiles retain their final A/S Fire Team, and A/S weapon donors can supply an A/S squad without being treated as belt-fed MG donors. Historical authored scenario data remains unchanged; runtime profile correction is explicit and versioned. SF-18 is withdrawn, not implemented: the printed chart includes a one-step operational 88mm.
+
+The wider HIT pass also corrects final affected-step weapons in two-letter results, per-step Fallschirmjäger random MG breakdown, named Fire Team experience, no-effect repeat LAT results, ammunition cargo continuity and final-volley experience timing. See [HIT_BREAKDOWN_RULES_AUDIT.md](HIT_BREAKDOWN_RULES_AUDIT.md). The original fifteen specialist observations now pass, with SF-18's expected result corrected rather than changing correct gameplay to match the mistaken audit. Output: `output/specialist-breakdowns-fixed.json`.

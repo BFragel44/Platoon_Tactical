@@ -1,0 +1,1341 @@
+{
+  "scope": "NCM rulebook worked examples and modifier interactions",
+  "passed": true,
+  "observations": 50,
+  "results": [
+    {
+      "id": "printed-46-1-LMG",
+      "rule": "6.4 example 1 p.46",
+      "expected": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -4,
+        "visibility": 0,
+        "crossfire": -1,
+        "cover": 1
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": -1,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-46-1-Assault",
+      "rule": "6.4 example 1 p.46",
+      "expected": {
+        "total": -4
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": -1,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-46-1-Squad",
+      "rule": "6.4 example 1 p.46",
+      "expected": {
+        "total": -1,
+        "fire": -3,
+        "visibility": 2,
+        "pinned": 1,
+        "cover": 0
+      },
+      "observed": {
+        "total": -1,
+        "ncm": -1,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 1,
+        "exposed": 0,
+        "crossfire": -1,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 2,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-46-2-target",
+      "rule": "6.4 example 2 p.46",
+      "expected": {
+        "total": 0,
+        "crossfire": 0,
+        "grenade_miss": -1
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": -1,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 1,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": -1,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-46-2-US-second",
+      "rule": "6.4 example 2 p.46",
+      "expected": {
+        "total": 0,
+        "crossfire": 0,
+        "grenade_miss": -1
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": -1,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 1,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": -1,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-46-2-US-LMG",
+      "rule": "6.4 example 2 p.46",
+      "expected": {
+        "total": 0,
+        "crossfire": 0,
+        "grenade_miss": -1
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": -1,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 1,
+        "cover": 0,
+        "pinned": 1,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": -1,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-46-2-German-A",
+      "rule": "6.4 example 2 p.46",
+      "expected": {
+        "total": -1,
+        "fire": 0,
+        "concentrated": -1
+      },
+      "observed": {
+        "total": -1,
+        "ncm": -1,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 1,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": -1,
+        "grenade_miss": -1,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-46-2-German-S",
+      "rule": "6.4 example 2 p.46",
+      "expected": {
+        "total": -5,
+        "ncm": -4,
+        "fire": -4,
+        "concentrated": -1
+      },
+      "observed": {
+        "total": -5,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 1,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": -1,
+        "grenade_miss": -1,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-55-US-stack",
+      "rule": "7.10 example 1 p.55",
+      "expected": {
+        "total": 0,
+        "overcrowding": -1,
+        "grenade_miss": -1,
+        "cover": 3,
+        "terrain": 3
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 3,
+        "cover": 3,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": -1,
+        "overcrowding": -1,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-56-double-grenade",
+      "rule": "7.10 example 2 p.56",
+      "expected": {
+        "total": -7,
+        "ncm": -4,
+        "fire": -8
+      },
+      "observed": {
+        "total": -7,
+        "ncm": -4,
+        "fire": -8,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 2,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": -1,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "printed-56-untargeted",
+      "rule": "7.10 example 2 p.56",
+      "expected": {
+        "total": 0,
+        "fire": -1
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": -1,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 2,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": -1,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "mixed-darkness",
+      "rule": "6.4 p.45; 7.10.2 p.55; 9.0 p.69",
+      "expected": {
+        "total": -4,
+        "selected": "GRENADE",
+        "visibility": 0,
+        "smoke": 0
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "mixed-weather",
+      "rule": "6.4 p.45; 7.10.2 p.55; 9.0 p.69",
+      "expected": {
+        "total": -4,
+        "selected": "GRENADE",
+        "visibility": 0,
+        "smoke": 0
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "mixed-smoke",
+      "rule": "6.4 p.45; 7.10.2 p.55; 9.0 p.69",
+      "expected": {
+        "total": -4,
+        "selected": "GRENADE",
+        "visibility": 0,
+        "smoke": 0
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "mixed-mixed-high-visibility",
+      "rule": "6.4 p.45; 7.10.2 p.55; 9.0 p.69",
+      "expected": {
+        "total": -3,
+        "selected": "GRENADE",
+        "visibility": 0,
+        "smoke": 0
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "burst-changes-selection",
+      "rule": "5.2.3 p.36; 6.4 p.45",
+      "expected": {
+        "total": -3,
+        "selected": "BASIC_FIRE",
+        "burst": 0
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "incoming-visibility-exemption",
+      "rule": "9.0 p.69",
+      "expected": {
+        "total": -3,
+        "selected": "OFF_MAP_SUPPORT",
+        "visibility": 0,
+        "smoke": 0
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "OFF_MAP_SUPPORT"
+      },
+      "passed": true
+    },
+    {
+      "id": "on-map-indirect-burst--1",
+      "rule": "7.3.2 p.53",
+      "expected": {
+        "total": -4,
+        "burst": -1,
+        "crossfire": 0
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -3,
+        "smoke": 0,
+        "burst": -1,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "ON_MAP_INDIRECT"
+      },
+      "passed": true
+    },
+    {
+      "id": "on-map-indirect-burst-0",
+      "rule": "7.3.2 p.53",
+      "expected": {
+        "total": -3,
+        "burst": 0,
+        "crossfire": 0
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "ON_MAP_INDIRECT"
+      },
+      "passed": true
+    },
+    {
+      "id": "on-map-indirect-burst-1",
+      "rule": "7.3.2 p.53",
+      "expected": {
+        "total": -2,
+        "burst": 1,
+        "crossfire": 0
+      },
+      "observed": {
+        "total": -2,
+        "ncm": -2,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 1,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "ON_MAP_INDIRECT"
+      },
+      "passed": true
+    },
+    {
+      "id": "indirect-normal-H-modifiers",
+      "rule": "7.3.2 p.53",
+      "expected": {
+        "total": 3,
+        "smoke": 2,
+        "visibility": 4
+      },
+      "observed": {
+        "total": 3,
+        "ncm": 3,
+        "fire": -3,
+        "smoke": 2,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 4,
+        "selected": "ON_MAP_INDIRECT"
+      },
+      "passed": true
+    },
+    {
+      "id": "terrain-white-only",
+      "rule": "5.2.3 p.36",
+      "expected": {
+        "terrain": 0
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "terrain-dark-only",
+      "rule": "5.2.3 p.36",
+      "expected": {
+        "terrain": 2
+      },
+      "observed": {
+        "total": 2,
+        "ncm": 2,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 2,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "terrain-mixed",
+      "rule": "5.2.3 p.36",
+      "expected": {
+        "terrain": 2
+      },
+      "observed": {
+        "total": 1,
+        "ncm": 1,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 2,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": -1,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "terrain-dark-fire-plus-incoming",
+      "rule": "5.2.3 p.36",
+      "expected": {
+        "terrain": 2,
+        "selected": "OFF_MAP_SUPPORT",
+        "total": -3
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": -5,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 2,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "OFF_MAP_SUPPORT"
+      },
+      "passed": true
+    },
+    {
+      "id": "terrain-indirect-alone-false",
+      "rule": "5.2.3 p.36; 7.3.2 p.53",
+      "expected": {
+        "terrain": 0,
+        "total": -3
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "OFF_MAP_SUPPORT"
+      },
+      "passed": true
+    },
+    {
+      "id": "terrain-indirect-alone-true",
+      "rule": "5.2.3 p.36; 7.3.2 p.53",
+      "expected": {
+        "terrain": 0,
+        "total": -3
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "ON_MAP_INDIRECT"
+      },
+      "passed": true
+    },
+    {
+      "id": "terrain-point-blank",
+      "rule": "5.2.3 p.36",
+      "expected": {
+        "terrain": 0,
+        "total": 0
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "critical-GRENADE",
+      "rule": "7.10.3 p.55; 7.11.4 p.56",
+      "expected": {
+        "cover": 0,
+        "selected": "OFF_MAP_SUPPORT",
+        "total": -5
+      },
+      "observed": {
+        "total": -5,
+        "ncm": -4,
+        "fire": -5,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "OFF_MAP_SUPPORT"
+      },
+      "passed": true
+    },
+    {
+      "id": "critical-CONCENTRATE",
+      "rule": "7.10.3 p.55; 7.11.4 p.56",
+      "expected": {
+        "cover": 0,
+        "selected": "OFF_MAP_SUPPORT",
+        "total": -6
+      },
+      "observed": {
+        "total": -6,
+        "ncm": -4,
+        "fire": -5,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": -1,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "OFF_MAP_SUPPORT"
+      },
+      "passed": true
+    },
+    {
+      "id": "critical-other-cover-unaffected",
+      "rule": "7.11.4 p.56",
+      "expected": {
+        "cover": 3,
+        "concentrated": 0,
+        "total": 3
+      },
+      "observed": {
+        "total": 3,
+        "ncm": 3,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 3,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "stack-GRENADE-3",
+      "rule": "5.3 p.37; 7.3.2 p.53",
+      "expected": {
+        "overcrowding": 0,
+        "total": -3
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "stack-INCOMING-3",
+      "rule": "5.3 p.37; 7.3.2 p.53",
+      "expected": {
+        "overcrowding": 0,
+        "total": -3
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "OFF_MAP_SUPPORT"
+      },
+      "passed": true
+    },
+    {
+      "id": "stack-ON_MAP_INDIRECT-3",
+      "rule": "5.3 p.37; 7.3.2 p.53",
+      "expected": {
+        "overcrowding": 0,
+        "total": -2
+      },
+      "observed": {
+        "total": -2,
+        "ncm": -2,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "ON_MAP_INDIRECT"
+      },
+      "passed": true
+    },
+    {
+      "id": "stack-GRENADE-4",
+      "rule": "5.3 p.37; 7.3.2 p.53",
+      "expected": {
+        "overcrowding": -1,
+        "total": -4
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": -1,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "stack-INCOMING-4",
+      "rule": "5.3 p.37; 7.3.2 p.53",
+      "expected": {
+        "overcrowding": -1,
+        "total": -4
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": -1,
+        "visibility": 0,
+        "selected": "OFF_MAP_SUPPORT"
+      },
+      "passed": true
+    },
+    {
+      "id": "stack-ON_MAP_INDIRECT-4",
+      "rule": "5.3 p.37; 7.3.2 p.53",
+      "expected": {
+        "overcrowding": 0,
+        "total": -2
+      },
+      "observed": {
+        "total": -2,
+        "ncm": -2,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "ON_MAP_INDIRECT"
+      },
+      "passed": true
+    },
+    {
+      "id": "stack-GRENADE-6",
+      "rule": "5.3 p.37; 7.3.2 p.53",
+      "expected": {
+        "overcrowding": -3,
+        "total": -6
+      },
+      "observed": {
+        "total": -6,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": -3,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "stack-INCOMING-6",
+      "rule": "5.3 p.37; 7.3.2 p.53",
+      "expected": {
+        "overcrowding": -3,
+        "total": -6
+      },
+      "observed": {
+        "total": -6,
+        "ncm": -4,
+        "fire": -4,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": -3,
+        "visibility": 0,
+        "selected": "OFF_MAP_SUPPORT"
+      },
+      "passed": true
+    },
+    {
+      "id": "stack-ON_MAP_INDIRECT-6",
+      "rule": "5.3 p.37; 7.3.2 p.53",
+      "expected": {
+        "overcrowding": 0,
+        "total": -2
+      },
+      "observed": {
+        "total": -2,
+        "ncm": -2,
+        "fire": -3,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "ON_MAP_INDIRECT"
+      },
+      "passed": true
+    },
+    {
+      "id": "crossfire-same-bearing",
+      "rule": "6.2.4 p.43",
+      "expected": {
+        "crossfire": 0
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "crossfire-different-bearing",
+      "rule": "6.2.4 p.43",
+      "expected": {
+        "crossfire": -1
+      },
+      "observed": {
+        "total": -1,
+        "ncm": -1,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": -1,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "crossfire-indirect-excluded",
+      "rule": "6.2.4 p.43",
+      "expected": {
+        "crossfire": 0
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "concentrated-stacks",
+      "rule": "7.11.2/4 p.56",
+      "expected": {
+        "concentrated": -3,
+        "total": -3
+      },
+      "observed": {
+        "total": -3,
+        "ncm": -3,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": -3,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "pinned-and-exposed",
+      "rule": "6.4 p.45; 6.4.2 p.47",
+      "expected": {
+        "pinned": 1,
+        "exposed": -2,
+        "total": -1
+      },
+      "observed": {
+        "total": -1,
+        "ncm": -1,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 0,
+        "cover": 0,
+        "pinned": 1,
+        "exposed": -2,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "upper-clamp",
+      "rule": "6.4 p.45",
+      "expected": {
+        "total": 10,
+        "ncm": 6
+      },
+      "observed": {
+        "total": 10,
+        "ncm": 6,
+        "fire": 2,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 5,
+        "cover": 3,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "cumulative-company_assault",
+      "rule": "7.10.2 p.55",
+      "expected": {
+        "fire": -8,
+        "total": -4,
+        "ncm": -4
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -8,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 3,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "cumulative-normandy_2",
+      "rule": "7.10.2 p.55",
+      "expected": {
+        "fire": -8,
+        "total": -4,
+        "ncm": -4
+      },
+      "observed": {
+        "total": -4,
+        "ncm": -4,
+        "fire": -8,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 3,
+        "cover": 1,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": 0,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "GRENADE"
+      },
+      "passed": true
+    },
+    {
+      "id": "mortar-miss-dark-border-false",
+      "rule": "5.2.3 p.36; 7.3.2 p.53",
+      "expected": {
+        "terrain": 2,
+        "crossfire": 0,
+        "total": 1
+      },
+      "observed": {
+        "total": 1,
+        "ncm": 1,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 2,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": 0,
+        "concentrated": 0,
+        "grenade_miss": -1,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    },
+    {
+      "id": "mortar-miss-dark-border-true",
+      "rule": "5.2.3 p.36; 7.3.2 p.53",
+      "expected": {
+        "terrain": 2,
+        "crossfire": -1,
+        "total": 0
+      },
+      "observed": {
+        "total": 0,
+        "ncm": 0,
+        "fire": 0,
+        "smoke": 0,
+        "burst": 0,
+        "terrain": 2,
+        "cover": 0,
+        "pinned": 0,
+        "exposed": 0,
+        "crossfire": -1,
+        "concentrated": 0,
+        "grenade_miss": -1,
+        "overcrowding": 0,
+        "visibility": 0,
+        "selected": "BASIC_FIRE"
+      },
+      "passed": true
+    }
+  ]
+}

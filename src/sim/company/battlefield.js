@@ -357,7 +357,7 @@ export function combatExposure(s,u) {
   const directions=[...fire,...temporaryMortarFire(s).filter(f=>f.target===u.location)];
   const cross=new Set(directions.filter(f=>!f.indirect&&f.origin!==u.location).map(f=>{const a=s.locations[f.origin];return `${Math.sign(a.row-terrain.row)}:${Math.sign(a.col-terrain.col)}`;})).size>=2 ? -1 : 0;
   const smoke=Math.max(terrain.smoke ? terrain.smoke_value??2 : 0,indirect.some(f=>f.ammo==='WP')?1:0);
-  const combined=s.mission_rules?.grenade?grenades.filter(m=>m.type==='GRENADE'):[];
+  const combined=(s.mission_rules?.ncmCorrections||s.mission_rules?.grenade)?grenades.filter(m=>m.type==='GRENADE'):[];
   const effects=combined.length>1?[...grenades.filter(m=>m.type!=='GRENADE'),{type:'GRENADE',location:u.location,value:combined.reduce((n,m)=>n+m.value,0),label:'Combined grenade effects'}]:grenades;
   const candidates=[...fire.map(f=>({kind:f.indirect?'ON_MAP_INDIRECT':'BASIC_FIRE',source_id:f.source,origin:f.origin,value:f.value+smoke+(f.indirect?terrain.burst:0),vof:f.value,smoke,burst:f.indirect?terrain.burst:0,blast:false})),
     ...indirect.map(f=>({kind:'OFF_MAP_SUPPORT',source_id:null,origin:f.location,value:f.value+terrain.burst,vof:f.value,smoke:0,burst:terrain.burst,blast:true,label:f.agency?`Incoming ${f.agency.includes('mortar')?'mortar':'artillery'} ${f.ammo??'HE'}`:f.value===-3?'Incoming mortar fire':'Incoming artillery'})),
@@ -368,7 +368,7 @@ export function combatExposure(s,u) {
   candidates.sort((a,b)=>a.value-b.value||String(a.source_id??a.kind).localeCompare(String(b.source_id??b.kind)));
   const strongest=candidates[0];
   const critical=targeted.some(m=>m.critical);
-  const borderFire=[...fire,...grenades.filter(m=>m.type!=='MINES').map(m=>({origin:m.origin??s.units[m.source]?.location??m.location}))];
+  const borderFire=[...fire,...(s.mission_rules?.ncmCorrections?temporaryMortarFire(s).filter(f=>f.target===u.location):[]),...grenades.filter(m=>m.type!=='MINES').map(m=>({origin:m.origin??s.units[m.source]?.location??m.location}))];
   const terrainValue=terrain.open_protection !== undefined && borderFire.every(f=> {
     const source=s.locations[f.origin];return f.indirect||f.origin===u.location||white(terrain,source.row-terrain.row,source.col-terrain.col);
   }) ? terrain.open_protection : terrain.protection;
@@ -382,7 +382,7 @@ export function combatExposure(s,u) {
   return {ncm:Math.max(-4,Math.min(6,total)),total,parts,modifiers,sources:candidates,strongest};
 }
 export const combatModifier=combatExposure;
-export function movementReason(s,u,target) {
+export function movementReason(s,u,target,{automaticRetreat=false}={}) {
   if(u.embarked_on)return 'Disembark before issuing an infantry movement order.';
   const to=s.locations[target],from=s.locations[u.location];
   if(u.mobile===false&&u.cohesion==='GOOD')return 'This gun cannot move on its good-order side.';
@@ -392,10 +392,10 @@ export function movementReason(s,u,target) {
   if(u.mine_hit)return 'Mines prevent further movement this turn.';
   if(s.hq_events?.some(e=>e.side==='friendly'&&e.code==='HOLD'&&e.turn===s.turn&&to.row>e.lead)&&friendly(u))return 'Higher HQ ordered the company to hold its current leading row this turn.';
   if(u.exposed) return 'Already exposed: cannot move to another card until cleanup.';
-  if((u.pinned||['P','L','F'].includes(u.cohesion)) && !to.staging &&
+  if(!automaticRetreat&&(u.pinned||['P','L','F'].includes(u.cohesion)) && !to.staging &&
     (hasFire(s,target)||friendly(u)&&!occupants(s,target).some(v=>v.faction===u.faction))) return 'This unit can only withdraw to staging or a friendly occupied card free of fire.';
   const steps=occupants(s,target).filter(v=>v.faction===u.faction).reduce((n,v)=>n+v.steps.length,0);
-  if(!to.staging && steps+u.steps.length>16) return 'The destination would exceed the 16-step stacking limit.';
+  if(!automaticRetreat&&!to.staging && steps+u.steps.length>16) return 'The destination would exceed the 16-step stacking limit.';
   if(Math.abs(from.row-to.row)===1 && Math.abs(from.col-to.col)===1) {
     const a=`r${from.row}c${to.col}`,b=`r${to.row}c${from.col}`;
     if(s.fire.some(f=>(f.origin===a&&f.target===b)||(f.origin===b&&f.target===a))) return 'A direction of fire crosses this diagonal route.';

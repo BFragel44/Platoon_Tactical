@@ -1,0 +1,500 @@
+{
+  "scope": "Infantry recovery, automatic retreat/capture and Cleanup timing",
+  "observations": 37,
+  "passed": true,
+  "results": [
+    {
+      "id": "automatic-unpin-none",
+      "rule": "3.7.3 p.17",
+      "expected": {
+        "pinned": false
+      },
+      "observed": {
+        "pinned": false
+      },
+      "passed": true
+    },
+    {
+      "id": "automatic-unpin-basic",
+      "rule": "3.7.3 p.17",
+      "expected": {
+        "pinned": true
+      },
+      "observed": {
+        "pinned": true
+      },
+      "passed": true
+    },
+    {
+      "id": "automatic-unpin-incoming",
+      "rule": "3.7.3 p.17",
+      "expected": {
+        "pinned": true
+      },
+      "observed": {
+        "pinned": true
+      },
+      "passed": true
+    },
+    {
+      "id": "automatic-unpin-grenade",
+      "rule": "3.7.3 p.17",
+      "expected": {
+        "pinned": true
+      },
+      "observed": {
+        "pinned": true
+      },
+      "passed": true
+    },
+    {
+      "id": "automatic-unpin-miss",
+      "rule": "3.7.3 p.17",
+      "expected": {
+        "pinned": true
+      },
+      "observed": {
+        "pinned": true
+      },
+      "passed": true
+    },
+    {
+      "id": "automatic-unpin-sniper",
+      "rule": "3.7.3 p.17",
+      "expected": {
+        "pinned": true
+      },
+      "observed": {
+        "pinned": true
+      },
+      "passed": true
+    },
+    {
+      "id": "automatic-unpin-inactive-mines",
+      "rule": "3.7.3 p.17",
+      "expected": {
+        "pinned": true
+      },
+      "observed": {
+        "pinned": true
+      },
+      "passed": true
+    },
+    {
+      "id": "rally-without-fire-P-false",
+      "rule": "6.5.1 pp.48–49",
+      "expected": {
+        "side": "L",
+        "experience": "Green",
+        "draws": 0
+      },
+      "observed": {
+        "side": "L",
+        "experience": "Green",
+        "draws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "rally-without-fire-L-false",
+      "rule": "6.5.1 pp.48–49",
+      "expected": {
+        "side": "F",
+        "experience": "Green",
+        "draws": 0
+      },
+      "observed": {
+        "side": "F",
+        "experience": "Green",
+        "draws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "rally-without-fire-F-false",
+      "rule": "6.5.1 pp.48–49",
+      "expected": {
+        "side": "A",
+        "experience": "Line",
+        "draws": 0
+      },
+      "observed": {
+        "side": "A",
+        "experience": "Line",
+        "draws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "rally-without-fire-F-true",
+      "rule": "6.5.1 pp.48–49",
+      "expected": {
+        "side": "GOOD",
+        "experience": "Veteran",
+        "draws": 0
+      },
+      "observed": {
+        "side": "GOOD",
+        "experience": "Veteran",
+        "draws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "rally-under-fire-false",
+      "rule": "6.5.1 pp.48–49; Green draw modifier",
+      "expected": {
+        "side": "P",
+        "draws": 1
+      },
+      "observed": {
+        "side": "P",
+        "draws": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "rally-under-fire-true",
+      "rule": "6.5.1 pp.48–49; Green draw modifier",
+      "expected": {
+        "side": "L",
+        "draws": 1
+      },
+      "observed": {
+        "side": "L",
+        "draws": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "retreat-empty-rear",
+      "rule": "3.5.2 p.16: override LAT movement restrictions and stacking",
+      "expected": {
+        "retreated": true,
+        "exposed": true
+      },
+      "observed": {
+        "retreated": true,
+        "exposed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "retreat-rear-under-fire",
+      "rule": "3.5.2 p.16: override LAT movement restrictions and stacking",
+      "expected": {
+        "retreated": true,
+        "exposed": true
+      },
+      "observed": {
+        "retreated": true,
+        "exposed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "retreat-rear-overstacked",
+      "rule": "3.5.2 p.16: override LAT movement restrictions and stacking",
+      "expected": {
+        "retreated": true,
+        "exposed": true
+      },
+      "observed": {
+        "retreated": true,
+        "exposed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "retreat-cover-before-opponent-LOS",
+      "rule": "3.5.2 p.16: among no-VOF cards choose best C&C",
+      "expected": {
+        "location": "r1c1"
+      },
+      "observed": {
+        "location": "r1c1"
+      },
+      "passed": true
+    },
+    {
+      "id": "retreat-trench-exposure",
+      "rule": "3.5.2 p.16: mark retreating teams Exposed",
+      "expected": {
+        "location": "r1c2",
+        "exposed": true
+      },
+      "observed": {
+        "location": "r1c2",
+        "exposed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "retreat-not-eligible-pinned",
+      "rule": "3.5.2 p.16",
+      "expected": {
+        "location": "r2c2"
+      },
+      "observed": {
+        "location": "r2c2"
+      },
+      "passed": true
+    },
+    {
+      "id": "retreat-not-eligible-exposed",
+      "rule": "3.5.2 p.16",
+      "expected": {
+        "location": "r2c2"
+      },
+      "observed": {
+        "location": "r2c2"
+      },
+      "passed": true
+    },
+    {
+      "id": "retreat-not-eligible-no-fire",
+      "rule": "3.5.2 p.16",
+      "expected": {
+        "location": "r2c2"
+      },
+      "observed": {
+        "location": "r2c2"
+      },
+      "passed": true
+    },
+    {
+      "id": "retreat-not-eligible-litter-without-casualty",
+      "rule": "3.5.2 p.16",
+      "expected": {
+        "location": "r2c2"
+      },
+      "observed": {
+        "location": "r2c2"
+      },
+      "passed": true
+    },
+    {
+      "id": "litter-carries-casualty-back",
+      "rule": "3.5.2 p.16",
+      "expected": {
+        "location": "r1c2",
+        "carrier": "subject",
+        "exposed": true
+      },
+      "observed": {
+        "location": "r1c2",
+        "carrier": "subject",
+        "exposed": true
+      },
+      "passed": true
+    },
+    {
+      "id": "enemy-retreat-off-home-edge",
+      "rule": "3.5.2 p.16",
+      "expected": {
+        "removed": "WITHDRAWN",
+        "dropped": true
+      },
+      "observed": {
+        "removed": "WITHDRAWN",
+        "dropped": true
+      },
+      "passed": true
+    },
+    {
+      "id": "capture-isolated-false",
+      "rule": "3.5.1 p.16; 8.15 p.69",
+      "expected": {
+        "captured": true,
+        "guardSteps": 2
+      },
+      "observed": {
+        "captured": true,
+        "guardSteps": 2
+      },
+      "passed": true
+    },
+    {
+      "id": "capture-isolated-true",
+      "rule": "3.5.1 p.16; 8.15 p.69",
+      "expected": {
+        "captured": false,
+        "guardSteps": 3
+      },
+      "observed": {
+        "captured": false,
+        "guardSteps": 3
+      },
+      "passed": true
+    },
+    {
+      "id": "capture-guard-pinned-true",
+      "rule": "3.5.1 p.16; 8.15 p.69",
+      "expected": {
+        "captured": false,
+        "prisoners": 0
+      },
+      "observed": {
+        "captured": false,
+        "prisoners": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "capture-guard-pinned-false",
+      "rule": "3.5.1 p.16; 8.15 p.69",
+      "expected": {
+        "captured": true,
+        "prisoners": 1
+      },
+      "observed": {
+        "captured": true,
+        "prisoners": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "incoming-not-removed-at-cleanup",
+      "rule": "3.7.1 / 3.8 p.17",
+      "expected": {
+        "active": [
+          "old"
+        ],
+        "pending": [
+          "new"
+        ]
+      },
+      "observed": {
+        "active": [
+          "old"
+        ],
+        "pending": [
+          "new"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "incoming-expires-at-fire-mission-update",
+      "rule": "3.7.1 p.17",
+      "expected": {
+        "support": [
+          [
+            "new",
+            "ACTIVE"
+          ]
+        ]
+      },
+      "observed": {
+        "support": [
+          [
+            "new",
+            "ACTIVE"
+          ]
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-temporary-markers-and-unit-flags",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": [],
+        "smoke": false,
+        "mines": true,
+        "exposed": false,
+        "mineHit": false,
+        "used": [],
+        "indirect": null,
+        "temporaryPDF": false
+      },
+      "observed": {
+        "markers": [],
+        "smoke": false,
+        "mines": true,
+        "exposed": false,
+        "mineHit": false,
+        "used": [],
+        "indirect": null,
+        "temporaryPDF": false
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-does-not-unpin",
+      "rule": "3.7.3 / 3.8 p.17",
+      "expected": {
+        "pinned": true,
+        "phase": "FRIENDLY_EVENTS",
+        "turn": 2
+      },
+      "observed": {
+        "pinned": true,
+        "phase": "FRIENDLY_EVENTS",
+        "turn": 2
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-enemy-cease-and-reengage",
+      "rule": "3.8 p.17",
+      "expected": {
+        "target": "r1c3"
+      },
+      "observed": {
+        "target": "r1c3"
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-blocked-by-pending-combat",
+      "rule": "3.7.4 / 3.8 p.17",
+      "expected": {
+        "accepted": false,
+        "sameState": true,
+        "markers": 1
+      },
+      "observed": {
+        "accepted": false,
+        "sameState": true,
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-entry-keeps-markers-until-resolve",
+      "rule": "Explicit phase stepping; 3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-resolution-clears-markers",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": 0
+      },
+      "observed": {
+        "markers": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "capture-retreat-combat-cleanup-order",
+      "rule": "3.5–3.8 pp.16–17",
+      "expected": {
+        "ordered": true
+      },
+      "observed": {
+        "ordered": true
+      },
+      "passed": true
+    }
+  ]
+}

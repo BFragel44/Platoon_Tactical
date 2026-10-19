@@ -107,12 +107,14 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
   }
   s.boundaries=scenario.map?{rows:scenario.map.rows,columns:scenario.map.columns}:null;
   s.terrain_deck=structuredClone(scenario.terrain_deck??[]);s.setup=structuredClone(setup);s.mission_name=scenario.name??'Company Assault';
-  s.mission_rules={...structuredClone(scenario.rules??{}),combatResolver:'action-deck-v1',...(execution.grenade_miss_visibility===false?{}:{grenadeMissVisibility:true}),hiddenTerrain:!!scenario.map?.hidden};
+  s.mission_rules={...structuredClone(scenario.rules??{}),combatResolver:'action-deck-v1',...(execution.casualty_positions===false?{}:{casualtyPositions:'v1'}),...(execution.automatic_retreat===false?{}:{automaticRetreat:'v1'}),...(execution.casualty_equipment===false?{}:{casualtyEquipment:'v1'}),...(execution.hit_breakdowns===false?{}:{hitBreakdowns:'v1'}),...(execution.ncm_corrections===false?{}:{ncmCorrections:'v1'}),...(execution.grenade_miss_visibility===false?{}:{grenadeMissVisibility:true}),...(execution.combat_order===false?{}:{combatOrder:'player-choice-v1'}),hiddenTerrain:!!scenario.map?.hidden};
   s.enemy_tactics=s.mission_rules.tactics??'deliberate_defense';
   s.attempt_number=1;
   if(scenario.rules?.missionIdentity)s.mission_instance_id??=execution.mission_instance_id??globalThis.crypto.randomUUID();
   s.objectives=structuredClone(scenario.objectives??null);s.achievements=[];s.hq_events=[];s.support_unavailable=[];s.registered_targets={};
   s.mission_contacts=structuredClone(scenario.package_tables?{tables:scenario.package_tables,packages:scenario.packages,draws:scenario.contact_draws,counters:scenario.enemy_counters}:null);
+  // Preserve archived authored content; correct the runtime chart only for new rules.
+  if(s.mission_rules.hitBreakdowns)for(const profile of s.mission_contacts?.counters??[])if(profile.breakdown==='fallschirmjager_as')profile.last_step_vof='A/S';
   s.support_agencies=structuredClone(scenario.support_agencies??null);
   s.signal_plan=structuredClone(scenario.signal_plan??null);
   s.mission_rules_text=structuredClone(scenario.special_rules??[]);
@@ -200,7 +202,7 @@ function enter(s) {
     const start=s.events.length;
     damagePhoneLines(s);
     const resolutions=s.vire_runtime?.normal_phase_enabled?prepareVireInfantryCombat(s):prepareCombat(s);
-    s.segment_progress={phase:s.phase,status:resolutions.length?'awaiting_resolution':'reviewing',index:0,total:resolutions.length,events_after:start};
+    s.segment_progress={phase:s.phase,status:resolutions.length?'awaiting_resolution':'reviewing',index:s.mission_rules.combatOrder?Math.max(0,resolutions.findIndex(r=>r.target_visible)):0,total:resolutions.length,events_after:start};
     if(!resolutions.length)emit(s,'COMBAT_REVIEW','No formations are affected by fire. Continue to cleanup.');
   }
   const commander=companyCommander(s);
@@ -217,12 +219,25 @@ export function resolveSupportChoice(state,choice){
  try{const s=structuredClone(state);applySupportChoice(s,choice);s.replay.push({op:'resolveSupportChoice',choice:structuredClone(choice)});return result(state,s,{accepted:true});}catch(error){return {state,events:[],accepted:false,reason:error.message};}
 }
 export function submitCommand(state,c) { return c.type==='SELECT_HQ'?selectHQ(state,c.unit_id):order(state,c); }
+// Explicit, replayed adoption keeps the original prefix on its historical rules.
+export function enablePlayerChoiceCombat(state){
+ if(state.status!=='ACTIVE'||state.mission_rules?.combatOrder)return {state,events:[],accepted:false,reason:'Updated combat resolution is already enabled or this mission has ended.'};
+ const s=structuredClone(state);s.mission_rules.combatOrder='player-choice-v1';s.combat_order_upgraded=true;
+ if(s.phase==='COMBAT_EFFECTS'&&s.segment_progress?.status!=='reviewing'){
+  const next=s.pending_combat.findIndex(r=>r.target_visible&&r.status==='PENDING');
+  s.segment_progress.index=next>=0?next:Math.max(0,s.pending_combat.findIndex(r=>r.target_visible));
+  s.segment_progress.status=next>=0?'awaiting_resolution':'reviewing_result';
+ }
+ emit(s,'COMBAT_RESOLUTION_UPDATED','Updated combat resolution enabled. Previous results are unchanged.');
+ s.replay.push({op:'enablePlayerChoiceCombat'});return result(state,s,{accepted:true});
+}
 export function resolveCombat(state,resolutionId) {
   const progress=state.segment_progress,current=state.pending_combat?.[progress?.index];
   if(state.status!=='ACTIVE'||state.phase!=='COMBAT_EFFECTS')return {state,events:[],accepted:false,reason:'Combat can only resolve during segment 3.7.4.'};
-  if(!current||progress.status!=='awaiting_resolution'||current.id!==resolutionId||!current.target_visible)
-    return {state,events:[],accepted:false,reason:'Resolve the currently displayed combat exposure once.'};
-  const s=structuredClone(state);(s.vire_runtime?.normal_phase_enabled?resolveVireInfantryCombat:resolvePreparedCombat)(s,resolutionId);s.segment_progress.status='reviewing_result';
+  const chosen=state.mission_rules?.combatOrder?state.pending_combat?.find(r=>r.id===resolutionId):current;
+  if(state.mission_rules?.combatOrder?(!chosen||chosen.status!=='PENDING'||!chosen.target_visible||!progress||progress.status==='reviewing'):(!current||progress?.status!=='awaiting_resolution'||current.id!==resolutionId||!current.target_visible))
+    return {state,events:[],accepted:false,reason:state.mission_rules?.combatOrder?'Choose an unresolved visible formation. Each exposure resolves once.':'Resolve the currently displayed combat exposure once.'};
+  const s=structuredClone(state);(s.vire_runtime?.normal_phase_enabled?resolveVireInfantryCombat:resolvePreparedCombat)(s,resolutionId);s.segment_progress.index=s.pending_combat.findIndex(r=>r.id===resolutionId);s.segment_progress.status='reviewing_result';
   s.replay.push({op:'resolveCombat',id:resolutionId});return result(state,s,{accepted:true});
 }
 function endMission(s,status,text) { s.status=status;s.impulse=null;scoreMission(s,{final:true});emit(s,'MISSION_ENDED',text,{outcome:status}); }
@@ -299,6 +314,19 @@ export function advancePhase(state,options={}) {
   }
   if(phase==='PINNED_RECOVERY')for(const u of values(s.units).filter(u=>live(u)&&u.pinned&&!hasFire(s,u.location))){u.pinned=false;emit(s,'AUTOMATIC_RECOVERY',`${u.name} is free of fire and unpins.`,{actor:u.id,location:u.location,faction:u.faction},!visible(s,u));}
   if(phase==='PINNED_RECOVERY')for(const v of values(s.vire_runtime?.vehicles??{}).filter(v=>v.status==='ACTIVE'&&v.pinned&&!hasFire(s,v.location))){v.pinned=false;emit(s,'AUTOMATIC_RECOVERY',`${v.name} is free of fire and unpins.`,{actor:v.id,location:v.location,faction:v.faction},v.faction==='enemy'&&!s.knowledge.spotted[v.id]&&!s.knowledge.spotted[v.source_unit]);}
+  if(phase==='COMBAT_EFFECTS'&&s.mission_rules?.combatOrder&&s.segment_progress.status!=='reviewing') {
+    const next=s.pending_combat.findIndex(r=>r.target_visible&&r.status==='PENDING');
+    if(next>=0){s.segment_progress.index=next;s.segment_progress.status='awaiting_resolution';}
+    else {
+      // Hidden targets never enter the player selector and consume cards only after visible combat.
+      for(const r of s.pending_combat.filter(r=>!r.target_visible&&r.status==='PENDING'))
+        (s.vire_runtime?.normal_phase_enabled?resolveVireInfantryCombat:resolvePreparedCombat)(s,r.id);
+      s.segment_progress.status='reviewing';
+      for(const id of Object.keys(s.knowledge.spotted))if(s.units[id])s.knowledge.spotted[id]=observeRecord(s.units[id]);
+      emit(s,'COMBAT_REVIEW','All combat exposures resolved. Review the results, then continue to cleanup.');
+    }
+    return result(state,s);
+  }
   if(phase==='COMBAT_EFFECTS'&&s.segment_progress.status!=='reviewing') {
     let index=s.segment_progress.index;
     if(s.pending_combat[index]?.status==='RESOLVED')index++;
@@ -409,7 +437,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     visible_total:s.pending_combat.filter(r=>r.target_visible).length,visible_resolved:s.pending_combat.filter(r=>r.target_visible&&r.status==='RESOLVED').length}:structuredClone(s.segment_progress);
   const contactEvents=s.phase==='CONTACTS'&&s.segment_progress?getVisibleEvents(s,'friendly',s.segment_progress.events_after):[];
   const contact_review=s.phase==='CONTACTS'?{eligible_locations:eligibleContacts(s).map(c=>c.location),location:s.segment_progress?.contact??nextContact(s)?.location??null,next_location:nextContact(s)?.location??null,resolved:!!s.segment_progress,events:contactEvents}:null;
-  return {...(s.patrol?{patrol:structuredClone(s.patrol),patrol_history:structuredClone(s.patrol_history),visibility:structuredClone(s.visibility),command_limits:visibilityCommandLimits(s.visibility,companyCommander(s)?.experience??'Line')}:{}),id:s.id,scenario_id:s.scenario_id,mission_instance_id:s.mission_instance_id??s.id,attempt_number:s.attempt_number??1,status:s.status,seed:s.seed,turn:s.turn,turn_limit:s.turn_limit,phase:s.phase,phase_label:phaseInfo(s.phase)[1],phase_description:phaseDescription(s),combat_resolution,combat_resolutions,contact_review,pending_support:structuredClone(s.pending_support??null),pending_event:structuredClone(s.pending_event??null),enemy_tactics:s.enemy_tactics,counterattack_ends_after:s.counterattack_ends_after??null,
+  return {...(s.patrol?{patrol:structuredClone(s.patrol),patrol_history:structuredClone(s.patrol_history),visibility:structuredClone(s.visibility),command_limits:visibilityCommandLimits(s.visibility,companyCommander(s)?.experience??'Line')}:{}),id:s.id,scenario_id:s.scenario_id,mission_instance_id:s.mission_instance_id??s.id,attempt_number:s.attempt_number??1,status:s.status,seed:s.seed,turn:s.turn,turn_limit:s.turn_limit,phase:s.phase,phase_label:phaseInfo(s.phase)[1],phase_description:phaseDescription(s),...(s.mission_rules?.combatOrder?{combat_order:s.mission_rules.combatOrder}:{}),combat_resolution,combat_resolutions,contact_review,pending_support:structuredClone(s.pending_support??null),pending_event:structuredClone(s.pending_event??null),enemy_tactics:s.enemy_tactics,counterattack_ends_after:s.counterattack_ends_after??null,
     historical_losses:getVisibleEvents(s).filter(e=>e.type==='FORMATION_LOST'),
     segment_progress,briefing:s.briefing,activity:s.activity,impulse:structuredClone(s.impulse),eligible_hqs:eligibleHQs(s),units,
     locations:values(s.locations).map(terrainProjection),
@@ -431,8 +459,9 @@ export function getAfterActionReport(s) {
   return {record_type:'AAR',ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,scenario_version:s.scenario_version,mission_instance_id:s.mission_instance_id??null,attempts:structuredClone(s.attempt_history??[]),seed:s.seed,setup:structuredClone(s.setup),achievements:structuredClone(s.achievements),score:s.achievements.reduce((n,a)=>n+a.points,0),outcome:s.status,turns:s.turn,events,orders:events.filter(e=>e.type==='COMMAND_ISSUED'),casualties:events.filter(e=>e.type==='CASUALTY'),
     formations:events.filter(e=>['FORMATION_CHANGED','FORMATION_RECONSTITUTED','HQ_RECONSTITUTED','COHESION_CHANGED','UNIT_CAPTURED'].includes(e.type)),objectives:events.filter(e=>['OBJECTIVE_CHECK','MISSION_ENDED'].includes(e.type))};
 }
-export function exportReplay(s) { if(s.vire_runtime)return exportVireAdapterReplay(s.vire_runtime.initial_state,s);return {...(s.mission_rules?.grenadeMissVisibility===true?{grenade_miss_visibility:true}:{}),...(s.mission_rules?.combatResolver?{combat_resolver:s.mission_rules.combatResolver}:{}),ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
+export function exportReplay(s) { if(s.vire_runtime)return exportVireAdapterReplay(s.vire_runtime.initial_state,s);return {...(s.mission_rules?.casualtyPositions?{casualty_positions:s.mission_rules.casualtyPositions}:{}),...(s.mission_rules?.automaticRetreat?{automatic_retreat:s.mission_rules.automaticRetreat}:{}),...(s.mission_rules?.casualtyEquipment?{casualty_equipment:s.mission_rules.casualtyEquipment}:{}),...(s.mission_rules?.hitBreakdowns?{hit_breakdowns:s.mission_rules.hitBreakdowns}:{}),...(s.mission_rules?.ncmCorrections?{ncm_corrections:s.mission_rules.ncmCorrections}:{}),...(s.mission_rules?.combatOrder&&!s.combat_order_upgraded?{combat_order:s.mission_rules.combatOrder}:{}),...(s.mission_rules?.grenadeMissVisibility===true?{grenade_miss_visibility:true}:{}),...(s.mission_rules?.combatResolver?{combat_resolver:s.mission_rules.combatResolver}:{}),ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
 export function replayOperation(s,op) {
+  if(op.op==='enablePlayerChoiceCombat')return enablePlayerChoiceCombat(s);
   if(op.op==='resolveSupportChoice')return resolveSupportChoice(s,op.choice);
   if(op.op==='submitCommand')return submitCommand(s,op.command);
   if(op.op==='selectHQ')return selectHQ(s,op.id);
@@ -449,7 +478,13 @@ export function replayMission(scenario,record) {
     throw new Error('Replay rules/scenario version mismatch. Start a new card-pull mission.');
   if(record.combat_resolver!=='action-deck-v1')throw new Error('Replay combat resolver mismatch. Start a new card-pull mission.');
   if(scenario.rules?.missionIdentity&&!record.mission_instance_id)throw new Error('Normandy replay is missing its mission run identity.');
-  let s=createMission(scenario,record.seed,record.setup??{},record.roster_snapshot?{mission_instance_id:record.mission_instance_id,roster:{schema:1,...record.roster_snapshot,applied_missions:{}}}:null,{mission_instance_id:record.mission_instance_id,grenade_miss_visibility:record.grenade_miss_visibility===true});
+  if(record.casualty_positions!==undefined&&record.casualty_positions!=='v1')throw new Error('Unsupported carried casualty position rules.');
+  if(record.automatic_retreat!==undefined&&record.automatic_retreat!=='v1')throw new Error('Unsupported automatic retreat rules.');
+  if(record.casualty_equipment!==undefined&&record.casualty_equipment!=='v1')throw new Error('Unsupported casualty equipment rules.');
+  if(record.hit_breakdowns!==undefined&&record.hit_breakdowns!=='v1')throw new Error('Unsupported HIT breakdown rules.');
+  if(record.ncm_corrections!==undefined&&record.ncm_corrections!=='v1')throw new Error('Unsupported NCM correction rules.');
+  if(record.combat_order!==undefined&&record.combat_order!=='player-choice-v1')throw new Error('Unsupported combat order rules.');
+  let s=createMission(scenario,record.seed,record.setup??{},record.roster_snapshot?{mission_instance_id:record.mission_instance_id,roster:{schema:1,...record.roster_snapshot,applied_missions:{}}}:null,{mission_instance_id:record.mission_instance_id,casualty_positions:record.casualty_positions==='v1',automatic_retreat:record.automatic_retreat==='v1',casualty_equipment:record.casualty_equipment==='v1',hit_breakdowns:record.hit_breakdowns==='v1',ncm_corrections:record.ncm_corrections==='v1',grenade_miss_visibility:record.grenade_miss_visibility===true,combat_order:record.combat_order==='player-choice-v1'});
   // Missing discriminator means historical behavior: never change old finite-deck outcomes.
   if(record.grenade_miss_visibility!==undefined&&record.grenade_miss_visibility!==true)throw new Error('Unsupported grenade miss visibility rules.');
   for(const [index,op] of record.operations.entries()) {

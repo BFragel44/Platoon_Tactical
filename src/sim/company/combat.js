@@ -6,7 +6,7 @@ import {availableCounters} from './missionContacts.js';
 import {expendAmmunition} from './ammunition.js';
 import {resolveMissionContact} from './missionContacts.js';
 import {reconstitutionFirepower,reconstitutionLoads,reconstitutionDonors} from './reconstitution.js';
-import { values, live, good, friendly, visible, emit, draw, attempt, randomNumber, pick, shuffle, dropLoad } from './core.js';
+import { values, live, good, friendly, visible, emit, draw, attempt, randomNumber, pick, shuffle, dropLoad, syncCarriedCasualties } from './core.js';
 import { adjacent, occupants, los, unitLos, coverAvailable, distance, basicValue, canFire, refresh, spot, hasFire, incoming, combatExposure, coverOf, enemyCeaseFire, movementReason,vofOf,fireSource } from './battlefield.js';
 import { seekCover, rally, grenade, concentrate, move, splitTeam, infiltrationReason } from './actions.js';
 import { combatResolutionTable, hitEffectTable } from './combatProbability.js';
@@ -22,10 +22,10 @@ export function casualty(s,u,step) {
 function loseAssets(s,u,casualtyLoss=true) {
   for(const net of u.radios) {
     const phone=net.endsWith('_PHONE'),destroyed=casualtyLoss&&randomNumber(s,2,`${u.name}: ${phone?'phone':'radio'} damage`,!visible(s,u))===1;
-    s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,source_unit:u.id,location:u.location,...(s.mission_rules?.specialEnemies?{cover:u.cover}:{}),destroyed,faction:u.faction});
+    s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,source_unit:u.id,location:u.location,...(s.mission_rules?.specialEnemies||s.mission_rules?.casualtyEquipment?{cover:u.cover}:{}),destroyed,faction:u.faction});
     emit(s,'RADIO_LOST',`${u.name}: ${net} ${phone?'phone':'radio'} ${destroyed?'destroyed':'dropped for recovery'}.`,{actor:u.id,net,destroyed},!visible(s,u));
   }
-  if(s.mission_rules?.specialEnemies)for(const [key,quantity] of Object.entries(u.assets))if(quantity){
+  if(s.mission_rules?.specialEnemies||s.mission_rules?.casualtyEquipment)for(const [key,quantity] of Object.entries(u.assets))if(quantity){
     s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
     emit(s,'ASSETS_DROPPED',`${u.name}: carried equipment dropped for recovery.`,{actor:u.id,location:u.location,key,quantity},!visible(s,u));
   }
@@ -34,6 +34,7 @@ function loseAssets(s,u,casualtyLoss=true) {
     else s.assets.push({id:`asset_${s.next_id++}`,type:'AMMO',key,quantity,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
   }
   u.radios=[];u.assets={};if(s.mission_rules?.ammo==='tracked')u.ammo={};u.saved=0;
+  syncCarriedCasualties(s,u);
   for(const c of s.casualties.filter(c=>c.carrier===u.id))c.carrier=null;
 }
 function mortarBreakdownTeam(s,u,step,cohesion){
@@ -44,17 +45,27 @@ function mortarBreakdownTeam(s,u,step,cohesion){
  return child;
 }
 export function applyHit(s,u,letters) {
+  const corrected=!!s.mission_rules?.hitBreakdowns;
+  const equipmentRules=!!s.mission_rules?.casualtyEquipment,casualtiesBefore=s.casualties.length;
   const originalCount=u.steps.length,affected=[];
-  const twoMG=u.breakdown==='fallschirmjager_a'&&originalCount===2&&letters.includes('F')&&randomNumber(s,2,'Fallschirmjäger second-step MG breakdown',!visible(s,u))===1;
+  let twoMG=!corrected&&u.breakdown==='fallschirmjager_a'&&originalCount===2&&letters.includes('F')&&randomNumber(s,2,'Fallschirmjäger second-step MG breakdown',!visible(s,u))===1;
   const mgBefore=u.ammo?.MG??0,mgInitial=u.initial_resources?.ammo?.MG??mgBefore;
   for(const letter of letters.slice(0,Math.min(2,originalCount))) {
+    const count=u.steps.length;
+    if(corrected)twoMG=u.kind==='SQUAD'&&u.breakdown==='fallschirmjager_a'&&count===2&&letter==='F'&&randomNumber(s,2,'Fallschirmjäger second-step MG breakdown',!visible(s,u))===1;
     const step=u.steps.shift();if(!step)break;
+    if(corrected&&originalCount===1&&u.kind==='LAT'&&letter===u.cohesion){u.steps.push(step);u.pinned=true;affected.push(u);break;}
     if(letter==='C')casualty(s,u,step);
     else if(s.mission_rules?.ammo==='tracked'&&u.kind==='MORTAR'&&u.max_steps===3&&['A','F'].includes(letter)&&(friendly(u)||originalCount===2))affected.push(mortarBreakdownTeam(s,u,step,'F'));
     else if(originalCount===1&&u.named&&['A','F'].includes(letter)) {
-      u.steps.push(step);u.cohesion='F';u.pinned=true;affected.push(u);break;
+      u.steps.push(step);u.cohesion='F';if(corrected)u.experience='Green';u.pinned=true;affected.push(u);break;
     } else {
-      const child=splitTeam(s,u,letter,step);if(twoMG&&letter==='F'){child.fire_team_vof='A';child.range=2;child.ammo={MG:Math.floor(mgBefore/2)};child.initial_resources.ammo={MG:Math.floor(mgInitial/2)};u.ammo.MG-=child.ammo.MG;if(u.initial_resources?.ammo)u.initial_resources.ammo.MG-=child.initial_resources.ammo.MG;}child.pinned=true;affected.push(child);
+      const child=splitTeam(s,u,letter,step);
+      if(corrected&&letter==='F'&&u.kind==='SQUAD'&&!u.steps.length){
+       child.fire_team_vof=u.last_step_vof??'S';
+       if(child.fire_team_vof==='A'&&u.ammo?.MG!==undefined){child.ammo={MG:u.ammo.MG};child.initial_resources.ammo={MG:u.initial_resources?.ammo?.MG??u.ammo.MG};u.ammo.MG=0;if(u.initial_resources?.ammo)u.initial_resources.ammo.MG=0;}
+      }
+      if(twoMG&&letter==='F'){child.fire_team_vof='A';child.range=2;child.ammo={MG:Math.floor(mgBefore/2)};child.initial_resources.ammo={MG:Math.floor(mgInitial/2)};u.ammo.MG-=child.ammo.MG;if(u.initial_resources?.ammo)u.initial_resources.ammo.MG-=child.initial_resources.ammo.MG;}child.pinned=true;affected.push(child);
       if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[child.id]={id:child.id};
     }
   }
@@ -62,11 +73,11 @@ export function applyHit(s,u,letters) {
     if(s.mission_rules?.ammo==='tracked'&&child.fire_team_vof==='A'&&u.ammo?.MG!==undefined){child.ammo={MG:u.ammo.MG};child.initial_resources.ammo={MG:u.initial_resources?.ammo?.MG??u.ammo.MG};u.ammo.MG=0;}
     child.pinned=true;affected.push(child);if(!friendly(u)&&s.knowledge.spotted[u.id])s.knowledge.spotted[child.id]={id:child.id};}
   if(s.mission_rules?.ammo==='tracked'&&u.kind==='MORTAR'&&u.max_steps===3&&u.steps.length===1){
-    const child=mortarBreakdownTeam(s,u,u.steps.pop(),u.breakdown==='german_mortar_section'?'F':'GOOD');u.ammo={};affected.push(child);
+    const child=mortarBreakdownTeam(s,u,u.steps.pop(),!corrected&&u.breakdown==='german_mortar_section'?'F':'GOOD');u.ammo={};affected.push(child);
   }
   if(u.steps.length){u.pinned=true;if(!affected.includes(u))affected.push(u);}else{
     u.removed='BROKEN';
-    const recipient=s.mission_rules?.specialEnemies?affected.at(-1):null;
+    const recipient=s.mission_rules?.specialEnemies||equipmentRules?affected.at(-1):null;
     if(recipient){
       recipient.radios=[...u.radios];recipient.assets={...u.assets};
       if(s.mission_rules?.ammo==='tracked'){
@@ -75,10 +86,20 @@ export function applyHit(s,u,letters) {
        recipient.initial_resources.assets=structuredClone(u.initial_resources?.assets??u.assets);
       }
       if(s.mission_rules?.ammo==='tracked'&&recipient.fire_team_vof==='A'&&recipient.ammo?.MG===undefined&&u.ammo?.MG!==undefined){recipient.ammo={MG:u.ammo.MG};u.ammo.MG=0;}
+      if(corrected&&s.mission_rules?.ammo==='tracked'){
+       for(const [key,quantity]of Object.entries(u.ammo??{})){
+        // Section MTR stock was already replicated, not divided, among named teams.
+        if(!(key==='MTR'&&u.kind==='MORTAR'&&u.max_steps===3)){
+         if(!equipmentRules||originalCount===1)recipient.ammo[key]=(recipient.ammo[key]??0)+quantity;
+         else if(quantity)emit(s,'AMMO_LOST',`${visible(s,u)?u.name:'Enemy formation'}: ammunition not retained by the breakdown chart.`,{actor:visible(s,u)?u.id:null,location:u.location,key,quantity:visible(s,u)?quantity:null,reason:'BREAKDOWN'},!visible(s,u));
+        }
+       }
+       u.ammo={};
+      }
       for(const c of s.casualties.filter(c=>c.carrier===u.id))c.carrier=recipient.id;
       u.radios=[];u.assets={};u.saved=0;
       emit(s,'ASSETS_TRANSFERRED',`${u.name}: carried items remain with the final surviving team.`,{actor:u.id,recipient:recipient.id,location:u.location},!visible(s,u));
-    }else loseAssets(s,u,letters.includes('C'));
+    }else loseAssets(s,u,equipmentRules?s.casualties.length>casualtiesBefore:letters.includes('C'));
   }
   if(['P','L'].includes(u.cohesion))u.saved=0;
   emit(s,'FORMATION_CHANGED',`${u.name}: ${letters} hit; ${u.steps.length} step(s) remain in the original formation.`,
@@ -217,18 +238,21 @@ export function selectEnemyCover(s,u,location=u.location,advancing=false){
  const choices=candidates.filter(c=>score(c)===best&&best!==-Infinity);
  return choices.length?pick(s,choices,'Enemy cover priority',!visible(s,u)):null;
 }
-function fallBack(s,u) {
+function fallBack(s,u,{automatic=false}={}) {
+  const updated=automatic&&s.mission_rules?.automaticRetreat==='v1';
   if(u.exposed||u.mine_hit)return;
   const from=s.locations[u.location];
   if(!friendly(u)&&(s.boundaries?(from.row>=s.boundaries.rows||from.col<1||from.col>s.boundaries.columns):from.row===Math.max(...values(s.locations).map(l=>l.row)))){if(u.pinned||u.cohesion==='P')dropLoad(s,u,'withdrawal');else for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.evacuated=true;c.carrier=null;}u.removed='WITHDRAWN';emit(s,'UNIT_WITHDREW',`${u.name} withdrew from the battlefield.`,{actor:u.id,location:u.location,faction:u.faction},!visible(s,u));return;}
-  const possible=adjacent(s,u.location).filter(l=>(friendly(u)?l.row<from.row:l.row>from.row)&&!movementReason(s,u,l.id));
+  const possible=adjacent(s,u.location).filter(l=>(friendly(u)?l.row<from.row:l.row>from.row)&&!movementReason(s,u,l.id,{automaticRetreat:updated}));
   if(!possible.length)return;
   const seen=l=>values(s.units).some(v=>v.faction!==u.faction&&live(v)&&unitLos(s,v,l.id));
   const protection=l=>l.protection+Math.max(0,...l.covers.filter(c=>coverAvailable(s,u,c,l.id)).map(c=>c.value));
-  possible.sort((a,b)=>Number(seen(a))-Number(seen(b))||protection(b)-protection(a));
-  const best=possible.filter(l=>seen(l)===seen(possible[0])&&protection(l)===protection(possible[0]));
-  move(s,u,pick(s,best,'Retreat destination',!visible(s,u)).id);
+  const danger=l=>updated?hasFire(s,l.id):seen(l);
+  possible.sort((a,b)=>Number(danger(a))-Number(danger(b))||protection(b)-protection(a));
+  const best=possible.filter(l=>danger(l)===danger(possible[0])&&protection(l)===protection(possible[0]));
+  move(s,u,pick(s,best,'Retreat destination',!visible(s,u)).id,false,undefined,{forceExposed:!!updated});
   if(s.mission_rules?.enemyActivity==='normandy')u.cover=selectEnemyCover(s,u)?.id??null;
+  syncCarriedCasualties(s,u);
 }
 function enemyCover(s,u) {
   const cover=s.mission_rules?.enemyActivity==='normandy'?selectEnemyCover(s,u):s.locations[u.location].covers.filter(c=>coverAvailable(s,u,c)).sort((a,b)=>b.value-a.value)[0];
@@ -277,7 +301,7 @@ export function enemyActivity(s) {
           if(a==='COVER')return (s.locations[u.location].covers.some(c=>coverAvailable(s,u,c))||!u.cover&&s.locations[u.location].covers.filter(c=>c.discovered&&!c.parent).length<s.locations[u.location].cover_limit);
           if(a==='SHIFT')return !['Bunker','Pillbox'].includes(coverOf(s,u)?.type)&&incoming(s,u).some(f=>canFire(s,u,f.origin));
           if(a==='ADVANCE')return adjacent(s,u.location).some(l=>!l.staging&&!movementReason(s,u,l.id));
-          if(a==='RECONSTITUTE')return availableCounters(s,'SQUAD').some(p=>!normandy||reconstitutionFirepower(p,reconstitutionDonors(p,teams)));
+          if(a==='RECONSTITUTE')return availableCounters(s,'SQUAD').some(p=>!normandy||reconstitutionFirepower(p,reconstitutionDonors(p,teams,!!s.mission_rules?.hitBreakdowns),!!s.mission_rules?.hitBreakdowns));
           if(a==='SEEK_CASUALTY')return !u.mine_hit&&seenCasualties.some(c=>c.location===u.location?(!c.cover||coverAvailable(s,u,s.locations[u.location].covers.find(v=>v.id===c.cover))):adjacent(s,u.location).some(l=>!movementReason(s,u,l.id)&&distance(l,s.locations[c.location])<distance(s.locations[u.location],s.locations[c.location])));
           if(a==='ATTACK')return same||!!attackCard&&occupants(s,attackCard).some(v=>v.faction!==u.faction);
           return true;
@@ -330,10 +354,10 @@ export function enemyActivity(s) {
       if(action==='RALLY')rally(s,u);
       if(action==='RECOVER')rally(s,u,u,true);
       if(action==='RECONSTITUTE'){
-       const profiles=availableCounters(s,'SQUAD').filter(p=>!normandy? p.vof==='S'||teams.some(v=>v.cohesion==='A'||v.fire_team_vof==='A'):reconstitutionFirepower(p,reconstitutionDonors(p,teams)));
+       const profiles=availableCounters(s,'SQUAD').filter(p=>!normandy? p.vof==='S'||teams.some(v=>v.cohesion==='A'||v.fire_team_vof==='A'):reconstitutionFirepower(p,reconstitutionDonors(p,teams,!!s.mission_rules?.hitBreakdowns),!!s.mission_rules?.hitBreakdowns));
        const profile=profiles.length?pick(s,profiles,'Enemy reconstitution counter',!visible(s,u)):null;
        if(profile&&attempt(s,u,2,'rally','Enemy squad reconstitution',!visible(s,u))){
-        const donors=normandy?reconstitutionDonors(profile,teams):teams.slice(0,profile.steps),id=`enemy_${s.next_id++}`,steps=donors.flatMap(v=>v.steps);
+        const donors=normandy?reconstitutionDonors(profile,teams,!!s.mission_rules?.hitBreakdowns):teams.slice(0,profile.steps),id=`enemy_${s.next_id++}`,steps=donors.flatMap(v=>v.steps);
         s.units[id]={...structuredClone(profile),id,counter_id:profile.id,max_steps:profile.steps,faction:'enemy',platoon:null,location:u.location,cover:u.cover,steps,cohesion:'GOOD',experience:'Green',original_experience:'Green',pinned:false,exposed:false,radios:[],assets:{},ammo:donors.reduce((all,v)=>{for(const [key,n]of Object.entries(v.ammo??{}))all[key]=(all[key]??0)+n;return all;},{}),initial_resources:{radios:[],assets:{},ammo:structuredClone(profile.ammo??{})},saved:0,used:[],fire:null,indirect:null,removed:null,named:false,mission_weapon:true,contact_type:u.contact_type};
         if(normandy)reconstitutionLoads(s,s.units[id],donors);
         for(const v of donors){v.steps=[];v.removed='RECONSTITUTED';processed.add(v.id);if(s.knowledge.spotted[v.id])s.knowledge.spotted[id]={id};}
@@ -409,6 +433,6 @@ export function retreat(s) {
       const c=s.casualties.find(c=>c.location===u.location&&c.cover===u.cover&&!c.evacuated&&c.faction===u.faction);
       if(!c)continue;c.carrier=u.id;
     }
-    fallBack(s,u);
+    fallBack(s,u,{automatic:true});
   }
 }

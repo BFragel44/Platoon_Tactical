@@ -2,7 +2,7 @@ import {deployVireTankSupport} from './vireDeployment.js';
 import {friendlyVireVehiclesAt} from './vireUnits.js';
 import {hill192CounterattackLocations} from './hill192Setup.js';
 import {applyPatrolEvent} from './patrolEvents.js';
-import {values,live,friendly,emit,draw,randomNumber,pick} from './core.js';
+import {values,live,friendly,emit,draw,randomNumber,pick,syncCarriedCasualties} from './core.js';
 import {occupants,refresh} from './battlefield.js';
 import {rally} from './actions.js';
 import {companyCommander} from './commandRoles.js';
@@ -68,7 +68,7 @@ export function resolveNormandyEvent(s,side,choice={}){
   }
   if(code==='FALL_BACK')for(const u of enemies.filter(u=>!u.pinned)){
    const l=s.locations[u.location],to=s.locations[`r${l.row+1}c${l.col}`];
-   if(to&&!to.staging){u.location=to.id;u.cover=null;u.fire=null;u.event_acted=s.turn;u.exposed=true;}
+   if(to&&!to.staging){u.location=to.id;u.cover=null;u.fire=null;u.event_acted=s.turn;u.exposed=true;syncCarriedCasualties(s,u,{transported:true});}
    else{u.removed='WITHDRAWN';u.event_acted=s.turn;}
   }
   if(code==='COUNTER_ATTACK'){

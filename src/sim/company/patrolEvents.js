@@ -1,4 +1,4 @@
-import {values,live,friendly,emit,pick,randomNumber} from './core.js';
+import {values,live,friendly,emit,pick,randomNumber,syncCarriedCasualties} from './core.js';
 import {patrolParticipant} from './patrols.js';
 import {borders} from './terrain.js';
 const directions=[[1,0],[1,1],[0,1],[-1,1],[-1,0],[-1,-1],[0,-1],[1,-1]];
@@ -32,7 +32,7 @@ export function applyPatrolEvent(s,side,code,event){
    const eligible=values(s.units).filter(u=>live(u)&&patrolParticipant(s.patrol,u));
    if(eligible.length){const u=pick(s,eligible,'Lost patrol formation'),from=u.location,origin=s.locations[from],[dr,dc]=directions[randomNumber(s,8,'Lost patrol direction')-1];
     const target=s.locations[`r${origin.row+dr}c${origin.col+dc}`]??expandPatrolCard(s,origin.row+dr,origin.col+dc);
-    if(target){u.location=target.id;u.cover=null;u.fire=null;u.fire_direction=null;u.fire_effect=null;u.indirect=null;u.exposed=true;
+    if(target){u.location=target.id;u.cover=null;u.fire=null;u.fire_direction=null;u.fire_effect=null;u.indirect=null;u.exposed=true;syncCarriedCasualties(s,u,{transported:true});
      emit(s,'UNIT_MOVED',`${u.name} lost its way and moved to ${target.name}; exposed until cleanup.`,{actor:u.id,from,target:target.id,exposed:true,faction:'friendly',forced:true});}
     else emit(s,'PATROL_EVENT_UNAVAILABLE','Lost in the Dark: no terrain card remains for expansion.');
    }else emit(s,'PATROL_EVENT_UNAVAILABLE','Lost in the Dark: no patrol formation remains.');

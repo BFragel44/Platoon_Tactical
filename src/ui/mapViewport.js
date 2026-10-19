@@ -1,3 +1,4 @@
+import {frameCombat} from './combatMap.js';
 // Camera state is presentation only: never passed to the simulation.
 export function normalizeCamera(value={}) {
   const number=(n,fallback)=>Number.isFinite(n)?n:fallback;
@@ -40,5 +41,7 @@ export function bindMapViewport(root,{camera,columns=4,selectedLocation,selected
   root.querySelector('#show-orders').onclick=()=>{root.querySelector('.company-orders').scrollIntoView({block:'start'});root.querySelector('#unit').focus({preventScroll:true});};
   layout();viewport.addEventListener('scroll',scroll,{passive:true});
   const observer=new ResizeObserver(layout);observer.observe(viewport);observer.observe(root.querySelector('.company-map'));
-  return ()=>{clearTimeout(timer);observer.disconnect();viewport.removeEventListener('scroll',scroll);};
+  const cleanup=()=>{clearTimeout(timer);observer.disconnect();viewport.removeEventListener('scroll',scroll);};
+  cleanup.focusCombat=recipient=>{const next=frameCombat(root,recipient);if(next){current=normalizeCamera(next);layout();scroll();}};
+  return cleanup;
 }

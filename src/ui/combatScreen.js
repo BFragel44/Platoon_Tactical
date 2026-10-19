@@ -1,48 +1,28 @@
-import {resultingFormationText} from './combatPlayback.js';
+import {legacyCombatScreen} from './legacyCombatScreen.js';
 import {actionCardMarkup} from './cardDraws.js';
-import {supportContext} from './orderPresentation.js';
+import {resultingFormationText} from './combatPlayback.js';
+export {reciprocalCombat,resolvesPair} from './legacyCombatScreen.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const sign=n=>`${n>=0?'+':''}${n}`;
-const pct=n=>`${Math.round(n*100)}%`;
-const counter=(kind,label)=>`<span class="combat-counter" role="img" aria-label="${esc(label)}">${esc(({SQUAD:'INF',LAT:'TEAM',STAFF:'HQ',MORTAR:'MTR',FO:'OBS'})[kind]??kind??'?')}</span>`;
-export function reciprocalCombat(c,v){
- const source=c.strongest;
- if(!source?.known||!source.source_id||supportContext(source))return null;
- return (v.combat_resolutions??[]).find(r=>r.target_id===source.source_id&&r.target_faction!==c.target_faction&&r.sources.some(s=>s.known&&s.source_id===c.target_id))??null;
-}
-export const resolvesPair=(c,peer)=>!!peer&&peer.status==='PENDING'&&peer.visible_position===c.visible_position+1;
-function stakes(r,hidden=false){
- if(r?.combat_resolver)return `<aside class="exchange-stakes"><h4>Action Deck</h4><p>NCM <b>${sign(r.ncm)}</b></p><p>HIT: ${esc(r.target_experience)}</p><details><summary>Reference odds</summary><small>Fresh deck: ${['MISS','PIN','HIT'].map(k=>`${k} ${pct(r.probabilities.probabilities[k])}`).join(' · ')}. Not remaining-deck odds.</small></details></aside>`;
- return `<aside class="exchange-stakes"><h4>Incoming fire result</h4>${['MISS','PIN','HIT'].map(k=>`<div class="exchange-prob ${k.toLowerCase()}"><b>${k}</b><span><i style="width:${r?pct(r.probabilities.probabilities[k]):'0%'}"></i><strong>${r?pct(r.probabilities.probabilities[k]):hidden?'?':'—'}</strong></span></div>`).join('')}${r?`<details><summary>If HIT · ${esc(r.target_experience)}</summary><div class="hit-grid">${Object.entries(r.hit_probabilities.probabilities).map(([k,n])=>`<span>${esc(k)} ${pct(n)}</span>`).join('')}</div></details>`:`<small>${hidden?'Unspotted · probabilities hidden':'No incoming resolution'}</small>`}</aside>`;
-}
-function result(r){
- if(!r||r.status!=='RESOLVED')return '';
- const hit=r.result==='HIT';
-return `<div class="exchange-result ${r.result.toLowerCase()}">${r.combat_card?actionCardMarkup({id:r.combat_card.id,field:{kind:'combat',ncm:r.combat_card.ncm},value:r.combat_card.result}):''}${r.hit_card?actionCardMarkup({id:r.hit_card.id,field:{kind:'hit',experience:r.hit_card.experience},value:r.hit_card.effect}):''}<h4>${esc(r.result)}${hit?` · ${esc(r.hit_effect)}`:''}</h4><p>${hit?esc(resultingFormationText(r)):r.result==='MISS'?'No hit; pin removed.':'Formation pinned.'}${hit&&r.casualty_steps?` · ${r.casualty_steps} casualty step(s)`:''}</p></div>`;
-}
-function formation(r,context,name,template){
- const hidden=!r&&!context?.known&&!supportContext(context),support=!r&&supportContext(context);
- const title=r?.target_name??context?.label??'Unidentified fire';
- const loc=r?.target_location??context?.origin;
- const modifiers=r?.modifiers??template.modifiers;
- return `<article class="exchange-formation"><div class="combat-unit-head">${counter(r?.target_kind??(support?'SUP':context?.known?context.unit_kind:'?'),title)}<div><h3>${esc(title)}</h3><p>${esc(loc?name(loc):'Support effect')}${r?` · ${r.target_steps} steps · ${esc(r.target_experience)}`:''}</p></div><span class="combat-state">${hidden?'UNSPOTTED':support?'SUPPORT EFFECT':r?.target_pinned?'PINNED':r?esc(r.target_cohesion==='GOOD'?'EFFECTIVE':r.target_cohesion):'FIRING SOURCE'}</span></div>
- ${r?.combat_resolver?result(r):''}<div class="modifier-card"><h4>NCM MODIFIERS · RECEIVING FIRE</h4>${modifiers.map(m=>`<p class="${r&&m.value===0?'modifier-zero':''}"><span>${esc(!r&&m.source==='TERRAIN'?'Terrain protection':!r&&m.source==='COVER'?'Occupied cover':m.label)}</span><b>${r?sign(m.value):hidden?'?':'—'}</b></p>`).join('')}<p class="ncm-total"><span>NCM${r&&r.total!==r.ncm?` · raw ${sign(r.total)}, bounded`:''}</span><b>${r?sign(r.ncm):hidden?'?':'—'}</b></p></div>
- ${!r?`<p class="exchange-note">${hidden?'Identity, protection and combat consequences remain hidden.':support?'Support effect; no formation receiving fire here.':'This source has no reciprocal incoming-fire resolution.'}</p>`:''}
- ${r?.sources.filter(s=>s.known&&s.source_id!==r.strongest?.source_id).length?`<details class="exchange-contributors"><summary>Additional incoming sources</summary>${r.sources.filter(s=>s.known&&s.source_id!==r.strongest?.source_id).map(s=>`<p>${esc(s.label)}</p>`).join('')}</details>`:''}${r?.combat_resolver?'':result(r)}</article>`;
+export const selectedCombat=(view,id)=>view.combat_resolutions?.find(r=>r.id===id)??view.combat_resolution??view.combat_resolutions?.[0]??null;
+export const sameCombatSource=(a,b)=>!!a&&!!b&&a.kind===b.kind&&a.source_id===b.source_id&&a.origin===b.origin&&a.vof===b.vof;
+export function combatRecipients(view,current,name){
+ const rows=view.combat_resolutions??[],groups=new Map();
+ for(const r of rows){if(!groups.has(r.target_location))groups.set(r.target_location,[]);groups.get(r.target_location).push(r);}
+ return `<nav class="combat-recipients" aria-label="Combat recipients"><div class="combat-recipient-progress"><b>COMBAT</b><span>${rows.filter(r=>r.status==='RESOLVED').length} / ${rows.length} resolved</span></div><div class="combat-recipient-locations">${[...groups].map(([location,entries])=>`<section><h3>${esc(name(location))}</h3><div>${entries.map(r=>`<button type="button" data-combat-select="${esc(r.id)}" aria-pressed="${r.id===current?.id}" class="${r.status==='RESOLVED'?'resolved':'pending'}"><span>${r.status==='RESOLVED'?'✓':'○'} ${esc(r.target_name)}</span><small>${r.status==='RESOLVED'?esc(r.result):'Awaiting draw'}</small></button>`).join('')}</div></section>`).join('')}</div></nav>`;
 }
 export function combatScreen(c,v,name){
- const peer=reciprocalCombat(c,v),context=c.strongest;
- const hasNext=(v.combat_resolutions??[]).some(r=>r.visible_position>c.visible_position);
- // Keep Germans on the left and U.S. formations on the right for actual mutual fire.
- const left=peer?(c.target_faction==='enemy'?c:peer):null;
- const right=peer?(c.target_faction==='friendly'?c:peer):c;
- const leftContext=peer?null:context;
- const outgoing=peer?right.sources.find(s=>s.source_id===left.target_id):context;
- const returning=peer?left.sources.find(s=>s.source_id===right.target_id):null;
- const returnCardFire=!peer&&context?.origin&&(v.fire??[]).some(f=>f.source===c.target_id&&f.target===context.origin);
- const arrow=(s,reverse=false)=>`<div class="exchange-arrow ${reverse?'reverse':''} ${s?'active':'quiet'}"><span>${s?`${esc(s.label)} · VOF ${sign(s.vof??0)}`:reverse&&returnCardFire?'Established return fire at card':'No return fire'}</span><b aria-hidden="true">${reverse?'←':'→'}</b></div>`;
- return `<section class="combat-resolution combat-overlay symmetric-combat" role="region" aria-label="Combat resolution"><header><h2>Combat Resolution</h2><p>${esc(name(c.target_location))} · formation ${c.visible_position} of ${v.segment_progress?.visible_total??1} visible · ${c.combat_resolver?'NCM fixed; results use the shared Action Deck':'probabilities fixed for this combat segment'}</p></header>
- <div class="combat-exchange">${stakes(left,!peer&&!context?.known&&!supportContext(context))}${formation(left,leftContext,name,c)}<div class="exchange-directions" aria-label="Firing directions">${arrow(outgoing)}${arrow(returning,true)}</div>${formation(right,null,name,c)}${stakes(right)}</div>
- <footer>${c.status==='PENDING'?`<button id="combat-resolve" class="primary">${resolvesPair(c,peer)?'Resolve both formations':'Resolve '+esc(c.target_name)}</button>`:`<button id="combat-next" class="primary">${hasNext?'Review next formation →':'Finish combat review →'}</button>${v.combat_resolutions?.some(r=>r.visible_position>c.visible_position&&r.status==='PENDING')?'<button id="combat-next-resolve">Resolve next formation now</button>':''}`}<button id="combat-close">Return to map</button></footer><p class="exchange-note">${c.status==='PENDING'?'Resolve draws the result for the named formation(s).':hasNext?'Review next opens the next entry without resolving it. Resolve next draws its result immediately.':'Finish opens the segment summary; cleanup remains a separate step.'} Returning to the map preserves this queue; continue combat from the phase button.</p>
- ${peer&&!resolvesPair(c,peer)&&peer.status==='PENDING'?`<p class="exchange-note">${c.combat_resolver?'The other formation resolves later in the existing queue. Its NCM remains fixed; each result uses the next Action Card.':'The other formation resolves later in this segment. Its combat probabilities remain fixed, so resolving this formation first does not change that result.'}</p>`:''}</section>`;
+ if(!v.combat_order)return c?legacyCombatScreen(c,v,name):'';
+ const rows=v.combat_resolutions??[],remaining=rows.filter(r=>r.status==='PENDING').length,complete=v.segment_progress?.status==='reviewing';
+ const finish=`<button type="button" id="combat-finish" class="primary" ${remaining?'disabled':''}>${complete?'Continue to cleanup →':'Finish combat resolution →'}</button>`;
+ if(!c)return `<section class="combat-desk" aria-label="Combat resolution"><header><p class="eyebrow">MUTUAL COMBAT EFFECTS</p><h2>Combat resolution</h2></header><p>${complete?'Combat resolution is complete.':'No visible formations await resolution.'}</p><p>${complete?'Continue to cleanup when ready.':'Complete the segment to resolve any remaining unobserved combat.'}</p><footer>${finish}<button id="combat-close">Return to orders</button></footer></section>`;
+ const details=c.modifiers.filter(m=>m.value!==0||m.source==='FIRE'),zero=c.modifiers.filter(m=>m.value===0&&m.source!=='FIRE');
+ return `<section class="combat-desk" aria-label="Combat resolution"><header><p class="eyebrow">RECEIVING FIRE · ${esc(c.target_faction==='friendly'?'U.S.':'Enemy')}</p><h2>${esc(c.target_name)}</h2><p>${esc(name(c.target_location))}</p><span class="combat-status ${c.status.toLowerCase()}">${c.status==='RESOLVED'?'RESOLVED':'AWAITING DRAW'}</span></header>
+ <p class="combat-personnel">${c.target_steps} step${c.target_steps===1?'':'s'} · ${esc(c.target_experience)} experience${c.target_pinned?' · Pinned at start':''}</p>
+ <div class="combat-ncm"><div><span>NET COMBAT MODIFIER</span><small>${c.total!==c.ncm?`Raw ${sign(c.total)} · bounded to ${sign(c.ncm)}`:'Conditions fixed for this segment'}</small></div><strong>${sign(c.ncm)}</strong></div>
+ ${c.status==='RESOLVED'?`<section class="combat-outcome ${esc(c.result?.toLowerCase())}" role="status" aria-live="polite"><h3>${esc(c.result)}</h3><div class="combat-card-results">${c.combat_card?actionCardMarkup({id:c.combat_card.id,field:{kind:'combat',ncm:c.ncm},value:c.result}):''}${c.hit_card?actionCardMarkup({id:c.hit_card.id,field:{kind:'hit',experience:c.target_experience},value:c.hit_effect}):''}</div><p>${esc(c.result==='HIT'?resultingFormationText(c):c.result==='MISS'?'No hit; pin removed.':'Formation pinned.')}</p>${c.casualty_steps?`<p>${c.casualty_steps} casualty step${c.casualty_steps===1?'':'s'}.</p>`:''}</section>`:''}
+ <section class="combat-modifiers" aria-label="Combat modifiers"><h3>Conditions</h3><dl>${details.map(m=>`<div><dt>${esc(m.label)}</dt><dd>${sign(m.value)}</dd></div>`).join('')}</dl>${zero.length?`<details><summary>Other conditions · no modifier</summary><dl>${zero.map(m=>`<div><dt>${esc(m.label)}</dt><dd>+0</dd></div>`).join('')}</dl></details>`:''}</section>
+ <section class="combat-sources"><h3>Incoming fire</h3>${c.sources.map(source=>`<div class="combat-source-row ${sameCombatSource(source,c.strongest)?'selected-vof':''}"><b>${esc(source.kind==='BASIC_FIRE'&&!source.origin&&c.parts?.grenade_miss?'Missed grenade':source.label??'Unidentified fire')}</b><span>VOF ${sign(source.vof??0)}${sameCombatSource(source,c.strongest)?' · selected VOF':' · additional source'}</span>${source.origin&&source.kind!=='OFF_MAP_SUPPORT'?`<button type="button" data-combat-source="${esc(source.origin)}">${esc(source.origin===c.target_location?'Same card':name(source.origin))} ↗</button>`:`<small>${source.kind==='OFF_MAP_SUPPORT'?'Incoming support effect':'Effect on this card'}</small>`}</div>`).join('')}</section>
+ ${c.status==='PENDING'?`<div class="combat-draw"><p>Draw one Action Card at NCM <b>${sign(c.ncm)}</b>. On HIT, draw a second card using <b>${esc(c.target_experience)}</b>.</p><button type="button" id="combat-resolve" class="primary">Draw combat card</button></div>`:''}
+ <footer>${remaining?'<p>Select any awaiting formation on the map or in the strip below.</p>':finish}<button type="button" id="combat-refocus">Center receiving formation</button><button type="button" id="combat-close">Return to orders</button></footer><p class="combat-simultaneous">All exposures were fixed before the first draw. Results do not change other formations’ fire this segment.</p></section>`;
 }

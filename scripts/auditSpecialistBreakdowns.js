@@ -9,6 +9,7 @@ import {tinchebray} from '../src/scenarios/tinchebray.js';
 import {applyHit} from '../src/sim/company/combat.js';
 import {reconstitutionFirepower} from '../src/sim/company/reconstitution.js';
 import {vofOf} from '../src/sim/company/battlefield.js';
+export function auditSpecialistBreakdowns(){
 const results=[];
 function fresh(){return createMission(cerisy,'specialist-breakdown-audit');}
 function put(s,profile,count=profile.steps){
@@ -24,11 +25,11 @@ for(const hit of ['F','C','L']){
 }
 for(const hit of ['F','C','L']){
  const s=fresh(),profile=hill192.enemy_counters.find(p=>p.kind==='FLAK88'),u=put(s,profile);applyHit(s,u,hit);
- record('SF-18','Normandy breakdown p.48; series 6.4.3 p.47',`Two-step 88mm gun takes ${hit}: no Good Order one-step gun remains`,
-  {operationalGun:false},{operationalGun:!!u.steps.length&&!u.removed&&u.cohesion==='GOOD',remainingSteps:u.steps.length,vof:vofOf(u),side:u.cohesion});
+ record('SF-18','Normandy breakdown p.48 (SF-18 corrected)',`Two-step 88mm gun takes ${hit}: printed chart retains its Good Order one-step gun`,
+  {operationalGun:true},{operationalGun:!!u.steps.length&&!u.removed&&u.cohesion==='GOOD',remainingSteps:u.steps.length,vof:vofOf(u),side:u.cohesion});
 }
 for(const def of [cerisy,stGeorges,hill192,stGermain,vire,tinchebray]){
- const s=fresh(),profile=def.enemy_counters.find(p=>p.id==='fj5'),u=put(s,profile);applyHit(s,u,'F');applyHit(s,u,'F');
+ const s=createMission({...cerisy,enemy_counters:cerisy.enemy_counters.map(p=>structuredClone(def.enemy_counters.find(v=>v.id===p.id)??p))},'specialist-breakdown-audit'),profile=s.mission_contacts.counters.find(p=>p.id==='fj5'),u=put(s,profile);applyHit(s,u,'F');applyHit(s,u,'F');
  const children=Object.values(s.units).filter(v=>v.parent_counter_id===profile.id&&v.steps.length&&!v.removed);
  record('SF-19','Normandy breakdown p.48',`${def.id}: A/S Fallschirmjager squad retains one A/S Fire Team on breakdown`,
   {asTeams:1},{asTeams:children.filter(v=>vofOf(v)==='A/S').length,ratings:children.map(vofOf)});
@@ -49,4 +50,6 @@ for(const def of [cerisy,stGeorges,hill192,stGermain,vire,tinchebray]){
  record('CONTROL','Normandy breakdown p.47','US mortar last pair: one named Fire Team and one operational mortar',
   {operationalMortars:1,fireTeams:1},{operationalMortars:teams.filter(v=>v.cohesion==='GOOD').length,fireTeams:teams.filter(v=>v.cohesion==='F').length});
 }
-const passed=results.every(r=>r.passed);console.log(JSON.stringify({scope:'Normandy specialists and formation breakdowns',passed,results},null,2));if(!passed)process.exitCode=1;
+return {scope:'Normandy specialists and formation breakdowns',passed:results.every(r=>r.passed),results};
+}
+if(process.argv[1]?.replaceAll('\\','/').endsWith('/auditSpecialistBreakdowns.js')){const report=auditSpecialistBreakdowns();console.log(JSON.stringify(report,null,2));if(!report.passed)process.exitCode=1;}

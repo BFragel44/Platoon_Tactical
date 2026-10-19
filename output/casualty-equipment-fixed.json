@@ -1,0 +1,582 @@
+{
+  "scope": "Infantry casualty and equipment consequences; isolated production-function probes",
+  "observations": 39,
+  "passed": true,
+  "results": [
+    {
+      "id": "only-step-C-roll1",
+      "rule": "4.3.4 p.29; 4.3.5 p.30; 6.4.3 p.47",
+      "expected": {
+        "casualties": 1,
+        "draws": 2,
+        "devices": 2,
+        "destroyed": 2,
+        "carriedDropped": true,
+        "ammoGround": 0
+      },
+      "observed": {
+        "casualties": 1,
+        "draws": 2,
+        "devices": 2,
+        "destroyed": 2,
+        "carriedDropped": true,
+        "ammoGround": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "casualty-position-C-roll1",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "equipment": 2,
+        "location": "r1c1",
+        "cover": "shelter"
+      },
+      "observed": {
+        "equipment": 2,
+        "location": "r1c1",
+        "cover": "shelter"
+      },
+      "passed": true
+    },
+    {
+      "id": "destroyed-device-pickup-C-roll1",
+      "rule": "4.3.4/5 pp.29–30",
+      "expected": {
+        "recoverable": 0
+      },
+      "observed": {
+        "recoverable": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "only-step-CC-roll1",
+      "rule": "4.3.4 p.29; 4.3.5 p.30; 6.4.3 p.47",
+      "expected": {
+        "casualties": 1,
+        "draws": 2,
+        "devices": 2,
+        "destroyed": 2,
+        "carriedDropped": true,
+        "ammoGround": 0
+      },
+      "observed": {
+        "casualties": 1,
+        "draws": 2,
+        "devices": 2,
+        "destroyed": 2,
+        "carriedDropped": true,
+        "ammoGround": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "casualty-position-CC-roll1",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "equipment": 2,
+        "location": "r1c1",
+        "cover": "shelter"
+      },
+      "observed": {
+        "equipment": 2,
+        "location": "r1c1",
+        "cover": "shelter"
+      },
+      "passed": true
+    },
+    {
+      "id": "destroyed-device-pickup-CC-roll1",
+      "rule": "4.3.4/5 pp.29–30",
+      "expected": {
+        "recoverable": 0
+      },
+      "observed": {
+        "recoverable": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "only-step-C-roll2",
+      "rule": "4.3.4 p.29; 4.3.5 p.30; 6.4.3 p.47",
+      "expected": {
+        "casualties": 1,
+        "draws": 2,
+        "devices": 2,
+        "destroyed": 0,
+        "carriedDropped": true,
+        "ammoGround": 0
+      },
+      "observed": {
+        "casualties": 1,
+        "draws": 2,
+        "devices": 2,
+        "destroyed": 0,
+        "carriedDropped": true,
+        "ammoGround": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "casualty-position-C-roll2",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "equipment": 2,
+        "location": "r1c1",
+        "cover": "shelter"
+      },
+      "observed": {
+        "equipment": 2,
+        "location": "r1c1",
+        "cover": "shelter"
+      },
+      "passed": true
+    },
+    {
+      "id": "destroyed-device-pickup-C-roll2",
+      "rule": "4.3.4/5 pp.29–30",
+      "expected": {
+        "recoverable": 2
+      },
+      "observed": {
+        "recoverable": 2
+      },
+      "passed": true
+    },
+    {
+      "id": "only-step-CC-roll2",
+      "rule": "4.3.4 p.29; 4.3.5 p.30; 6.4.3 p.47",
+      "expected": {
+        "casualties": 1,
+        "draws": 2,
+        "devices": 2,
+        "destroyed": 0,
+        "carriedDropped": true,
+        "ammoGround": 0
+      },
+      "observed": {
+        "casualties": 1,
+        "draws": 2,
+        "devices": 2,
+        "destroyed": 0,
+        "carriedDropped": true,
+        "ammoGround": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "casualty-position-CC-roll2",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "equipment": 2,
+        "location": "r1c1",
+        "cover": "shelter"
+      },
+      "observed": {
+        "equipment": 2,
+        "location": "r1c1",
+        "cover": "shelter"
+      },
+      "passed": true
+    },
+    {
+      "id": "destroyed-device-pickup-CC-roll2",
+      "rule": "4.3.4/5 pp.29–30",
+      "expected": {
+        "recoverable": 2
+      },
+      "observed": {
+        "recoverable": 2
+      },
+      "passed": true
+    },
+    {
+      "id": "two-casualties-2-steps",
+      "rule": "4.3.4/5 pp.29–30; 6.4.3 p.47",
+      "expected": {
+        "casualties": 2,
+        "draws": 2,
+        "retainedDevices": 0
+      },
+      "observed": {
+        "casualties": 2,
+        "draws": 2,
+        "retainedDevices": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "two-casualties-3-steps",
+      "rule": "4.3.4/5 pp.29–30; 6.4.3 p.47",
+      "expected": {
+        "casualties": 2,
+        "draws": 0,
+        "retainedDevices": 2
+      },
+      "observed": {
+        "casualties": 2,
+        "draws": 0,
+        "retainedDevices": 2
+      },
+      "passed": true
+    },
+    {
+      "id": "last-noncasualty-assets-F",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "observed": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "generic-breakdown-ammo-F",
+      "rule": "5.1.6E p.33: only chart ammo-tracking Fire Teams inherit ammunition",
+      "expected": {
+        "ammo": 0
+      },
+      "observed": {
+        "ammo": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "last-noncasualty-assets-A",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "observed": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "generic-breakdown-ammo-A",
+      "rule": "5.1.6E p.33: only chart ammo-tracking Fire Teams inherit ammunition",
+      "expected": {
+        "ammo": 0
+      },
+      "observed": {
+        "ammo": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "last-noncasualty-assets-P",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "observed": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "generic-breakdown-ammo-P",
+      "rule": "5.1.6E p.33: only chart ammo-tracking Fire Teams inherit ammunition",
+      "expected": {
+        "ammo": 0
+      },
+      "observed": {
+        "ammo": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "last-noncasualty-assets-L",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "observed": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "generic-breakdown-ammo-L",
+      "rule": "5.1.6E p.33: only chart ammo-tracking Fire Teams inherit ammunition",
+      "expected": {
+        "ammo": 0
+      },
+      "observed": {
+        "ammo": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "last-noncasualty-assets-FC",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "observed": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "generic-breakdown-ammo-FC",
+      "rule": "5.1.6E p.33: only chart ammo-tracking Fire Teams inherit ammunition",
+      "expected": {
+        "ammo": 0
+      },
+      "observed": {
+        "ammo": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "last-noncasualty-assets-CF",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "observed": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "generic-breakdown-ammo-CF",
+      "rule": "5.1.6E p.33: only chart ammo-tracking Fire Teams inherit ammunition",
+      "expected": {
+        "ammo": 0
+      },
+      "observed": {
+        "ammo": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "last-noncasualty-assets-PC",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "observed": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "generic-breakdown-ammo-PC",
+      "rule": "5.1.6E p.33: only chart ammo-tracking Fire Teams inherit ammunition",
+      "expected": {
+        "ammo": 0
+      },
+      "observed": {
+        "ammo": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "last-noncasualty-assets-CP",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "observed": {
+        "radios": 2,
+        "equipment": 2,
+        "carriedRetained": true,
+        "damageDraws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "generic-breakdown-ammo-CP",
+      "rule": "5.1.6E p.33: only chart ammo-tracking Fire Teams inherit ammunition",
+      "expected": {
+        "ammo": 0
+      },
+      "observed": {
+        "ammo": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "chart-MG-ammo-versus-cargo",
+      "rule": "5.1.6E p.33; Normandy p.48",
+      "expected": {
+        "MG": 3,
+        "RKT": 0
+      },
+      "observed": {
+        "MG": 3,
+        "RKT": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "company-assault-noncasualty-P",
+      "rule": "5.1.6E p.33; 6.4.3 p.47: only first letter applies to a one-step unit",
+      "expected": {
+        "casualties": 0,
+        "draws": 0,
+        "retainedDevices": 2,
+        "equipment": 2
+      },
+      "observed": {
+        "casualties": 0,
+        "draws": 0,
+        "retainedDevices": 2,
+        "equipment": 2
+      },
+      "passed": true
+    },
+    {
+      "id": "company-assault-noncasualty-PC",
+      "rule": "5.1.6E p.33; 6.4.3 p.47: only first letter applies to a one-step unit",
+      "expected": {
+        "casualties": 0,
+        "draws": 0,
+        "retainedDevices": 2,
+        "equipment": 2
+      },
+      "observed": {
+        "casualties": 0,
+        "draws": 0,
+        "retainedDevices": 2,
+        "equipment": 2
+      },
+      "passed": true
+    },
+    {
+      "id": "pinned-load-retained",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "devices": 2,
+        "carried": true,
+        "draws": 0
+      },
+      "observed": {
+        "devices": 2,
+        "carried": true,
+        "draws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "forced-drop-at-current-cover",
+      "rule": "5.1.6E p.33",
+      "expected": {
+        "devices": 2,
+        "cover": "shelter",
+        "location": "r1c1",
+        "carrier": null,
+        "draws": 0
+      },
+      "observed": {
+        "devices": 2,
+        "cover": "shelter",
+        "location": "r1c1",
+        "carrier": null,
+        "draws": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "carrier-final-casualty-after-helper-movement",
+      "rule": "5.1.6E p.33: carried casualties drop in the carrier’s current area",
+      "expected": {
+        "location": "r1c2",
+        "cover": "destination_cover",
+        "carrier": null
+      },
+      "observed": {
+        "location": "r1c2",
+        "cover": "destination_cover",
+        "carrier": null
+      },
+      "passed": true
+    },
+    {
+      "id": "casualties-excluded-from-combat",
+      "rule": "6.4.3 p.47",
+      "expected": {
+        "recipients": 0
+      },
+      "observed": {
+        "recipients": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "incoming-wire-roll1",
+      "rule": "4.3.4 p.29",
+      "expected": {
+        "cut": true,
+        "draws": 1
+      },
+      "observed": {
+        "cut": true,
+        "draws": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "incoming-wire-roll2",
+      "rule": "4.3.4 p.29",
+      "expected": {
+        "cut": false,
+        "draws": 1
+      },
+      "observed": {
+        "cut": false,
+        "draws": 1
+      },
+      "passed": true
+    }
+  ]
+}

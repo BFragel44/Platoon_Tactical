@@ -5,7 +5,7 @@ import {refresh,spot} from '../src/sim/company/battlefield.js';
 import {resolveDisplayedExchange} from '../src/ui/combatExchange.js';
 import {combatScreen,reciprocalCombat} from '../src/ui/combatScreen.js';
 function fixture({hidden=false,intervening=false}={}){
- let s=createMission(companyAssault,'exchange');const u=s.units.s11;u.location='r1c1';u.fire=u.location;
+ let s=createMission(companyAssault,'exchange',{},null,{combat_order:false});const u=s.units.s11;u.location='r1c1';u.fire=u.location;
  s.units.enemy={...structuredClone(s.units.mg1),id:'enemy',name:'German LMG',faction:'enemy',location:u.location,fire:u.location,radios:[]};
  if(intervening)s.units.middle={...structuredClone(s.units.co),id:'middle',location:u.location,fire:null,radios:[]};
  if(!hidden)spot(s,s.units.enemy);refresh(s);s.phase='PINNED_RECOVERY';s=advancePhase(s).state;

@@ -11,15 +11,16 @@ export function combinedExperience(steps){
  }
  return sorted.filter(n=>n===2).length>=3?'Veteran':sorted.filter(n=>n===2).length>=2||sorted.filter(n=>n>=1).length>=3?'Line':'Green';
 }
-export function reconstitutionFirepower(profile,donors){
+const suppliesWeapon=(u,rating,corrected)=>u.cohesion==='F'&&u.range>0&&((u.fire_team_vof??u.vof)==='A'||corrected&&rating==='A/S'&&(u.fire_team_vof??u.vof)==='A/S');
+export function reconstitutionFirepower(profile,donors,corrected=true){
  const rating=profile.vof_by_steps?.[donors.length]??profile.vof;
  if(rating==='S')return true;
  // Point-blank A-rated generic Assault Teams do not possess machine guns.
- return ['A','A/S'].includes(rating)&&donors.some(u=>u.cohesion==='F'&&(u.fire_team_vof??u.vof)==='A'&&u.range>0);
+ return ['A','A/S'].includes(rating)&&donors.some(u=>suppliesWeapon(u,rating,corrected));
 }
-export function reconstitutionDonors(profile,teams){
+export function reconstitutionDonors(profile,teams,corrected=true){
  const rating=profile.vof_by_steps?.[Math.min(teams.length,profile.steps)]??profile.vof;
- const weapon=['A','A/S'].includes(rating)?teams.find(u=>u.cohesion==='F'&&(u.fire_team_vof??u.vof)==='A'&&u.range>0):null;
+ const weapon=['A','A/S'].includes(rating)?teams.find(u=>suppliesWeapon(u,rating,corrected)):null;
  return (weapon?[weapon,...teams.filter(u=>u!==weapon)]:teams).slice(0,profile.steps);
 }
 export function transferReconstitutionLoads(s,unit,donors){

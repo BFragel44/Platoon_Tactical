@@ -11,6 +11,7 @@ export function resolveNextDisplayedExchange(state,onAccepted=()=>{}){
 export function resolveDisplayedExchange(state,onAccepted=()=>{}){
  const view=getPlayerView(state),current=view.combat_resolution;
  if(!current)return {state,accepted:false,reason:'No visible combat awaits resolution.'};
+ if(state.mission_rules?.combatOrder)return resolveSelectedCombat(state,current.id,onAccepted);
  const peer=reciprocalCombat(current,view),pair=resolvesPair(current,peer);
  let r=resolveCombat(state,current.id);if(!r.accepted)return r;
  onAccepted(state,r.state);state=r.state;
@@ -22,4 +23,9 @@ export function resolveDisplayedExchange(state,onAccepted=()=>{}){
   }
  }
  return {state,accepted:true};
+}
+
+// Selection is presentation-only; only the explicit draw records an operation.
+export function resolveSelectedCombat(state,id,onAccepted=()=>{}){
+ const r=resolveCombat(state,id);if(r.accepted)onAccepted(state,r.state);return r;
 }

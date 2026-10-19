@@ -153,6 +153,10 @@ export function dropItems(s,u,items){
  }
  emit(s,'ASSETS_DROPPED',`${u.name}: selected items dropped without a command or exposure.`,{actor:u.id,location:u.location,items:structuredClone(items),reason:'selective voluntary unload'});
 }
+export function syncCarriedCasualties(s,u,{transported=false}={}) {
+ if(!s.mission_rules?.casualtyPositions)return;
+ for(const c of s.casualties.filter(c=>c.carrier===u.id)){c.location=u.location;c.cover=u.cover;if(transported)c.transported=true;}
+}
 export function dropLoad(s,u,reason='removed') {
  for(const net of u.radios)s.assets.push({id:`asset_${s.next_id++}`,type:'RADIO',net,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});
  for(const [key,quantity] of Object.entries(u.assets))if(quantity)s.assets.push({id:`asset_${s.next_id++}`,type:'EQUIPMENT',key,quantity,source_unit:u.id,location:u.location,cover:u.cover,faction:u.faction});

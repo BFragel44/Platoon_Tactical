@@ -1,0 +1,436 @@
+{
+  "scope": "Expanded infantry Cleanup lifecycle and fire refresh",
+  "observations": 31,
+  "passed": true,
+  "results": [
+    {
+      "id": "review-keeps-GRENADE",
+      "rule": "3.7.4/3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-removes-GRENADE",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": 0
+      },
+      "observed": {
+        "markers": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "review-keeps-GRENADE_MISS",
+      "rule": "3.7.4/3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-removes-GRENADE_MISS",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": 0
+      },
+      "observed": {
+        "markers": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "review-keeps-CONCENTRATE",
+      "rule": "3.7.4/3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-removes-CONCENTRATE",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": 0
+      },
+      "observed": {
+        "markers": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "review-keeps-ILLUMINATION",
+      "rule": "3.7.4/3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-removes-ILLUMINATION",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": 0
+      },
+      "observed": {
+        "markers": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "review-keeps-SNIPER",
+      "rule": "3.7.4/3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-removes-SNIPER",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": 0
+      },
+      "observed": {
+        "markers": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "review-keeps-MINES",
+      "rule": "3.7.4/3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-removes-MINES",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": 0
+      },
+      "observed": {
+        "markers": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "review-keeps-WP_SMOKE",
+      "rule": "3.7.4/3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-removes-WP_SMOKE",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": 0
+      },
+      "observed": {
+        "markers": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "review-keeps-BOOBY_TRAP",
+      "rule": "3.7.4/3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "markers": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-removes-BOOBY_TRAP",
+      "rule": "3.8 p.17",
+      "expected": {
+        "markers": 0
+      },
+      "observed": {
+        "markers": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "illumination-expiry-LOS-weather0",
+      "rule": "9.2/9.2.1 p.70; 3.8 p.17",
+      "expected": {
+        "before": true,
+        "after": false,
+        "light": 3,
+        "weather": 0
+      },
+      "observed": {
+        "before": true,
+        "after": false,
+        "light": 3,
+        "weather": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "illumination-expiry-LOS-weather1",
+      "rule": "9.2/9.2.1 p.70; 3.8 p.17",
+      "expected": {
+        "before": true,
+        "after": false,
+        "light": 3,
+        "weather": 1
+      },
+      "observed": {
+        "before": true,
+        "after": false,
+        "light": 3,
+        "weather": 1
+      },
+      "passed": true
+    },
+    {
+      "id": "illumination-expiry-LOS-weather2",
+      "rule": "9.2/9.2.1 p.70; 3.8 p.17",
+      "expected": {
+        "before": false,
+        "after": false,
+        "light": 3,
+        "weather": 2
+      },
+      "observed": {
+        "before": false,
+        "after": false,
+        "light": 3,
+        "weather": 2
+      },
+      "passed": true
+    },
+    {
+      "id": "illumination-expiry-restores-next-turn-modifier",
+      "rule": "9.2 p.70",
+      "expected": {
+        "before": 1,
+        "after": 4
+      },
+      "observed": {
+        "before": 1,
+        "after": 4
+      },
+      "passed": true
+    },
+    {
+      "id": "smoke-expiry-reopens-fire-1",
+      "rule": "3.8 p.17; 5.4 p.38",
+      "expected": {
+        "before": false,
+        "after": true,
+        "smoke": false
+      },
+      "observed": {
+        "before": false,
+        "after": true,
+        "smoke": false
+      },
+      "passed": true
+    },
+    {
+      "id": "smoke-expiry-reopens-fire-2",
+      "rule": "3.8 p.17; 5.4 p.38",
+      "expected": {
+        "before": false,
+        "after": true,
+        "smoke": false
+      },
+      "observed": {
+        "before": false,
+        "after": true,
+        "smoke": false
+      },
+      "passed": true
+    },
+    {
+      "id": "exposure-expiry-reopens-tripod-without-extra-volley",
+      "rule": "3.8 p.17; 7.18 p.59",
+      "expected": {
+        "before": false,
+        "after": true,
+        "exposed": false,
+        "ammo": 3
+      },
+      "observed": {
+        "before": false,
+        "after": true,
+        "exposed": false,
+        "ammo": 3
+      },
+      "passed": true
+    },
+    {
+      "id": "incoming-persists-through-next-command-and-retreat",
+      "rule": "3.7.1 p.17",
+      "expected": {
+        "phase": "FIRE_MISSIONS",
+        "preserved": true
+      },
+      "observed": {
+        "phase": "FIRE_MISSIONS",
+        "preserved": true
+      },
+      "passed": true
+    },
+    {
+      "id": "incoming-replaced-before-recovery-and-combat",
+      "rule": "3.7.1 p.17",
+      "expected": {
+        "missions": [
+          [
+            "next",
+            "ACTIVE"
+          ]
+        ]
+      },
+      "observed": {
+        "missions": [
+          [
+            "next",
+            "ACTIVE"
+          ]
+        ]
+      },
+      "passed": true
+    },
+    {
+      "id": "offmap-illumination-is-immediate",
+      "rule": "7.16.3 p.59; 9.2 p.70",
+      "expected": {
+        "illumination": 1,
+        "pending": 0,
+        "stock": 5
+      },
+      "observed": {
+        "illumination": 1,
+        "pending": 0,
+        "stock": 5
+      },
+      "passed": true
+    },
+    {
+      "id": "offmap-illumination-expires-without-refund",
+      "rule": "7.16.3 p.59",
+      "expected": {
+        "illumination": 0,
+        "stock": 5
+      },
+      "observed": {
+        "illumination": 0,
+        "stock": 5
+      },
+      "passed": true
+    },
+    {
+      "id": "killed-source-does-not-refresh-frozen-fire",
+      "rule": "3.7.4 p.17; 6.4.1 p.47",
+      "expected": {
+        "lost": true,
+        "sameFire": true,
+        "sameExposure": true,
+        "concentration": true
+      },
+      "observed": {
+        "lost": true,
+        "sameFire": true,
+        "sameExposure": true,
+        "concentration": true
+      },
+      "passed": true
+    },
+    {
+      "id": "killed-source-fire-persists-until-cleanup-resolves",
+      "rule": "3.7.4/3.8 p.17",
+      "expected": {
+        "phase": "CLEANUP",
+        "sameFire": true
+      },
+      "observed": {
+        "phase": "CLEANUP",
+        "sameFire": true
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-removes-dead-source-and-concentration",
+      "rule": "3.8 p.17",
+      "expected": {
+        "deadSourceFire": false,
+        "concentration": false,
+        "pending": 0
+      },
+      "observed": {
+        "deadSourceFire": false,
+        "concentration": false,
+        "pending": 0
+      },
+      "passed": true
+    },
+    {
+      "id": "cleanup-preserves-persistent-battlefield-data",
+      "rule": "3.8 p.17; 7.16.5 p.59",
+      "expected": {
+        "gear": 1,
+        "cut": true,
+        "target": "r2c2",
+        "mines": true,
+        "cover": "cover"
+      },
+      "observed": {
+        "gear": 1,
+        "cut": true,
+        "target": "r2c2",
+        "mines": true,
+        "cover": "cover"
+      },
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Player-choice combat acceptance</title>
+<h1>Player-choice combat acceptance</h1><p>Isolated test origin only. Replays recorded legal setup orders into a new mission and stops at the first multi-recipient combat.</p>
+<button id="load">Prepare battlefield example</button><p id="status" role="status"></p><a href="/">Open game</a>
+<script type="module">
+import {trevieres} from '/src/scenarios/trevieres.js';
+import {createMission,replayOperation,getPlayerView} from '/src/sim/company/engine.js';
+import {saveRecovery} from '/src/ui/localRecovery.js';
+document.querySelector('#load').onclick=async()=>{
+ try{
+  if(location.port!=='5184')throw Error('Dedicated test origin required.');
+  const {replay:r}=await(await fetch('/output/company-playtests/spot-correction-39-normandy.json')).json();
+  let state=createMission(trevieres,r.seed,r.setup,r.roster_snapshot?{mission_instance_id:r.mission_instance_id,roster:{schema:1,...r.roster_snapshot,applied_missions:{}}}:null,{mission_instance_id:r.mission_instance_id});
+  for(const op of r.operations){
+   const next=replayOperation(state,op);if(next.accepted===false||next.reason||next.state===state)throw Error(next.reason??'Rejected source operation');state=next.state;
+   const recipients=getPlayerView(state).combat_resolutions;
+   if(state.phase==='COMBAT_EFFECTS'&&recipients.length>=2&&(!new URLSearchParams(location.search).has('ranged')||recipients.some(r=>r.sources.some(f=>f.kind==='BASIC_FIRE'&&(!new URLSearchParams(location.search).has('known')||f.known)))))break;
+  }
+  if(state.phase!=='COMBAT_EFFECTS')throw Error('Missing combat example');
+  saveRecovery(localStorage,state,{combatOpen:true},{replace:true});
+  document.querySelector('#status').textContent=`Ready: turn ${state.turn}, ${getPlayerView(state).combat_resolutions.length} visible recipients. Open game and resume the saved mission.`;
+ }catch(error){document.querySelector('#status').textContent=error.stack;}
+};
+</script></html>
