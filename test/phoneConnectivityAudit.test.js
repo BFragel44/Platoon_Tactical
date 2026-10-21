@@ -1,6 +1,9 @@
 import {it,expect} from 'vitest';
 import {trevieres} from '../src/scenarios/trevieres.js';
-import {createMission} from '../src/sim/company/engine.js';
+import {createMission,submitCommand} from '../src/sim/company/engine.js';
+import {dropLoad} from '../src/sim/company/core.js';
+import {eligibleTargets,commandOptions} from '../src/sim/company/actions.js';
+import {equipmentAreaLabel} from '../src/ui/casualtyPresentation.js';
 import {communication,communicationChannels} from '../src/sim/company/battlefield.js';
 import {phoneConnected} from '../src/sim/company/phoneNetwork.js';
 import {move,orderReason} from '../src/sim/company/actions.js';
@@ -41,4 +44,32 @@ it('lays a line automatically on the card being left and spends a carried line a
  const initial=u.assets.phone_line;move(s,u,'r1c1',false,'open');expect(u.assets.phone_line).toBe(initial);expect(s.phone_lines).toEqual([]);
  move(s,u,'r2c1',false,'open');expect(u.assets.phone_line).toBe(initial-1);expect(s.phone_lines).toContainEqual(expect.objectContaining({location:'r1c1',owner:'co',cut:false}));
  expect(communication(s,u,s.units.hq1)).toContain('field-phone');
+});
+it('recovers dropped unused phone-line supplies through Recover equipment',()=>{
+ const s=base(),u=s.units.co;const quantity=u.assets.phone_line;
+ expect(quantity).toBeGreaterThan(0);dropLoad(s,u,'test drop');
+ const supply=s.assets.find(a=>a.key==='phone_line');
+ expect(eligibleTargets(s,u,'PICKUP_RADIO')).toContain(supply.id);
+ s.phase='CO_INITIATIVE';s.impulse={id:'recover-spare-wire',hq:'co',commands:4,spent:0};
+ const r=submitCommand(s,{type:'PICKUP_RADIO',unit_id:'co',issuer_id:'co',target_id:supply.id});
+ expect(r.accepted,r.reason).toBe(true);expect(r.state.units.co.assets.phone_line).toBe(quantity);
+ expect(r.state.assets.some(a=>a.id===supply.id)).toBe(false);
+});
+it('keeps laid network wire separate from recoverable spare supplies',()=>{
+ const s=base(),u=s.units.co;move(s,u,'r2c1',false,'open');
+ const line=s.phone_lines.find(l=>l.location==='r1c1');expect(line).toBeTruthy();
+ expect(eligibleTargets(s,u,'PICKUP_RADIO')).not.toContain(line.id);
+});
+it('explains wire in another cover area and recovers all four after entering that area',()=>{
+ const s=base(),u=s.units.co,cover={id:'test-foxholes',type:'Foxholes',value:1,known:true};s.locations[u.location].covers.push(cover);
+ u.radios=['CO_PHONE','BN'];u.assets={};
+ s.assets.push({id:'four-lines',type:'EQUIPMENT',key:'phone_line',quantity:4,location:u.location,cover:cover.id,faction:'friendly'});
+ s.phase='CO_ACTIVATION';s.impulse={id:'recover-four-lines',hq:'co',commands:4,spent:0};
+ const option=commandOptions(s,u,'co').find(o=>o.type==='PICKUP_RADIO');
+ expect(option.targets.find(t=>t.id==='four-lines').reason).toContain('different cover area');
+ expect(equipmentAreaLabel({locations:Object.values(s.locations)},s.assets.at(-1))).toBe('C1 - Foxholes');
+ expect(submitCommand(s,{type:'PICKUP_RADIO',unit_id:'co',issuer_id:'co',target_id:'four-lines'}).accepted).toBe(false);
+ u.cover=cover.id;
+ const r=submitCommand(s,{type:'PICKUP_RADIO',unit_id:'co',issuer_id:'co',target_id:'four-lines'});
+ expect(r.accepted,r.reason).toBe(true);expect(r.state.units.co.assets.phone_line).toBe(4);
 });

@@ -7,7 +7,7 @@ export function experienceAwards(view,events=[]){
   return {id:a.key,recipient:actor?.name??pool,pool,task:a.text,points:a.points,turn:a.turn};
  });
 }
-export function freshExperienceAwards(awards,seen){return awards.filter(a=>!seen.includes(a.id));}
+export function freshExperienceAwards(awards,seen,status='ACTIVE'){return status==='ACTIVE'?awards.filter(a=>!seen.includes(a.id)):[];}
 
 export function createExperienceNotifications(){
  const queue=[];let current=null,timer=null;

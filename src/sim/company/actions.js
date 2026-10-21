@@ -67,6 +67,7 @@ export function platoonCombatGroup(s,h,target,type){
  return occupants(s,h.location).filter(u=>friendly(u)&&u.platoon===h.platoon&&good(u)&&communication(s,h,u)&&!orderReason(s,{type:action,unit_id:u.id,issuer_id:h.id,target_id:target.id}));
 }
 const restorableHQ=(s,t)=>t&&friendly(t)&&t.kind==='HQ'&&!t.steps.length&&!t.embarked_on&&!['RESERVE','EMBARKED','GUARD'].includes(t.removed)&&(!s.patrol||!t.platoon||t.platoon===s.patrol.plan.platoon);
+const patrolSquadAllowed=(s,t)=>!s.patrol||!!t&&!t.steps.length&&!t.embarked_on&&!['RESERVE','EMBARKED','GUARD'].includes(t.removed)&&t.platoon===s.patrol.plan.platoon;
 export function eligibleTargets(s,u,type) {
   if(type==='TRANSFER_EQUIPMENT')return values(s.units).filter(v=>v.id!==u.id&&live(v)&&friendly(v)&&v.location===u.location&&v.cover===u.cover).flatMap(v=>[
    ...[...new Set(v.radios)].map(net=>`transfer:${v.id}:RADIO:${net}`),
@@ -88,9 +89,9 @@ export function eligibleTargets(s,u,type) {
   if((['SHIFT_FIRE'].includes(type)||type.startsWith('CALL_'))) return values(s.locations).filter(l=>!l.staging&&seesCard(s,u,l.id)).map(l=>l.id);
   if(['GRENADE','RIFLE_GRENADE','CONCENTRATE'].includes(type)) return areaTargets(s,u).filter(t=>unitLos(s,u,t,type==='RIFLE_GRENADE'?1:type==='GRENADE'?(u.grenade_range??(vofOf(u)==='G'?rangeOf(u):0)):rangeOf(u))).map(t=>t.id);
   if(type==='RECONSTITUTE_HQ') return values(s.units).filter(t=>restorableHQ(s,t)).map(t=>t.id);
-  if(type==='RECONSTITUTE') return values(s.units).filter(t=>t.faction===u.faction&&t.kind==='SQUAD'&&!live(t)).map(t=>t.id);
+  if(type==='RECONSTITUTE') return values(s.units).filter(t=>t.faction===u.faction&&t.kind==='SQUAD'&&!live(t)&&(!s.mission_rules?.patrolReconstitution||patrolSquadAllowed(s,t))).map(t=>t.id);
   if(type==='PICKUP_RADIO') return s.assets.filter(a=>a.location===u.location&&(!s.mission_rules?.specialEnemies||((a.cover??null)===(u.cover??null)&&a.faction===u.faction))&&['RADIO','EQUIPMENT','AMMO'].includes(a.type)&&!a.destroyed).map(a=>a.id);
-  if(type==='PICKUP_CASUALTY') return s.casualties.filter(c=>{const donor=c.carrier&&s.units[c.carrier];return c.faction===u.faction&&!c.evacuated&&(donor?s.mission_rules?.missionIdentity&&donor.id!==u.id&&live(donor)&&donor.location===u.location&&donor.cover===u.cover:c.location===u.location&&c.cover===u.cover);}).map(c=>c.id);
+  if(type==='PICKUP_CASUALTY') return s.casualties.filter(c=>{if(s.mission_rules?.casualtyPickup&&c.carrier)return false;const donor=c.carrier&&s.units[c.carrier];return c.faction===u.faction&&!c.evacuated&&(donor?s.mission_rules?.missionIdentity&&donor.id!==u.id&&live(donor)&&donor.location===u.location&&donor.cover===u.cover:c.location===u.location&&c.cover===u.cover);}).map(c=>c.id);
   return [];
 }
 export function orderReason(s,c) {
@@ -277,6 +278,7 @@ export function orderReason(s,c) {
   if(type==='RECONSTITUTE') {
     const squad=s.units[target],ids=c.contributor_ids;
     if(!squad||squad.kind!=='SQUAD'||live(squad)||squad.faction!==u.faction) return 'Choose a previously eliminated squad counter to restore.';
+    if(s.mission_rules?.patrolReconstitution&&!patrolSquadAllowed(s,squad))return 'Reconstitute only an eliminated squad from the currently patrolling platoon. Reserve and embarked squads are not eliminated.';
     if(!Array.isArray(ids)||ids.length<2||ids.length>4||new Set(ids).size!==ids.length||!ids.includes(u.id)) return 'Choose 2–4 distinct contributing teams, including the selected team.';
     if(ids.length>(squad.max_steps??squad.steps.length)) return `${squad.name} can hold at most ${squad.max_steps??0} steps; choose fewer teams.`;
     if(ids.some(id=>!reconstructionTeams(s,u,c.issuer_id).some(t=>t.id===id))) return s.mission_rules?.missionIdentity?'Every contributor must be an unpinned one-step Fire/Assault Team on the same card and in communication with the ordering HQ.':'Every contributor must be an unpinned one-step Fire/Assault Team in the same area and in communication with the ordering HQ.';
@@ -295,6 +297,7 @@ export function orderReason(s,c) {
       if(issuer.kind!=='STAFF'||rank(u)!==best||best===99)return 'Company staff must restore Company HQ using the XO first, then a surviving platoon HQ, Artillery Observer, then staff. A higher-ranked Fire Team must recover first.';
     }
   }
+  if(type==='PICKUP_RADIO'&&s.mission_rules?.specialEnemies){const a=s.assets.find(a=>a.id===target);if(a&&!a.destroyed&&a.faction===u.faction&&a.location===u.location&&(a.cover??null)!==(u.cover??null))return 'Equipment is in a different cover area. Move into its cover area before recovering it.';}
   if(['PICKUP_RADIO','PICKUP_CASUALTY'].includes(type)&&(!eligibleTargets(s,u,type).includes(target)||u.pinned||u.cohesion==='P')) return 'Choose an available item here; pinned/paralyzed units cannot transport it.';
   if(type==='PICKUP_RADIO'){const a=s.assets.find(a=>a.id===target);const load=a.type==='AMMO'?ammoLoadReason(s,u,{[a.key]:1}):transportReason(s,u,a.type==='RADIO'?1:a.quantity);if(load)return load;}
   if(type==='PICKUP_CASUALTY'&&s.casualties.filter(c=>c.carrier===u.id).length>=u.steps.length) return 'Each step can carry one casualty.';
@@ -642,7 +645,10 @@ export function submitCommand(state,command) {
 }
 export function commandOptions(s,u,issuerId) {
   return Object.entries(ACTIONS).filter(([type])=>(type!=='CLEAR_MINE_PATH'||engineerRulesEnabled(s)&&u.capabilities?.engineer)&&(!type.endsWith('_TOT')||s.support_agencies?.artillery?.inventory?.TOT)&&(!type.endsWith('_ILLUM')||s.visibility&&(type==='HANDHELD_ILLUM'||s.support_agencies?.[type.includes('MORTAR')?'mortar':'artillery']?.inventory?.ILLUM))&&(!type.includes('CANNON')||s.support_agencies?.cannon)&&(!type.startsWith('SKILL_')||s.skills?.length)&&(type!=='DROP_LOAD'||s.mission_rules?.specialEnemies)&&(type!=='SEEK_COVER_UPPER'||s.mission_rules?.coverTable)&&(s.support_agencies||!['CALL_MORTAR_WP','CALL_ARTILLERY_WP','WP','WP_ATTACK','RIFLE_GRENADE'].includes(type))).map(([type,label])=>{
-    const targets=eligibleTargets(s,u,type);
+    // Historical replays retain the old reducer, but never offer a carried
+    // casualty as a new pickup order in the player interface.
+    const candidates=type==='PICKUP_RADIO'&&s.mission_rules?.specialEnemies?s.assets.filter(a=>a.location===u.location&&!a.destroyed&&a.faction===u.faction&&['RADIO','EQUIPMENT','AMMO'].includes(a.type)).map(a=>a.id):eligibleTargets(s,u,type);
+    const targets=candidates.filter(id=>(type!=='PICKUP_CASUALTY'||!s.casualties.find(c=>c.id===id)?.carrier)&&(type!=='RECONSTITUTE'||patrolSquadAllowed(s,s.units[id])));
     const targeted=type.endsWith('_ILLUM')||type.startsWith('PYRO_')||['SUPPLEMENT','TRANSFER_EQUIPMENT','SWITCH_NETWORK','PLATOON_CONCENTRATE','PLATOON_GRENADE','DISPATCH_RUNNER','CREATE_RUNNER'].includes(type)||['ACTIVATE','MOVE','PLATOON_MOVE','INFILTRATE','PLATOON_INFILTRATE','ENTER_COVER','INFILTRATE_WITHIN','SPOT','SHIFT_FIRE','CONCENTRATE','GRENADE','CALL_MORTAR','CALL_ARTILLERY','CALL_ARTILLERY_TOT','CALL_MORTAR_WP','CALL_ARTILLERY_WP','CALL_CANNON','CALL_CANNON_WP','RIFLE_GRENADE','INDIRECT','RECONSTITUTE','RECONSTITUTE_HQ','PICKUP_RADIO','PICKUP_CASUALTY'].includes(type);
     const checks=((targeted||type==='WP_ATTACK')?targets:[null]).map(target_id=>({id:target_id,reason:orderReason(s,{type,unit_id:u.id,issuer_id:issuerId,target_id,contributor_ids:type==='RECONSTITUTE'?[u.id,...reconstructionTeams(s,u,issuerId).filter(t=>t.id!==u.id).slice(0,Math.max(0,(s.units[target_id]?.max_steps??3)-1)).map(t=>t.id)]:undefined})}));
     if(['MOVE','INFILTRATE','PLATOON_MOVE','PLATOON_INFILTRATE'].includes(type))for(const check of checks)check.arrival_covers=check.reason?[]:arrivalCoverOptions(s,u,check.id,type);

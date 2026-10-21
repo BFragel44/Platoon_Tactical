@@ -1,4 +1,4 @@
-import {combinedExperience} from '../sim/company/reconstitution.js';
+import {preparationFormationAllowed,combinedExperience} from '../sim/company/reconstitution.js';
 import {buySkills} from '../sim/company/skills.js';
 import {prepareVireReattemptInput} from '../sim/company/vireReattempt.js';
 import {secureStatus} from '../sim/company/missionFeatures.js';
@@ -17,7 +17,7 @@ export function projectAttemptPersonnel(state,{reconstitute={},promote={},skills
  for(const u of Object.values(units))if(u.steps.length&&u.named&&u.cohesion==='F'){u.cohesion='GOOD';u.experience=u.original_experience;for(const step of u.steps)step.experience??=u.experience;}
  for(const [targetId,ids] of Object.entries(reconstitute)){
   const target=units[targetId];
-  if(!target||!eligible(target)||target.attachment||!['SQUAD','HQ','STAFF','MG','HMG','AT','MORTAR'].includes(target.kind)||!ids.length||target.steps.length+ids.length>target.max_steps||state.mission_rules.hill192&&target.removed==='RESERVE')throw new Error('Choose an eligible formation with enough room.');
+  if(!target||!preparationFormationAllowed(state,target)||!eligible(target)||target.attachment||!['SQUAD','HQ','STAFF','MG','HMG','AT','MORTAR'].includes(target.kind)||!ids.length||target.steps.length+ids.length>target.max_steps||state.mission_rules.hill192&&target.removed==='RESERVE')throw new Error('Choose an eligible formation with enough room.');
   const rebuilt=!target.steps.length&&['HQ','STAFF'].includes(target.kind);
   for(const id of ids){const donor=units[id];if(consumed.has(id)||!donor||!eligible(donor)||donor.kind!=='LAT'||donor.steps.length!==1||donor.removed)throw new Error('A surviving eligible team can be assigned only once.');consumed.add(id);const step=donor.steps.pop();step.experience='Green';target.steps.push(step);donor.removed='RECONSTITUTED';}
   target.removed=null;target.cohesion='GOOD';if(rebuilt){newHQ.add(targetId);target.experience='Green';}

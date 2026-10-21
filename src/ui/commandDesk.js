@@ -1,6 +1,9 @@
 import {mapBoundaryLayout} from './mapBoundaries.js';
 import './commandDesk.css';
 export const deskEscape=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function preparationMapLocations(locations,bounds){
+ return bounds?locations.filter(l=>l.staging||l.row>=1&&l.row<=bounds.rows&&l.col>=1&&l.col<=bounds.columns):locations;
+}
 // Both first setup and later patrols use public controls from the current draft.
 export function preparationMapControls({objectives={},phase_lines={},patrol=null}){
  const goals=structuredClone(objectives);
@@ -22,7 +25,8 @@ export function deploymentMapMarkup({locations,objectives={},placements={},selec
   const name=l.staging?l.name:l.known===false?`${l.row}.${l.col}`:l.name;
   const goals=Object.entries(objectives).filter(([,o])=>(o?.location??o)===l.id).map(([key])=>({primary:'Primary',secondary:'Secondary',attack:'Attack',ccp:'CCP',cop:'Outpost',concentration:'Concentration'})[key]??key);
   const occupants=Object.entries(placements).filter(([,id])=>id===l.id).map(([id])=>id);
-  return `<button type="button" class="desk-map-card ${l.known===false?'unknown':''} ${placements[selected]===l.id?'selected':''}" data-deploy-card="${deskEscape(l.id)}" ${allowed.includes(l.id)?'':'disabled'} style="${layout.cardStyle(l)}" aria-label="Deploy selected formation to ${deskEscape(name)}"><b>${deskEscape(name)}</b>${goals.length?`<strong>${goals.map(deskEscape).join(' · ')}</strong>`:''}${occupants.length?`<small>${occupants.length} formation${occupants.length===1?'':'s'}</small>`:''}</button>`;
+  const mines=l.known!==false&&l.mines;
+  return `<button type="button" class="desk-map-card ${l.known===false?'unknown':''} ${placements[selected]===l.id?'selected':''} ${mines?'known-minefield':''}" data-deploy-card="${deskEscape(l.id)}" ${allowed.includes(l.id)?'':'disabled'} style="${layout.cardStyle(l)}" aria-label="Deploy selected formation to ${deskEscape(name)}${mines?' — confirmed minefield':''}"><b>${deskEscape(name)}</b>${goals.length?`<strong>${goals.map(deskEscape).join(' · ')}</strong>`:''}${mines?'<span class="desk-mine-warning">⚠ Confirmed mines</span>':l.known!==false&&l.mine_path_marked?'<small>Mine path marked</small>':''}${occupants.length?`<small>${occupants.length} formation${occupants.length===1?'':'s'}</small>`:''}</button>`;
  }).join('')}${layout.boundaries.map(line=>`<div class="desk-map-line" style="grid-column:1/-1;grid-row:${line.gridRow}"><span>${deskEscape(line.label.replace(/MLR .*/, 'MLR'))}</span></div>`).join('')}</div><p>Only public terrain and friendly deployment choices are shown.</p></section>`;
 }
 export function bindDeskKeyboard(panel,close,previous=document.activeElement){

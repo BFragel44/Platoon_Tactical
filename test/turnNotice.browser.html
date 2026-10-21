@@ -1,0 +1,5 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Turn status report preview</title></head><body><script type="module">
+import '../src/style.css';import '../src/ui/company.css';import '../src/ui/workspace.css';import {turnNoticeMarkup} from '../src/ui/turnNotice.js';
+const view={turn:10,turn_limit:10,objectives:{primary:{location:'p',secured:true,cleared:true},secondary:{location:'s',secured:false,cleared:true},attack:{location:'a',secured:false,cleared:false}},objective_requirements:{clear_rows:[1,2],success_timing:'final_turn'},objective_assessment:{turn:9,rows_clear:false},objective_row_status:[{row:1,cleared:true},{row:2,cleared:false}],casualties:Array.from({length:13},(_,i)=>({faction:'friendly',evacuated:i===0}))};
+document.body.innerHTML=turnNoticeMarkup(view,id=>({p:'3.2 Open Fields',s:'3.3 Orchard / Hill',a:'2.2 Hedgerow / Bocage'})[id]??id);document.querySelector('dialog').showModal();document.querySelector('button').onclick=()=>document.querySelector('dialog').close();
+</script></body></html>

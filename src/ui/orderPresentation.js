@@ -49,3 +49,12 @@ export function unavailableOrderReference(options,label=o=>o.label){
  const unavailable=options.filter(o=>!o.available);
  return unavailable.length?`<details class="unavailable-orders"><summary>Unavailable commands (${unavailable.length})</summary><dl>${unavailable.map(o=>`<dt>${escapeOrderText(label(o))}</dt><dd>${escapeOrderText(o.reason??'No eligible target.')}</dd>`).join('')}</dl></details>`:'';
 }
+// A successful reconstitution consumes its donor counter. Stored presentation
+// can still select that donor even though the replay itself is valid.
+export function reconstitutionSelection(view,selection){
+ if(selection.action!=='RECONSTITUTE')return selection;
+ const donor=view.units.find(u=>u.id===selection.selected),restored=view.units.find(u=>u.id===selection.target);
+ const remaining=Array.isArray(restored?.steps)?restored.steps.length:restored?.steps;
+ if(donor?.removed!=='RECONSTITUTED'||!remaining||restored.removed)return selection;
+ return {...selection,selected:restored.id,action:'',target:'',contributors:[]};
+}

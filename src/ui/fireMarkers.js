@@ -15,10 +15,20 @@ export function fireMarkers(view,location) {
   if(directions.size>1)markers.push({art:'crossfire',label:'Crossfire −1',detail:'At least two firing directions, including temporary mortar PDFs. Crossfire adds −1 separately from the strongest applicable VOF.'});
   const mineTriggered=view.markers.some(m=>m.location===location.id&&m.type==='MINES');
   if(location.mines||mineTriggered)markers.push({label:mineTriggered?'MINES −4 · triggered':'MINES · Draw 3',detail:mineTriggered?'Mine attacks resolve against triggered units during combat; those units cannot move again this turn. Cleanup resets the marker to Draw 3; the minefield remains.':'Persistent minefield. Entering or moving within this card requires a three-card mine check for each unit. Leaving does not. Cleanup does not remove the minefield.'});
-  for(const m of view.markers.filter(m=>m.location===location.id&&m.type!=='MINES'))markers.push({
+  let missShown=false;
+  for(const m of view.markers.filter(m=>m.location===location.id&&m.type!=='MINES')){
+    // Old saves can contain multiple misses; the card-wide penalty applies once.
+    if(m.type==='GRENADE_MISS'){if(missShown)continue;missShown=true;}
+    const grenade=m.type==='GRENADE',source=[...view.units,...view.enemies].find(u=>u.id===m.source);
+    const side=source?(source.faction==='friendly'?'US':'GER'):null;
+    markers.push({
     art:m.type==='GRENADE'?(m.critical?'critical-grenade':'grenade'):m.type==='GRENADE_MISS'?'grenade-miss':m.type==='CONCENTRATE'?'concentrated':null,
     label:(m.weapon?`${m.weapon} `:'')+m.type.replaceAll('_',' ')+(m.critical?' · critical':''),
-    ...targetedMarker(view,location,m),detail:targetedMarker(view,location,m).detail+' Targeted effects resolve during mutual combat; no hidden attacker or target identity is revealed.'});
+    ...targetedMarker(view,location,m),
+    ...(grenade?{art:side==='GER'?'german-grenade':side==='US'?'grenade':null,grenade:true,side:side??'?',value:m.value,critical:!!m.critical,
+      label:`${side??'Unidentified'} ${m.weapon?`${m.weapon} `:''}grenade${Number.isFinite(m.value)?` VOF ${m.value}`:''}${m.critical?' · critical':''}`} :{}),
+    detail:targetedMarker(view,location,m).detail+' Targeted effects resolve during mutual combat; no hidden attacker or target identity is revealed.'});
+  }
   for(const f of view.support.filter(f=>f.location===location.id))markers.push({art:`${f.status==='PENDING'?'pending':'incoming'}${f.value}`,
     label:`${f.status==='PENDING'?'Pending':'Incoming'} ${f.agency?`${f.agency} ${f.ammo} `:''}${f.value}`,detail:(f.status==='PENDING'?'Activates at the next fire mission update.':'Active indirect fire remains on this card even if occupants leave; removed at the next fire mission update. Terrain burst and occupied cover modify its effects.')+(f.ammo==='WP'?' Active WP also provides +1 screening against basic fire; it does not protect against incoming or grenade effects.':'')});
   if(location.smoke)markers.push({label:`SMOKE +${location.smoke_value??2}`,detail:'Screening smoke blocks sight through or out of this card and modifies basic fire.'});

@@ -1,3 +1,4 @@
+import {deviceText} from './deviceLabels.js';
 // Display names are derived only from discovered cover in the player view.
 export function coverLabel(view,id) {
   for(const l of view.locations){
@@ -22,4 +23,4 @@ export function movementSpace(view,unit,option,target){
  const occupied=friendly.filter(u=>u.location===target).reduce((n,u)=>n+u.steps,0);
  return {name:location.name,occupied,incoming,total:occupied+incoming,limit:location.staging?null:16};
 }
-export const tacticalText=(view,text)=>String(text??'').replace('Commander aborted the company assault.',`Commander aborted ${view.mission_name??'the mission'}.`).replace(/\bcover_\w+\b/g,id=>coverLabel(view,id)??'cover position');
+export const tacticalText=(view,text)=>deviceText(text).replace('Commander aborted the company assault.',`Commander aborted ${view.mission_name??'the mission'}.`).replace(/\bcover_\w+\b/g,id=>coverLabel(view,id)??'cover position');

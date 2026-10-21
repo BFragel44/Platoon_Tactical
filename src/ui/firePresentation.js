@@ -8,5 +8,6 @@ export function movementFireWarning(view,action,target) {
   return `Friendly fire danger: ${names.join(', ')} are firing into ${view.locations.find(l=>l.id===target)?.name??target}. Moving there does not make them cease fire.`;
 }
 export function markerSummary(marker) {
+  if(marker.grenade)return `<span class="grenade-counter" role="img" aria-label="${esc(marker.label)}">${marker.art?`<img src="/markers/${marker.art}.png" alt="">`:''}<span class="grenade-value">${Number.isFinite(marker.value)?esc(marker.value):'?'}</span><span class="grenade-side">${esc(marker.side)}</span>${marker.critical?'<span class="grenade-critical">CRITICAL</span>':''}</span>`;
   return marker.art?`<img src="/markers/${marker.art}.png" alt="${esc(marker.label)}">`:`<span class="status-badge">${esc(marker.label)}</span>`;
 }

@@ -1,4 +1,5 @@
 import {playerReferences,friendlyTransport} from './playerReferences.js';
+import {publicEnemyCasualties} from './enemyCasualties.js';
 import {vehicleHQRecord,vehicleHQs} from './vehicleCommand.js';
 import {enterVireVehiclePhase,prepareVireInfantryCombat,resolveVireInfantryCombat,cleanupVireVehicles,exportVireAdapterReplay} from './vireIntegration.js';
 import {hill192DeploymentDefinition} from './hill192Setup.js';
@@ -73,7 +74,7 @@ export function previewMissionSetup(definition,seed,setup={},deployment=null) {
   return {mission_id:definition.id,mission_version:definition.version,seed:String(seed),setup:structuredClone(setup),map:structuredClone(s.boundaries),
     setup_options:structuredClone(definition.unit_options?{mortar_mode:['section','teams'],command_network:['radio','phones']}:{}),
     playable:definition.readiness?.playable!==false,assumptions:structuredClone(definition.readiness?.assumptions??[]),missing:structuredClone(definition.readiness?.missing??[]),
-    ...(s.mission_rules.hill192?{hill192:{forward_defense:s.forward_defense,concentration:s.registered_targets.artillery,source:structuredClone(s.battlefield_source),engineers_available:s.engineers_available}}:{}),...(s.patrol?{patrol:structuredClone(s.patrol.plan)}:{}),locations:view.locations,units:view.units.map(({id,name,kind,platoon,location,steps,experience,assets,radios,capabilities})=>({id,name,kind,platoon,location,steps,experience,assets,radios,capabilities})),objectives:view.objectives,signal_plan:structuredClone(s.signal_plan),phase_lines:structuredClone(s.phase_lines)};
+    ...(s.mission_rules.hill192?{hill192:{forward_defense:s.forward_defense,concentration:s.registered_targets.artillery,source:structuredClone(s.battlefield_source),engineers_available:s.engineers_available}}:{}),...(s.patrol?{patrol:structuredClone(s.patrol.plan)}:{}),locations:view.locations,units:view.units.map(({id,name,kind,platoon,location,cover,steps,experience,assets,radios,capabilities})=>({id,name,kind,platoon,location,cover,steps,experience,assets,radios,capabilities})),objectives:view.objectives,signal_plan:structuredClone(s.signal_plan),phase_lines:structuredClone(s.phase_lines)};
 }
 function initializeMission(definition,seed,setup={},deployment=null,execution={}) {
   const scenario=materializeScenario(definition,seed,setup);
@@ -107,7 +108,7 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
   }
   s.boundaries=scenario.map?{rows:scenario.map.rows,columns:scenario.map.columns}:null;
   s.terrain_deck=structuredClone(scenario.terrain_deck??[]);s.setup=structuredClone(setup);s.mission_name=scenario.name??'Company Assault';
-  s.mission_rules={...structuredClone(scenario.rules??{}),combatResolver:'action-deck-v1',...(execution.casualty_positions===false?{}:{casualtyPositions:'v1'}),...(execution.automatic_retreat===false?{}:{automaticRetreat:'v1'}),...(execution.casualty_equipment===false?{}:{casualtyEquipment:'v1'}),...(execution.hit_breakdowns===false?{}:{hitBreakdowns:'v1'}),...(execution.ncm_corrections===false?{}:{ncmCorrections:'v1'}),...(execution.grenade_miss_visibility===false?{}:{grenadeMissVisibility:true}),...(execution.combat_order===false?{}:{combatOrder:'player-choice-v1'}),hiddenTerrain:!!scenario.map?.hidden};
+  s.mission_rules={...structuredClone(scenario.rules??{}),combatResolver:'action-deck-v1',...(execution.resupply_ownership===false?{}:{resupplyOwnership:'v1'}),...(execution.patrol_reconstitution===false?{}:{patrolReconstitution:'v1'}),...(execution.casualty_pickup===false?{}:{casualtyPickup:'v1'}),...(execution.casualty_positions===false?{}:{casualtyPositions:'v1'}),...(execution.automatic_retreat===false?{}:{automaticRetreat:'v1'}),...(execution.casualty_equipment===false?{}:{casualtyEquipment:'v1'}),...(execution.hit_breakdowns===false?{}:{hitBreakdowns:'v1'}),...(execution.ncm_corrections===false?{}:{ncmCorrections:'v1'}),...(execution.grenade_miss_visibility===false?{}:{grenadeMissVisibility:true}),...(execution.combat_order===false?{}:{combatOrder:'player-choice-v1'}),hiddenTerrain:!!scenario.map?.hidden};
   s.enemy_tactics=s.mission_rules.tactics??'deliberate_defense';
   s.attempt_number=1;
   if(scenario.rules?.missionIdentity)s.mission_instance_id??=execution.mission_instance_id??globalThis.crypto.randomUUID();
@@ -137,6 +138,13 @@ function initializeMission(definition,seed,setup={},deployment=null,execution={}
    s.visibility={light:patrolMoonLight(randomNumber(s,4,'Patrol moon visibility')),weather:0};
    for(const l of values(s.locations).filter(l=>l.row===1||l.id===s.patrol.plan.cop))for(let i=0;i<2;i++)l.covers.push({id:`fox_${l.id}_${i}`,type:'Foxholes',value:1,known:true,discovered:true});
    for(const u of values(s.units).filter(u=>friendly(u)&&live(u)&&!patrolParticipant(s.patrol,u)))u.cover=s.locations[u.location].covers[0].id;
+   for(const [id,coverId] of Object.entries(setup.covers??{})){
+    const u=s.units[id];if(!u||!friendly(u))throw new Error('Unknown patrol cover formation.');
+    if(coverId===null){u.cover=null;continue;}
+    const cover=s.locations[u.location]?.covers.find(c=>c.id===coverId&&c.discovered);
+    if(!live(u)||!cover)throw new Error('Choose discovered cover on the formation’s patrol deployment card.');
+    u.cover=cover.id;
+   }
   }
   if(setup.prepared_skills?.length){
    if(!deployment)throw new Error('Prepared skills require an immutable company deployment.');
@@ -439,6 +447,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
   const contact_review=s.phase==='CONTACTS'?{eligible_locations:eligibleContacts(s).map(c=>c.location),location:s.segment_progress?.contact??nextContact(s)?.location??null,next_location:nextContact(s)?.location??null,resolved:!!s.segment_progress,events:contactEvents}:null;
   return {...(s.patrol?{patrol:structuredClone(s.patrol),patrol_history:structuredClone(s.patrol_history),visibility:structuredClone(s.visibility),command_limits:visibilityCommandLimits(s.visibility,companyCommander(s)?.experience??'Line')}:{}),id:s.id,scenario_id:s.scenario_id,mission_instance_id:s.mission_instance_id??s.id,attempt_number:s.attempt_number??1,status:s.status,seed:s.seed,turn:s.turn,turn_limit:s.turn_limit,phase:s.phase,phase_label:phaseInfo(s.phase)[1],phase_description:phaseDescription(s),...(s.mission_rules?.combatOrder?{combat_order:s.mission_rules.combatOrder}:{}),combat_resolution,combat_resolutions,contact_review,pending_support:structuredClone(s.pending_support??null),pending_event:structuredClone(s.pending_event??null),enemy_tactics:s.enemy_tactics,counterattack_ends_after:s.counterattack_ends_after??null,
     historical_losses:getVisibleEvents(s).filter(e=>e.type==='FORMATION_LOST'),
+    objective_row_status:s.objectives&&!s.patrol?(s.objectives.clear_rows??[]).map(row=>({row,cleared:values(s.locations).filter(l=>l.row===row&&(!s.boundaries||l.col>=1&&l.col<=s.boundaries.columns)).every(l=>secureStatus(s,l.id).cleared)})):[],
     segment_progress,briefing:s.briefing,activity:s.activity,impulse:structuredClone(s.impulse),eligible_hqs:eligibleHQs(s),units,
     locations:values(s.locations).map(terrainProjection),
     ...playerReferences(s,visibleHistory),command_network:commandNetwork(s),mission_rules_text:structuredClone(s.mission_rules_text??[]),
@@ -450,6 +459,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     support:knownSupport.map(f=>({location:f.location,status:f.status,value:f.value,...(f.agency?{agency:f.agency==='cannon'?'cannon':f.agency.includes('mortar')?'mortar':'artillery',ammo:f.ammo??'HE'}:{})})),support_inventory:structuredClone(s.support_inventory),
     support_callers:Object.fromEntries(Object.entries(s.support_agencies??{}).map(([id,a])=>[id,{name:a.name,draws:structuredClone(a.draws),ammo_draws:structuredClone(a.ammo_draws),networks:structuredClone(a.networks),registered:s.registered_targets?.[id]??null}])),
     personnel:values(s.personnel),casualties:s.casualties.filter(c=>c.faction==='friendly').map(c=>({...structuredClone(c),label:`${c.origin_name??'Friendly formation'} casualty step`,carrier_name:c.carrier?s.units[c.carrier]?.name:null})),
+    enemy_casualties:publicEnemyCasualties(s,visibleHistory),
     assets:s.assets.filter(a=>!a.destroyed&&a.faction==='friendly').map(a=>({...structuredClone(a),label:a.type==='RADIO'?`${a.net} radio`:`${String(a.key??'Equipment').replaceAll('_',' ')}${a.type==='AMMO'?' ammunition':''}${a.quantity>1?` ×${a.quantity}`:''}`,carrier_name:a.carrier?s.units[a.carrier]?.name:null})),
     deck:{draws:getVisibleEvents(s).filter(e=>e.type==='CARDS_DRAWN').reduce((n,e)=>n+e.card_ids.length,0)},
   };
@@ -459,7 +469,7 @@ export function getAfterActionReport(s) {
   return {record_type:'AAR',ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,scenario_version:s.scenario_version,mission_instance_id:s.mission_instance_id??null,attempts:structuredClone(s.attempt_history??[]),seed:s.seed,setup:structuredClone(s.setup),achievements:structuredClone(s.achievements),score:s.achievements.reduce((n,a)=>n+a.points,0),outcome:s.status,turns:s.turn,events,orders:events.filter(e=>e.type==='COMMAND_ISSUED'),casualties:events.filter(e=>e.type==='CASUALTY'),
     formations:events.filter(e=>['FORMATION_CHANGED','FORMATION_RECONSTITUTED','HQ_RECONSTITUTED','COHESION_CHANGED','UNIT_CAPTURED'].includes(e.type)),objectives:events.filter(e=>['OBJECTIVE_CHECK','MISSION_ENDED'].includes(e.type))};
 }
-export function exportReplay(s) { if(s.vire_runtime)return exportVireAdapterReplay(s.vire_runtime.initial_state,s);return {...(s.mission_rules?.casualtyPositions?{casualty_positions:s.mission_rules.casualtyPositions}:{}),...(s.mission_rules?.automaticRetreat?{automatic_retreat:s.mission_rules.automaticRetreat}:{}),...(s.mission_rules?.casualtyEquipment?{casualty_equipment:s.mission_rules.casualtyEquipment}:{}),...(s.mission_rules?.hitBreakdowns?{hit_breakdowns:s.mission_rules.hitBreakdowns}:{}),...(s.mission_rules?.ncmCorrections?{ncm_corrections:s.mission_rules.ncmCorrections}:{}),...(s.mission_rules?.combatOrder&&!s.combat_order_upgraded?{combat_order:s.mission_rules.combatOrder}:{}),...(s.mission_rules?.grenadeMissVisibility===true?{grenade_miss_visibility:true}:{}),...(s.mission_rules?.combatResolver?{combat_resolver:s.mission_rules.combatResolver}:{}),ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
+export function exportReplay(s) { if(s.vire_runtime)return exportVireAdapterReplay(s.vire_runtime.initial_state,s);return {...(s.mission_rules?.resupplyOwnership?{resupply_ownership:'v1'}:{}),...(s.mission_rules?.patrolReconstitution?{patrol_reconstitution:s.mission_rules.patrolReconstitution}:{}),...(s.mission_rules?.casualtyPickup?{casualty_pickup:s.mission_rules.casualtyPickup}:{}),...(s.mission_rules?.casualtyPositions?{casualty_positions:s.mission_rules.casualtyPositions}:{}),...(s.mission_rules?.automaticRetreat?{automatic_retreat:s.mission_rules.automaticRetreat}:{}),...(s.mission_rules?.casualtyEquipment?{casualty_equipment:s.mission_rules.casualtyEquipment}:{}),...(s.mission_rules?.hitBreakdowns?{hit_breakdowns:s.mission_rules.hitBreakdowns}:{}),...(s.mission_rules?.ncmCorrections?{ncm_corrections:s.mission_rules.ncmCorrections}:{}),...(s.mission_rules?.combatOrder&&!s.combat_order_upgraded?{combat_order:s.mission_rules.combatOrder}:{}),...(s.mission_rules?.grenadeMissVisibility===true?{grenade_miss_visibility:true}:{}),...(s.mission_rules?.combatResolver?{combat_resolver:s.mission_rules.combatResolver}:{}),ruleset:s.ruleset,rules_version:s.rules_version,scenario:s.scenario_id,version:s.scenario_version,seed:s.seed,setup:structuredClone(s.setup),...(s.mission_instance_id?{mission_instance_id:s.mission_instance_id}:{}),...(s.attempt_records?{attempt_records:structuredClone(s.attempt_records)}:{}),...(s.roster_snapshot?{roster_snapshot:structuredClone(s.roster_snapshot)}:{}),operations:structuredClone(s.replay)}; }
 export function replayOperation(s,op) {
   if(op.op==='enablePlayerChoiceCombat')return enablePlayerChoiceCombat(s);
   if(op.op==='resolveSupportChoice')return resolveSupportChoice(s,op.choice);
@@ -473,18 +483,21 @@ export function replayOperation(s,op) {
   if(op.op==='declineReattempt')return declineReattempt(s);
   throw new Error('Unknown replay operation');
 }
-export function replayMission(scenario,record) {
+export function replayMission(scenario,record,{validateAttemptRecords=true}={}) {
   if(record.scenario!==scenario.id||record.ruleset!==scenario.ruleset||record.version!==scenario.version||record.rules_version!==RULES_VERSION)
     throw new Error('Replay rules/scenario version mismatch. Start a new card-pull mission.');
   if(record.combat_resolver!=='action-deck-v1')throw new Error('Replay combat resolver mismatch. Start a new card-pull mission.');
   if(scenario.rules?.missionIdentity&&!record.mission_instance_id)throw new Error('Normandy replay is missing its mission run identity.');
+  if(record.resupply_ownership!==undefined&&record.resupply_ownership!=='v1')throw new Error('Unsupported resupply ownership rules.');
+  if(record.patrol_reconstitution!==undefined&&record.patrol_reconstitution!=='v1')throw new Error('Unsupported patrol reconstitution rules.');
+  if(record.casualty_pickup!==undefined&&record.casualty_pickup!=='v1')throw new Error('Unsupported casualty pickup rules.');
   if(record.casualty_positions!==undefined&&record.casualty_positions!=='v1')throw new Error('Unsupported carried casualty position rules.');
   if(record.automatic_retreat!==undefined&&record.automatic_retreat!=='v1')throw new Error('Unsupported automatic retreat rules.');
   if(record.casualty_equipment!==undefined&&record.casualty_equipment!=='v1')throw new Error('Unsupported casualty equipment rules.');
   if(record.hit_breakdowns!==undefined&&record.hit_breakdowns!=='v1')throw new Error('Unsupported HIT breakdown rules.');
   if(record.ncm_corrections!==undefined&&record.ncm_corrections!=='v1')throw new Error('Unsupported NCM correction rules.');
   if(record.combat_order!==undefined&&record.combat_order!=='player-choice-v1')throw new Error('Unsupported combat order rules.');
-  let s=createMission(scenario,record.seed,record.setup??{},record.roster_snapshot?{mission_instance_id:record.mission_instance_id,roster:{schema:1,...record.roster_snapshot,applied_missions:{}}}:null,{mission_instance_id:record.mission_instance_id,casualty_positions:record.casualty_positions==='v1',automatic_retreat:record.automatic_retreat==='v1',casualty_equipment:record.casualty_equipment==='v1',hit_breakdowns:record.hit_breakdowns==='v1',ncm_corrections:record.ncm_corrections==='v1',grenade_miss_visibility:record.grenade_miss_visibility===true,combat_order:record.combat_order==='player-choice-v1'});
+  let s=createMission(scenario,record.seed,record.setup??{},record.roster_snapshot?{mission_instance_id:record.mission_instance_id,roster:{schema:1,...record.roster_snapshot,applied_missions:{}}}:null,{mission_instance_id:record.mission_instance_id,resupply_ownership:record.resupply_ownership==='v1',patrol_reconstitution:record.patrol_reconstitution==='v1',casualty_pickup:record.casualty_pickup==='v1',casualty_positions:record.casualty_positions==='v1',automatic_retreat:record.automatic_retreat==='v1',casualty_equipment:record.casualty_equipment==='v1',hit_breakdowns:record.hit_breakdowns==='v1',ncm_corrections:record.ncm_corrections==='v1',grenade_miss_visibility:record.grenade_miss_visibility===true,combat_order:record.combat_order==='player-choice-v1'});
   // Missing discriminator means historical behavior: never change old finite-deck outcomes.
   if(record.grenade_miss_visibility!==undefined&&record.grenade_miss_visibility!==true)throw new Error('Unsupported grenade miss visibility rules.');
   for(const [index,op] of record.operations.entries()) {
@@ -492,7 +505,7 @@ export function replayMission(scenario,record) {
     if(r.accepted===false||r.reason||r.state===s)throw new Error(`Replay operation ${index+1} rejected: ${r.reason??'mission already ended'}`);
     s=r.state;
   }
-  if(scenario.rules?.missionIdentity&&JSON.stringify(record.attempt_records)!==JSON.stringify(s.attempt_records))throw new Error('Replay attempt starting record mismatch.');
+  if(validateAttemptRecords&&scenario.rules?.missionIdentity&&JSON.stringify(record.attempt_records)!==JSON.stringify(s.attempt_records))throw new Error('Replay attempt starting record mismatch.');
   return s;
 }
 // Explicitly diagnostic: every rejected historical operation is recorded, never silently omitted.
@@ -506,4 +519,14 @@ export function compareReplay(scenario,record) {
   }
   return {diagnostic:true,source_rules_version:record.rules_version??1,target_rules_version:RULES_VERSION,
     outcome:s.status,turn:s.turn,rejected:operations.filter(o=>!o.accepted).length,operations,events:getVisibleEvents(s)};
+}
+
+// Upgrade only when corrected accounting preserves every tactical outcome.
+export function repairResupplyAllocations(state,scenario){
+ if(state.mission_rules?.resupplyOwnership||state.vire_runtime)return state;
+ const record=exportReplay(state);record.resupply_ownership='v1';
+ const repaired=replayMission(scenario,record,{validateAttemptRecords:false});
+ const tactical=value=>JSON.parse(JSON.stringify(value,(key,item)=>['initial_resources','resupplyOwnership'].includes(key)?undefined:item));
+ if(JSON.stringify(tactical(state))!==JSON.stringify(tactical(repaired)))throw new Error('Resupply repair would change tactical history; original save retained.');
+ return repaired;
 }

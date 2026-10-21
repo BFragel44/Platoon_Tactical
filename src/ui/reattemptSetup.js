@@ -1,10 +1,12 @@
-import {deskHeader,deploymentMapMarkup,bindDeskKeyboard,preparationMapControls} from './commandDesk.js';
+import {preparationFormationAllowed} from '../sim/company/reconstitution.js';
+import {deskHeader,deploymentMapMarkup,preparationMapLocations,bindDeskKeyboard,preparationMapControls} from './commandDesk.js';
 import {projectAttemptPersonnel,attemptPresentationState} from './reattemptDraft.js';
 import {patrolControlsMarkup,patrolControlsData,patrolDeploymentDefault,bindPatrolDeployment} from './missionSetup.js';
 import {nextPatrolPlatoons} from '../sim/company/patrols.js';
 import {prepareReattempt,preparePatrol,getPlayerView} from '../sim/company/engine.js';
 import {secureStatus} from '../sim/company/missionFeatures.js';
 import {SKILLS} from '../sim/company/skills.js';
+import {attemptSupplyStock,projectSupplyTransfers,supplyInventoryMarkup,supplyLabel} from './attemptSupplies.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function openPatrolSetup(root,state,onStart,options={}){return openReattemptSetup(root,state,onStart,true,options);}
 export function openReattemptSetup(root,state,onStart,patrol=false,{page=false,onClose=()=>{}}={}){
@@ -16,13 +18,13 @@ export function openReattemptSetup(root,state,onStart,patrol=false,{page=false,o
  const secured=Object.values(state.locations).map(l=>patrol?{...l,name:publicLocations.find(v=>v.id===l.id)?.name??l.id}:l).filter(l=>patrol?l.row===1||l.id===plan.cop:secureStatus(state,l.id).secured);
  const active=Object.values(state.units).filter(u=>u.faction==='friendly'&&u.steps.length&&(!u.removed||patrol&&u.removed==='RESERVE'||(state.mission_rules?.vire||state.mission_rules?.tinchebray)&&u.removed==='EMBARKED'&&state.vire_runtime.vehicles[u.embarked_on]?.status==='ACTIVE')&&u.kind!=='RUNNER'&&u.command_role!=='higher_hq');
  const vehicles=(state.mission_rules?.vire||state.mission_rules?.tinchebray)?Object.values(state.vire_runtime.vehicles).filter(v=>v.faction==='friendly'&&v.status==='ACTIVE'&&['M4_SHERMAN75','M10_TD76','M5_LIGHT37','JEEP'].includes(v.profile)):[];
- const donors=active.filter(u=>eligible(u)&&u.kind==='LAT'&&u.steps.length===1),targets=Object.values(state.units).filter(u=>u.faction==='friendly'&&eligible(u)&&['SQUAD','HQ','STAFF','MG','HMG','AT','MORTAR'].includes(u.kind)&&!u.attachment&&u.steps.length<u.max_steps);
+ const donors=active.filter(u=>eligible(u)&&u.kind==='LAT'&&u.steps.length===1),targets=Object.values(state.units).filter(u=>u.faction==='friendly'&&eligible(u)&&['SQUAD','HQ','STAFF','MG','HMG','AT','MORTAR'].includes(u.kind)&&!u.attachment&&preparationFormationAllowed(state,u)&&u.steps.length<u.max_steps);
  const deployable=[...active,...targets.filter(u=>!active.includes(u))];
  const cargo=[...new Set(Object.values(state.units).filter(u=>u.faction==='friendly').flatMap(u=>[...(u.initial_resources?.radios??[]).map(key=>`RADIO:${key}`),...Object.keys(u.initial_resources?.assets??{}).map(key=>`EQUIPMENT:${key}`),...Object.keys(u.initial_resources?.ammo??{}).map(key=>`AMMO:${key}`)]))];
  const points=state.achievements.reduce((total,a)=>total+(patrol?(a.platoon===state.patrol.plan.platoon&&!a.spent?a.points:0):a.points),0)-(state.mission_rules.tinchebray?(state.attempt_points_spent_total??0):0);
  const options=(entries,selected)=>entries.map(([id,name])=>`<option value="${esc(id)}" ${id===selected?'selected':''}>${esc(name)}</option>`).join('');
  root.insertAdjacentHTML('beforeend',`<section class="mission-setup-dialog command-desk attempt-desk" role="dialog" aria-modal="true" aria-labelledby="reattempt-title"><form id="reattempt-form"><h2 id="reattempt-title">${esc(state.mission_name)} · ${esc(title)}</h2><p>${patrol?'Deploy in Row 1, the retained COP or reserve. Only the platoon that just patrolled may reconstitute or spend its experience.':'Place surviving and reconstituted formations on secured cards.'} ${points} eligible experience points may be spent on one-level promotions.</p>
- ${patrol?patrolControlsMarkup(plan,publicLocations,nextPatrolPlatoons(state.patrol_history),false):''}<details open><summary>Deployment</summary><p>${patrol?'The selected platoon starts on Row 1; other platoons and unattached weapons/staff default to off-map reserve. Assign attachments to the patrol to deploy them. Fixed defenders on Row 1 or the COP remain optional; only one platoon may occupy the COP.':'Choose a secured card.'} Select discovered cover on the chosen card.</p>${deployable.map(u=>`<label>${esc(u.name)} <select name="position-${esc(u.id)}" aria-label="${esc(u.name)} deployment">${options([...secured.map(l=>[l.id,l.name+(patrol&&l.id===plan.cop?' - OUTPOST':'')]),...(patrol?[['RESERVE','Reserve · unavailable this patrol']]:[])],patrol?patrolDeploymentDefault(u,plan.platoon):secured.some(l=>l.id===u.location)?u.location:secured[0]?.id)}</select> <select name="cover-${esc(u.id)}" aria-label="${esc(u.name)} cover">${options([['','Open'],...secured.flatMap(l=>l.covers.filter(c=>c.discovered).map(c=>[c.id,`${l.name} · ${c.type}`]))],patrol&&patrolDeploymentDefault(u,plan.platoon)!==u.location?'':u.cover??'')}</select>${patrol&&['MG','HMG','AT','MORTAR','FO','STAFF'].includes(u.kind)?` <span>Attachment <select name="assignment-${esc(u.id)}" aria-label="${esc(u.name)} attachment">${options([[0,'Company'],[1,'Platoon 1'],[2,'Platoon 2'],[3,'Platoon 3']],u.platoon??0)}</select></span>`:''}</label>`).join('')}</details>
+ ${patrol?patrolControlsMarkup(plan,publicLocations,nextPatrolPlatoons(state.patrol_history),false):''}<details open><summary>Deployment</summary><p>${patrol?'The selected platoon starts on Row 1; other platoons and unattached weapons/staff default to off-map reserve. Assign attachments to the patrol to deploy them. Fixed defenders on Row 1 or the COP remain optional; only one platoon may occupy the COP.':'Choose a secured card.'} Select discovered cover on the chosen card.</p>${deployable.map(u=>`<label>${esc(u.name)} <select name="position-${esc(u.id)}" aria-label="${esc(u.name)} deployment">${options([...secured.map(l=>[l.id,l.name+(l.known!==false&&l.mines?' - CONFIRMED MINES':'')+(patrol&&l.id===plan.cop?' - OUTPOST':'')]),...(patrol?[['RESERVE','Reserve · unavailable this patrol']]:[])],patrol?patrolDeploymentDefault(u,plan.platoon):secured.some(l=>l.id===u.location)?u.location:secured[0]?.id)}</select> <select name="cover-${esc(u.id)}" aria-label="${esc(u.name)} cover">${options([['','Open'],...secured.flatMap(l=>l.covers.filter(c=>c.discovered).map(c=>[c.id,`${l.name} · ${c.type}`]))],patrol&&patrolDeploymentDefault(u,plan.platoon)!==u.location?'':u.cover??'')}</select>${patrol&&['MG','HMG','AT','MORTAR','FO','STAFF'].includes(u.kind)?` <span>Attachment <select name="assignment-${esc(u.id)}" aria-label="${esc(u.name)} attachment">${options([[0,'Company'],[1,'Platoon 1'],[2,'Platoon 2'],[3,'Platoon 3']],u.platoon??0)}</select></span>`:''}</label>`).join('')}</details>
  ${vehicles.length?`<details open><summary>Surviving vehicles</summary><p>Retreated and destroyed vehicles remain unavailable. Surviving vehicles replenish ammunition; riders deploy dismounted.</p>${vehicles.map(v=>`<label>${esc(v.name)}<select name="vehicle-position-${esc(v.id)}">${options(secured.map(l=>[l.id,l.name]),secured.some(l=>l.id===v.location)?v.location:secured[0]?.id)}</select></label>`).join('')}</details>`:''}
  <details><summary>Reconstitution</summary><p>Assign each surviving limited-action team to one company formation with capacity, or leave it as a Fire Team.</p>${donors.map(u=>`<label>${esc(u.name)} <select aria-label="${esc(u.name)} assignment" name="donor-${esc(u.id)}">${options([['','Remain a Fire Team'],...targets.map(t=>[t.id,`${t.name} (${t.steps.length}/${t.max_steps})`])],'')}</select></label>`).join('')||'<p>No eligible teams.</p>'}</details>
  <details><summary>Promotions</summary><p>Green → Line costs 1 point; Line → Veteran costs 3. A donated LAT step can be promoted after assignment, except when restoring an HQ or staff unit. Newly restored HQ and staff cannot be promoted.</p>${active.filter(u=>eligible(u)&&u.kind!=='FO').flatMap(u=>u.steps.filter(step=>u.kind==='LAT'||(step.experience??u.experience)!=='Veteran').map(step=>{const green=u.kind==='LAT'||(step.experience??u.experience)==='Green';return `<label>${esc(u.name)} … Step ${u.steps.indexOf(step)+1} <select aria-label="${esc(u.name)} step ${u.steps.indexOf(step)+1} promotion" name="promote-${esc(step.id)}">${options([['','No promotion'],[green?'Line':'Veteran',green?'Line (1 point)':'Veteran (3 points)']],'')}</select></label>`;})).join('')}</details>
@@ -49,6 +51,26 @@ export function openReattemptSetup(root,state,onStart,patrol=false,{page=false,o
  }
  for(const section of fields.children){if(['attempt-promotions','attempt-reconstitution','attempt-redistribute-replenished-supplies','attempt-adjust-phase-lines','attempt-surviving-vehicles'].some(c=>section.classList.contains(c))){const grid=document.createElement('div');grid.className='attempt-choice-grid';[...section.children].filter(e=>e.tagName==='LABEL'||e.tagName==='FIELDSET').forEach(e=>grid.append(e));section.querySelector('summary').after(grid);}}
  const skillSection=fields.querySelector('.attempt-skills');
+ const suppliesSection=fields.querySelector('.attempt-redistribute-replenished-supplies'),supplyGrid=suppliesSection.querySelector('.attempt-choice-grid');
+ const supplyLayout=document.createElement('div');supplyLayout.className='attempt-supplies-layout';
+ const inventoryPanel=document.createElement('section');inventoryPanel.className='attempt-supplies-inventories';inventoryPanel.setAttribute('aria-label','Projected formation inventories');
+ suppliesSection.querySelector('summary').after(supplyLayout);supplyLayout.append(inventoryPanel,supplyGrid);
+ function updateSupplies(){
+  if(!projection)return;
+  const stock=attemptSupplyStock(state,projection,personnelChoices(false).reconstitute);
+  const control=(name,i)=>form.elements.namedItem(`cargo-${name}-${i}`);
+  const carriers=Object.entries(stock).filter(([id])=>deployable.some(u=>u.id===id));
+  const items=[...new Set([...cargo,...Object.values(stock).flatMap(u=>Object.keys(u.items))])];
+  for(let i=0;i<6;i++){
+   for(const name of ['from','to']){const select=control(name,i),old=select.value;select.innerHTML=options(carriers.map(([id,u])=>[id,u.name]),old);}
+   const select=control('item',i),old=select.value;select.innerHTML=options(items.map(item=>{const [type,key]=item.split(':');return [item,supplyLabel(type,key)];}),old);
+  }
+  const draft=projectSupplyTransfers(stock,Array.from({length:6},(_,i)=>({from:control('from',i).value,to:control('to',i).value,item:control('item',i).value,quantity:control('quantity',i).value})));
+  draft.rows.forEach((row,i)=>{const input=control('quantity',i);input.max=String(row.max);input.value=String(row.quantity);input.disabled=row.max===0;input.setAttribute('aria-label',`Transfer ${i+1} quantity, maximum ${row.max}`);
+   let note=input.parentElement.querySelector('small');if(!note){note=document.createElement('small');input.after(note);}note.textContent=`${row.max} available before this transfer`;
+  });
+  inventoryPanel.innerHTML=supplyInventoryMarkup(draft.inventory);
+ }
  const skillNotes=[...skillSection.children].filter(e=>e.tagName==='P'),skillExplanation=skillNotes.at(-1);skillNotes.slice(0,-1).forEach(p=>p.remove());
  if(patrol&&state.skills?.length){
   const holders=[...new Set(state.skills.map(s=>s.holder))];
@@ -75,7 +97,7 @@ export function openReattemptSetup(root,state,onStart,patrol=false,{page=false,o
   for(const u of deployable)for(let i=0;i<3;i++){const type=data.get(`skill-${u.id}-${i}`);if(type)skills.push({holder:u.id,type});}
   return {reconstitute,promote,skills};
  }
- const publicView=getPlayerView(state),publicMap=publicView.locations;
+ const publicView=getPlayerView(state),publicMap=preparationMapLocations(publicView.locations,state.boundaries);
  function updateDraft(){
   try{
    const base=projectAttemptPersonnel(state,{...personnelChoices(false),skills:[]},patrol);
@@ -92,6 +114,7 @@ export function openReattemptSetup(root,state,onStart,patrol=false,{page=false,o
    for(const u of deployable){const position=panel.querySelector(`[name="position-${u.id}"]`),cover=panel.querySelector(`[name="cover-${u.id}"]`),absent=projection.consumed.has(u.id)||!projection.units[u.id]?.steps.length;const label=position?.parentElement;if(label)label.hidden=absent||stage===3&&u.id!==selectedUnit;if(position)position.disabled=absent;if(cover)cover.disabled=absent||position?.value==='RESERVE';}
    for(const u of deployable.filter(u=>['HQ','STAFF'].includes(u.kind)))for(let i=0;i<3;i++){const skill=panel.querySelector(`[name="skill-${u.id}-${i}"]`);if(skill){skill.disabled=!projection.units[u.id]?.steps.length;skill.closest('fieldset').hidden=skill.disabled;}}
   }catch(error){draftError=error.message;}
+  if(!draftError)updateSupplies();
   const rows=projection?Object.values(projection.units).filter(u=>deployable.some(v=>v.id===u.id)&&!projection.consumed.has(u.id)&&(u.steps.length||targets.some(t=>t.id===u.id))):active;
   tools.querySelector('#attempt-metrics').innerHTML=`<span><strong>${projection?.points??points}</strong> XP remaining${patrol?` · Platoon ${state.patrol.plan.platoon}`:''}</span><span>${projection?.consumed.size??0} teams assigned</span>`;
   const positions=Object.fromEntries(deployable.filter(u=>!projection||projection.units[u.id]?.steps.length&&!projection.consumed.has(u.id)).map(u=>[u.id,panel.querySelector(`[name="position-${u.id}"]`)?.value]));
@@ -100,7 +123,7 @@ export function openReattemptSetup(root,state,onStart,patrol=false,{page=false,o
   const selectedPosition=panel.querySelector(`[name="position-${selectedUnit}"]`),selectedControl=selectedPosition?.disabled?null:selectedPosition;
   const mapControls=preparationMapControls({objectives:publicView.objectives,phase_lines:state.phase_lines?Object.fromEntries([1,2].map(k=>[k,Number(form.querySelector(`[name="phase-line-${k}"]`)?.value??state.phase_lines[k])])):{},patrol:patrol?patrolControlsData(new FormData(form),plan):null});
   if(stage===3)layout.querySelector('#attempt-map').innerHTML=deploymentMapMarkup({locations:publicMap,...mapControls,placements:positions,selected:selectedUnit,selectedLabel:projection?.units[selectedUnit]?.name,allowed:selectedControl?[...selectedControl.options].map(o=>o.value):[]});
-  for(const button of layout.querySelectorAll('[data-attempt-unit]'))button.onclick=()=>{selectedUnit=button.dataset.attemptUnit;if(stage!==1)stage=3;paintStage();updateDraft();layout.querySelector(`[data-attempt-unit="${CSS.escape(selectedUnit)}"]`)?.focus({preventScroll:true});};
+  for(const button of layout.querySelectorAll('[data-attempt-unit]'))button.onclick=()=>{selectedUnit=button.dataset.attemptUnit;if(stage!==1&&stage!==2)stage=3;paintStage();updateDraft();layout.querySelector(`[data-attempt-unit="${CSS.escape(selectedUnit)}"]`)?.focus({preventScroll:true});if(stage===2)inventoryPanel.querySelector(`[data-supply-unit="${CSS.escape(selectedUnit)}"]`)?.scrollIntoView({block:'nearest'});};
   for(const button of layout.querySelectorAll('[data-deploy-card]'))button.onclick=()=>{if(selectedControl){selectedControl.value=button.dataset.deployCard;selectedControl.dispatchEvent(new Event('change',{bubbles:true}));selectedControl.focus({preventScroll:true});}};
   layout.querySelector('#attempt-review').innerHTML=`<h3>Ready for ${patrol?'the next patrol':`attempt ${state.attempt_number+1}`}?</h3><p>${patrol?'The next platoon patrols the retained battlefield.':'Terrain, discovered cover, mines, contacts and enemy positions are retained. Friendly formations may reposition to secured cards.'}</p><p>Pins, fire markers, commands and supplies reset under the preparation rules. Fire may resume immediately where opponents remain in LOS.</p><p>${rows.filter(u=>u.steps.length).length} formations · ${projection?.points??points} XP available after selected purchases.</p><p>Clearance/objective XP is assessed at the end of an attempt; event awards retain their actual timing.</p><p>Begin validates all choices. No tactical changes occur until validation succeeds.</p>`;
   for(const select of form.querySelectorAll('select'))select.title=select.selectedOptions[0]?.textContent??'';
@@ -120,7 +143,7 @@ export function openReattemptSetup(root,state,onStart,patrol=false,{page=false,o
  }
  panel.querySelector('#reattempt-form').onsubmit=e=>{
   e.preventDefault();updateDraft();if(draftError)return;const data=new FormData(e.currentTarget),positions={},covers={},reconstitute={},promote={},phone_lines={},skills=[],redistribute=[];
-  for(const u of deployable){if(projection?.consumed.has(u.id)||!projection?.units[u.id]?.steps.length)continue;positions[u.id]=data.get(`position-${u.id}`);const cover=data.get(`cover-${u.id}`);if(cover&&positions[u.id]!=='RESERVE')covers[u.id]=cover;}
+  for(const u of deployable){if(projection?.consumed.has(u.id)||!projection?.units[u.id]?.steps.length)continue;positions[u.id]=data.get(`position-${u.id}`);const cover=data.get(`cover-${u.id}`);if(positions[u.id]!=='RESERVE'&&(cover||patrol))covers[u.id]=cover||null;}
   for(const donor of donors){const id=data.get(`donor-${donor.id}`);if(id)(reconstitute[id]??=[]).push(donor.id);}
   for(const ids of Object.values(reconstitute))for(const id of ids)delete covers[id];
   for(const u of active)for(const step of u.steps){const to=data.get(`promote-${step.id}`);if(to)promote[step.id]=to;}
@@ -133,7 +156,7 @@ export function openReattemptSetup(root,state,onStart,patrol=false,{page=false,o
   }
   const phase_lines=state.phase_lines?Object.fromEntries([1,2].map(k=>[k,Number(data.get(`phase-line-${k}`))])):undefined;
   try{const vehicle_positions=Object.fromEntries(vehicles.map(v=>[v.id,data.get(`vehicle-position-${v.id}`)]));
-   const result=(patrol?preparePatrol:prepareReattempt)(originalState,{...((state.mission_rules?.vire||state.mission_rules?.tinchebray)?{vehicle_positions}:{}),...(patrol?{patrol:patrolControlsData(data,plan),assignments:Object.fromEntries(deployable.filter(u=>data.has(`assignment-${u.id}`)).map(u=>[u.id,Number(data.get(`assignment-${u.id}`))]))}:{}),positions,covers,reconstitute,promote,phone_lines,skills,redistribute,...(phase_lines?{phase_lines}:{})});close(true);onStart(result.state);}
+   const result=(patrol?preparePatrol:prepareReattempt)(originalState,{...((state.mission_rules?.vire||state.mission_rules?.tinchebray)?{vehicle_positions}:{}),...(patrol?{patrol:patrolControlsData(data,plan),assignments:Object.fromEntries(deployable.filter(u=>data.has(`assignment-${u.id}`)).map(u=>[u.id,Number(data.get(`assignment-${u.id}`))]))}:{}),positions,covers,reconstitute,promote,phone_lines,skills,redistribute,original_formations_only:true,...(phase_lines?{phase_lines}:{})});close(true);onStart(result.state);}
   catch(error){panel.querySelector('#reattempt-error').textContent=error.message;}
  };
  updateDraft();panel.querySelector('button')?.focus();return {close};

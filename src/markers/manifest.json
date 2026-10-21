@@ -1,6 +1,10 @@
 {
   "provenance": "GMT Games, Fields of Fire Deluxe Update Kit, supplied Countersheet 2 of 3. Cropped without redrawing. Pixel boxes [left,top,right,bottom], right/bottom exclusive; original source resolution. Fire/status markers only. PDF, PIN and EXPOSED use original labelled CSS/SVG, not All Pinned VOF artwork.",
   "markers": {
+    "german-grenade": {
+      "source": "User-created GER_Grenade.png supplied by Brett",
+      "file": "german-grenade.png"
+    },
     "small-arms": {
       "source": "reference/FoF_Countersheet_2_of_3_FRONT.png",
       "source_sha256": "a045ca0992739563652ffbfb0478363bec1df3657a5435bd0e746faa64f35f17",

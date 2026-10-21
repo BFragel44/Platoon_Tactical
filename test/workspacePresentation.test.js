@@ -38,7 +38,7 @@ describe('Battlefield presentation',()=>{
   u.inventory={equipment:[{label:'HC SMOKE',quantity:3},{label:'RIFLE GRENADE',quantity:1}],radios:['CO'],casualties:[]};
   u.options=[{type:'DROP_LOAD',label:'Drop all carried items',available:true,cost:0}];
   const before=structuredClone(u),html=inlineInventory(u,{locked:true});
-  expect(html).toContain('× 3');expect(html).toContain('× 1');expect(html).toContain('CO radio');
+  expect(html).toContain('× 3');expect(html).toContain('× 1');expect(html).toContain('CO TAC radio');
   expect(html).toMatch(/data-inline-unload="DROP_LOAD" disabled/);expect(html).not.toContain('2 Shots');expect(u).toEqual(before);
   expect(formationCounter({...u,cohesion:'F'})).toContain('FIRE');expect(formationCounter({...u,cohesion:'F'})).not.toContain('/hq.png');
  });

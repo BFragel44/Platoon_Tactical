@@ -71,3 +71,9 @@ The audit now passes **38 of 39 observations**; the separate CR-10 carrier-cover
 ### CR-10 status update — October 19, 2026
 
 CR-10 is now confirmed through the production Lost in the Dark event and repaired for new missions. All 39 casualty/equipment observations pass. See [INTEGRATED_COMBAT_ACCEPTANCE.md](INTEGRATED_COMBAT_ACCEPTANCE.md) for the exact event-fixture scope, replay compatibility and integrated acceptance results. Earlier open-status notes describe the pre-repair audit.
+# Casualty pickup ownership follow-up
+
+The pickup menu previously offered casualties already carried by another infantry formation in the same card/cover. The reducer silently reassigned ownership and exposed both carriers. Third-edition §5.1.6B (p.33) describes dropping a load, then ordering the receiving formation to pick it up. Carried casualties are now excluded from new pickup menus, including existing campaigns. Drop casualties first (free where the existing scenario rules allow), then issue the receiving formation's pickup order.
+
+New missions additionally validate this restriction in the reducer with `casualtyPickup: 'v1'` / replay `casualty_pickup: 'v1'`. Records without the discriminator retain historical reducer behavior so recorded handoffs do not break campaign replay. An unknown discriminator is rejected. No saved campaign is rewritten. Regression coverage: `test/casualtyPickupOwnership.test.js`, including rejection without command expenditure, drop-then-pickup, single ownership, and new/historical replay initialization.
+

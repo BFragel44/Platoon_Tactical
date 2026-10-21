@@ -16,14 +16,15 @@ export function materializeScenario(definition,seed,setup={}) {
  definition=hill192DeploymentDefinition(definition,setup);
  validateNormandyContent(definition);
  if(!definition.map){if(Object.keys(setup).length)throw new Error('This authored course has no configurable setup.');return definition;}
- if(Object.keys(setup).some(k=>!['objectives','assignments','positions','assets','mortar_mode','mortar_radio_recipient','command_network','phone_lines','signals','phase_lines','patrol','battlefield','forward_defense','concentration','prepared_skills'].includes(k)))throw new Error('Unknown setup field.');
+ if(Object.keys(setup).some(k=>!['objectives','assignments','positions','covers','assets','mortar_mode','mortar_radio_recipient','command_network','phone_lines','signals','phase_lines','patrol','battlefield','forward_defense','concentration','prepared_skills'].includes(k)))throw new Error('Unknown setup field.');
  if(setup.phase_lines&&!definition.rules?.signals)throw new Error('This mission has no configurable phase lines.');
  if(setup.mortar_mode&&!definition.unit_options?.mortar)throw new Error('This mission has no mortar setup choice.');
  if(setup.mortar_mode&&!['section','teams'].includes(setup.mortar_mode))throw new Error('Choose the mortar section or individual teams.');
+ if(setup.covers&&!definition.rules?.patrols)throw new Error('Initial cover choices are supported only for patrol missions.');
  if(setup.patrol&&!definition.rules?.patrols)throw new Error('This mission has no patrol setup.');
  if((setup.battlefield||setup.forward_defense||setup.concentration)&&!definition.rules?.hill192)throw new Error('This mission does not accept Hill 192 battlefield controls.');
  const eligibleUnits=[...definition.units,...(definition.unit_options?.mortar?.teams??[])];
- for(const field of ['assignments','positions','assets'])if(Object.keys(setup[field]??{}).some(id=>!eligibleUnits.some(u=>u.id===id)))throw new Error('Unknown setup formation.');
+ for(const field of ['assignments','positions','covers','assets'])if(Object.keys(setup[field]??{}).some(id=>!eligibleUnits.some(u=>u.id===id)))throw new Error('Unknown setup formation.');
  if(Object.keys(setup.objectives??{}).some(k=>!['primary','secondary','attack','ccp'].includes(k)))throw new Error('Unknown tactical control.');
  const scenario=structuredClone(definition),random={rng:createRng(`${seed}:terrain`)},deck=shuffle(random,scenario.map.deck),locations=[];
  if(scenario.rules?.signals)scenario.phase_lines=validatePhaseLines(setup.phase_lines??{1:1,2:2},scenario.map.rows);

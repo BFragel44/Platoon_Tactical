@@ -1,3 +1,4 @@
+import {deviceLabel} from './deviceLabels.js';
 import {formationLabel} from './unitDetails.js';
 import {coverIcon} from './terrainPresentation.js';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -6,15 +7,37 @@ function label(u){
  if(u.kind==='LAT')return `${({A:'A',F:'F',L:'L',P:'P'})[u.cohesion]??'T'}${u.name.match(/\d+/)?.[0]??''}`;
  return formationLabel(u);
 }
+function counterSubtitle(u){
+ if(u.id==='co')return 'Company HQ';
+ if(u.id==='xo')return 'Executive Officer';
+ if(u.id==='staff')return 'First Sergeant';
+ if(u.kind==='MORTAR')return `${u.name.match(/\d+\s*mm/i)?.[0]?.replace(/\s/g,'')??''} Mortar`.trim();
+ if(u.kind==='FO')return /artillery/i.test(u.name)?'Artillery Obs.':'Mortar Obs.';
+ if(u.kind==='HQ')return 'Platoon HQ';
+ if(u.kind==='SQUAD')return /Fallschirmj/i.test(u.name)?'FJ Rifle Squad':'Rifle Squad';
+ return u.name.replace('Company First Sergeant','First Sergeant').replace('Company Executive Officer','Executive Officer');
+}
+export function counterReadiness(u){
+ const steps=Math.max(0,Number(u.steps)||0),capacity=u.kind==='LAT'?steps:Math.max(steps,Number(u.max_steps)||steps);
+ const dots=`<span class="counter-steps" role="img" aria-label="${steps} of ${capacity} steps remaining">${Array.from({length:capacity},(_,i)=>`<i class="step-dot ${i<steps?'ready':'lost'}" aria-hidden="true"></i>`).join('')}</span>`;
+ // Only use ammunition included in the public projection. Never infer enemy stocks.
+ const ammo=Object.entries(u.ammo??{}).filter(([,n])=>Number.isSafeInteger(n)&&n>=0);
+ if(!ammo.length)return {dots,ammo:''};
+ const remaining=ammo.reduce((n,[,v])=>n+v,0),total=ammo.reduce((n,[key,v])=>n+Math.max(v,u.initial_resources?.ammo?.[key]??v),0);
+ const description=ammo.map(([key,n])=>`${key}: ${n} remaining`).join('; ');
+ return {dots,ammo:`<span class="counter-ammo" role="img" aria-label="Ammunition: ${esc(description)}" title="${esc(description)}">${total<=12?Array.from({length:Math.max(total,1)},(_,i)=>`<i class="ammo-square ${i<remaining?'ready':'spent'}" aria-hidden="true"></i>`).join(''):`<b>${remaining}</b><i class="ammo-square ${remaining?'ready':'spent'}" aria-hidden="true"></i>`}</span>`};
+}
 export function formationGrid(l,friendly,enemies,{selected,movingIds=new Set(),infiltrating=false,combat=null}={}){
  const covers=l.known===false?[]:(l.covers??[]).filter(c=>c.known!==false);
  const units=[...friendly.map(u=>({...u,uiFriendly:true})),...enemies.map(u=>({...u,uiFriendly:false}))];
  const counter=u=>{
   const c=covers.find(c=>c.id===u.cover),pos=c?`C${covers.indexOf(c)+1}`:null;
-  const details=[u.name,`${u.steps} step${u.steps===1?'':'s'} · ${side(u)} · ${u.experience??'Unknown'} experience`,u.pinned?'Pinned':null,u.exposed?'Exposed; seeking cover does not remove exposure':null,l.name,c?`${pos} · ${c.type} +${c.value} · level ${l.elevation+(c.elevation??0)}`:l.staging?'Staging; no terrain cover':`Terrain only · level ${l.elevation}`,u.uiFriendly?(u.tactical_ready?'Orders available':'Inspect; no available orders'):null,u.attempted?.length?`${u.attempted.length} attempted this impulse`:null,u.radios?.length?`${u.radios.join(' / ')} radio`:null,u.cohesion==='GOOD'&&['HQ','STAFF','FO'].includes(u.kind)?'No basic fire':u.cohesion==='F'&&['HQ','STAFF'].includes(u.kind)?'Command side unavailable':null,...(u.inventory?.equipment??[]).map(e=>`${e.label} × ${e.quantity}`),u.inventory?.casualties?.length?`${u.inventory.casualties.length} carried casualties`:null,u.transition_description,movingIds.has(u.id)?infiltrating?'Will attempt infiltration':'Will move with platoon':null].filter(Boolean).join('\n');
+  const details=[u.name,`${u.steps} step${u.steps===1?'':'s'} · ${side(u)} · ${u.experience??'Unknown'} experience`,u.pinned?'Pinned':null,u.exposed?'Exposed; seeking cover does not remove exposure':null,l.name,c?`${pos} · ${c.type} +${c.value} · level ${l.elevation+(c.elevation??0)}`:l.staging?'Staging; no terrain cover':`Terrain only · level ${l.elevation}`,u.uiFriendly?(u.tactical_ready?'Orders available':'Inspect; no available orders'):null,u.attempted?.length?`${u.attempted.length} attempted this impulse`:null,u.radios?.length?u.radios.map(deviceLabel).join(' / '):null,u.cohesion==='GOOD'&&['HQ','STAFF','FO'].includes(u.kind)?'No basic fire':u.cohesion==='F'&&['HQ','STAFF'].includes(u.kind)?'Command side unavailable':null,...(u.inventory?.equipment??[]).map(e=>`${e.label} × ${e.quantity}`),u.inventory?.casualties?.length?`${u.inventory.casualties.length} carried casualties`:null,u.transition_description,movingIds.has(u.id)?infiltrating?'Will attempt infiltration':'Will move with platoon':null].filter(Boolean).join('\n');
   const recipient=combat?.recipients?.find(r=>r.target_id===u.id),receiving=!!(combat?.current?.target_id===u.id||combat?.current?.after?.some(v=>v.id===u.id)),source=combat?.current?.sources?.some(s=>s.known&&s.source_id===u.id);
   const tag=u.uiFriendly||recipient?'button':'div';
-  return `<${tag} data-counter="${esc(u.id)}" ${recipient?`data-combat-select="${esc(recipient.id)}" aria-pressed="${receiving}"`:''} ${!u.uiFriendly&&recipient?'type="button"':''} ${u.uiFriendly?`type="button" data-unit="${esc(u.id)}"`:recipient?'':'tabindex="0" role="group"'} class="compact-unit ${combat?(receiving?'combat-receiver':source?'combat-firer':'combat-uninvolved'):''} ${u.uiFriendly?'friendly':'enemy'} ${u.id===selected?'selected':''} ${u.pinned?'pinned':''} ${u.uiFriendly?(u.tactical_ready?'order-ready':'inspect-only'):''}" data-unit-tooltip="${esc(details)}" aria-label="${esc(details)}"><span class="compact-unit-name">${esc(u.name)}</span><small>${u.steps} step${u.steps===1?'':'s'}${['HQ','STAFF','FO'].includes(u.kind)?` · ${side(u)}`:''}</small><strong>${esc(label(u))}</strong><span class="compact-unit-status">${u.uiFriendly&&u.inventory?.casualties?.length?`<span class="status-badge casualty-carrier">✚ CARRYING ${u.inventory.casualties.length}</span>`:''}${u.pinned?'<span class="status-badge pin">PIN</span>':''}${u.exposed?'<span class="status-badge exposure">EXPOSED</span>':''}${movingIds.has(u.id)?'<span class="status-badge">↑ MOVE</span>':''}</span></${tag}>`;
+  const readiness=counterReadiness(u);
+  const subtitle=counterSubtitle(u),subtitleSize=Math.min(9,78/(Math.max(1,subtitle.length)*.65));
+  return `<${tag} data-counter="${esc(u.id)}" ${recipient?`data-combat-select="${esc(recipient.id)}" aria-pressed="${receiving}"`:''} ${!u.uiFriendly&&recipient?'type="button"':''} ${u.uiFriendly?`type="button" data-unit="${esc(u.id)}"`:recipient?'':'tabindex="0" role="group"'} class="compact-unit ${combat?(receiving?'combat-receiver':source?'combat-firer':'combat-uninvolved'):''} ${u.uiFriendly?'friendly':'enemy'} ${u.id===selected?'selected':''} ${u.pinned?'pinned':''} ${u.uiFriendly?(u.tactical_ready?'order-ready':'inspect-only'):''}" data-unit-tooltip="${esc(details)}" aria-label="${esc(details)}"><strong>${esc(label(u))}</strong><span class="compact-unit-name" style="--subtitle-size:${subtitleSize.toFixed(2)}px">${esc(subtitle)}</span>${readiness.dots}<span class="compact-unit-status">${u.uiFriendly&&u.inventory?.casualties?.length?`<span class="status-badge casualty-carrier">✚ CARRYING ${u.inventory.casualties.length}</span>`:''}${u.pinned?'<span class="status-badge pin">PIN</span>':''}${u.exposed?'<span class="status-badge exposure">EXPOSED</span>':''}${movingIds.has(u.id)?'<span class="status-badge">↑ MOVE</span>':''}</span>${readiness.ammo}</${tag}>`;
  };
  const inTerrain=units.filter(u=>!covers.some(c=>c.id===u.cover));
  return `<div class="formation-groups">${inTerrain.length?`<div class="compact-unit-grid" aria-label="Formations outside additional cover">${inTerrain.map(counter).join('')}</div>`:''}${covers.map((c,i)=>`<section class="occupied-cover" aria-label="C${i+1} ${esc(c.type)}"><header tabindex="0" data-unit-tooltip="${esc(`${c.type} +${c.value} · level ${l.elevation+(c.elevation??0)}\n${c.capacity?`${c.capacity}-step capacity`:'No step limit'}${c.parent?` · above C${covers.findIndex(p=>p.id===c.parent)+1}`:''}${c.arc?`\nFiring arc ${c.arc.join(',')}; no point-blank fire`:''}\nCover adds to terrain protection; seeking cover does not remove exposure.`)}"><b>C${i+1} · ${esc(c.type)} +${c.value}</b>${coverIcon(c)}</header><div class="compact-unit-grid">${units.filter(u=>u.cover===c.id).map(counter).join('')}</div></section>`).join('')}</div>`;

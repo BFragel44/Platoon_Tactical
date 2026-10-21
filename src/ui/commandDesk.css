@@ -31,6 +31,8 @@
 .attempt-desk .attempt-skills fieldset{padding:6px;margin:6px 0;grid-template-columns:repeat(auto-fit,minmax(90px,1fr))}.attempt-desk .attempt-skills legend{font-size:13px}.attempt-desk .attempt-skills label{font-size:12px}
 @font-face{font-family:'Veteran Typewriter';src:url('/fonts/veteran-typewriter/veteran-typewriter.ttf') format('truetype');font-weight:400;font-style:normal;font-display:swap}
 .command-desk{font-family:'Veteran Typewriter','Courier New',monospace}
+.company-preparation.command-desk{font-family:'Veteran Typewriter','Courier New',monospace}
+.company-preparation.command-desk button,.company-preparation.command-desk input,.company-preparation.command-desk select{font-family:inherit}
 .command-desk h2,.command-desk h3,.command-desk h4,.command-desk th,.command-desk .desk-kicker,.command-desk .attempt-location{font-family:inherit}
 .command-desk.mission-setup-dialog{--desk-padding:16px;font-size:14px;scroll-padding-top:20px}
 .mission-setup-dialog .desk-header{position:static;margin:0 0 12px;padding:0 0 10px;align-items:center}
@@ -78,3 +80,30 @@
 .command-desk .desk-sequence button:hover{background:#cfc2a1}
 .command-desk .desk-sequence button[aria-current]{background:#435545;color:#fff8df;font-weight:bold}
 .command-desk .desk-map-card strong{max-width:100%;overflow-wrap:anywhere}
+.attempt-supplies-layout{display:grid;grid-template-columns:minmax(240px,.85fr) minmax(0,1.6fr);gap:14px;align-items:start}
+.attempt-supplies-inventories{min-width:0;position:sticky;top:0}
+.attempt-supplies-inventories>p{font-size:11px;line-height:1.4}
+.attempt-inventory-list{max-height:58vh;overflow:auto;padding-right:5px}
+.attempt-inventory-card{border:1px solid #b9a883;background:#fff9e6;padding:8px;margin:0 0 7px}
+.attempt-inventory-card h4{margin:0 0 6px;font-size:12px}
+.attempt-inventory-card>div{display:flex;flex-wrap:wrap;gap:5px}
+.attempt-supply-chip{display:inline-flex;align-items:center;gap:4px;border:1px solid #c8ba96;background:#eee5cb;padding:3px 5px;font-size:11px;line-height:1.3}
+.attempt-supply-chip img{width:24px;height:24px;object-fit:contain}
+.attempt-supplies-layout fieldset{min-width:0;margin:0}
+.attempt-supplies-layout label{min-width:0}
+.attempt-supplies-layout select{width:100%;min-width:0}
+.attempt-supplies-layout input{width:90px;max-width:100%}
+.attempt-supplies-layout small{display:block;font-size:10px;margin-top:4px}
+@media(max-width:1200px){.attempt-desk .attempt-redistribute-replenished-supplies .attempt-supplies-layout .attempt-choice-grid{grid-template-columns:1fr}}
+@media(max-width:750px){.attempt-supplies-layout{grid-template-columns:1fr}.attempt-supplies-inventories{position:static}.attempt-inventory-list{max-height:260px}}
+
+/* Keep the deployment map primary; controls use only their required width. */
+.attempt-desk[data-preparation-stage="3"] .desk-layout{grid-template-columns:330px minmax(0,1fr)}
+.attempt-desk[data-preparation-stage="3"] .desk-sheet:nth-child(2){grid-template-columns:minmax(0,1fr) 280px;align-items:start}
+.attempt-desk[data-preparation-stage="3"] #attempt-map{min-width:0}
+.attempt-desk[data-preparation-stage="3"] #attempt-fields{min-width:0}
+.attempt-desk[data-preparation-stage="3"] .desk-map-card{overflow-wrap:normal;word-break:normal;min-height:86px}
+.command-desk .desk-map-card.known-minefield{border:2px solid #9e3527}
+.command-desk .desk-mine-warning{display:block;background:#9e3527;color:#fffbed;font-weight:bold;font-size:11px;padding:3px;margin-top:5px}
+@media(max-width:1300px) and (min-width:751px){.attempt-desk[data-preparation-stage="3"] .desk-layout{grid-template-columns:280px minmax(0,1fr)}.attempt-desk[data-preparation-stage="3"] .desk-sheet:nth-child(2){grid-template-columns:minmax(0,1fr) 240px}}
+@media(max-width:1100px){.attempt-desk[data-preparation-stage="3"] .desk-sheet:nth-child(2){grid-template-columns:1fr}.attempt-desk[data-preparation-stage="3"] #attempt-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}}

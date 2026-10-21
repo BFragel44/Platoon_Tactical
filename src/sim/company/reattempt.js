@@ -1,3 +1,4 @@
+import {preparationFormationAllowed} from './reconstitution.js';
 import {prepareVireReattemptInput,finishVireReattempt} from './vireReattempt.js';
 import {validatePatrolPlan,createPatrolProgress,nextPatrolPlatoons,patrolMoonLight} from './patrols.js';
 import {addPatrolContact} from './patrolEvents.js';
@@ -17,7 +18,7 @@ function prepareAttempt(state,choices,patrol){
  if((state.mission_rules?.vire||state.mission_rules?.tinchebray)&&!patrol)state=prepareVireReattemptInput(state,choices);
  if(patrol){if(!state.patrol||state.status!=='PATROL_COMPLETE'||state.patrol_history.length>=3)throw new Error('No next patrol is available.');}
  else if(!state.mission_rules?.reattempts||state.status!=='DEFEAT'||(state.attempt_number??1)>state.mission_rules.reattempts)throw new Error('No mission reattempt is available.');
- if(!choices||Object.keys(choices).some(k=>!['reconstitute','promote','positions','covers','phone_lines','skills','phase_lines','redistribute',...((state.mission_rules?.vire||state.mission_rules?.tinchebray)?['vehicle_positions']:[]),...(patrol?['patrol','assignments']:[])].includes(k)))throw new Error('Unknown reattempt preparation choice.');
+ if(!choices||Object.keys(choices).some(k=>!['original_formations_only','reconstitute','promote','positions','covers','phone_lines','skills','phase_lines','redistribute',...((state.mission_rules?.vire||state.mission_rules?.tinchebray)?['vehicle_positions']:[]),...(patrol?['patrol','assignments']:[])].includes(k)))throw new Error('Unknown reattempt preparation choice.');
  const plan=patrol?validatePatrolPlan(state.locations,choices.patrol):null;
  if(patrol&&(!nextPatrolPlatoons(state.patrol_history).includes(plan.platoon)||plan.cop!==state.patrol.plan.cop))throw new Error('Choose an unused platoon and retain the mission Combat Outpost.');
  const secured=patrol?values(state.locations).filter(l=>l.row===1||l.id===plan.cop).map(l=>l.id):values(state.locations).filter(l=>secureStatus(state,l.id).secured).map(l=>l.id);
@@ -51,6 +52,7 @@ function prepareAttempt(state,choices,patrol){
  for(const [targetId,donorIds] of Object.entries(assignments)){
   const target=s.units[targetId];
   if(state.mission_rules.hill192&&target?.removed==='RESERVE')throw new Error('Undeployed Hill 192 reserves cannot be reconstituted.');
+  if(choices.original_formations_only&&!preparationFormationAllowed(state,target))throw new Error('Reconstitute the original mortar section, not an eliminated breakdown team.');
   if(!target||!friendly(target)||target.attachment||!['SQUAD','HQ','STAFF','MG','HMG','AT','MORTAR'].includes(target.kind)||!Array.isArray(donorIds)||!donorIds.length||target.steps.length+donorIds.length>target.max_steps)throw new Error(`Invalid reconstitution for ${targetId}.`);
   if(patrol&&state.units[targetId]?.platoon!==state.patrol.plan.platoon)throw new Error('Reconstitute only the completed patrol platoon.');
   const hadSteps=target.steps.length>0;
@@ -96,6 +98,7 @@ function prepareAttempt(state,choices,patrol){
   // Old preparation drafts can retain cover on eliminated or consumed counters.
   // Only formations actually deploying after reconstitution need a cover choice.
   if(u&&friendly(u)&&(!u.steps.length||u.removed==='RESERVE'||consumed.has(id)))continue;
+  if(patrol&&coverId===null&&u&&friendly(u)&&live(u))continue; // Explicit Open, retained in the recorded choices.
   const cover=u&&s.locations[u.location]?.covers.find(c=>c.id===coverId&&c.discovered);
   if(!u||!friendly(u)||!live(u)||!cover)throw new Error(`Choose discovered cover on ${u?.name??id}'s reattempt card.`);
   const taken=values(s.units).filter(v=>v.id!==id&&live(v)&&v.location===u.location&&v.cover===cover.id).reduce((n,v)=>n+v.steps.length,0);
@@ -158,7 +161,7 @@ function prepareAttempt(state,choices,patrol){
   s.patrol=createPatrolProgress(s.locations,plan);s.objectives={...s.objectives,primary:plan.primary,secondary:plan.primary,attack:plan.cop,ccp:plan.ccp};
   s.visibility={light:patrolMoonLight(randomNumber(s,4,'Patrol moon visibility')),weather:0};s.patrol_hold=false;s.patrol_rain=0;s.registered_targets={};
   for(const l of values(s.locations).filter(l=>l.row>=2&&l.row<=4&&l.id!==plan.cop))if(!values(s.contacts).some(pc=>pc.location===l.id&&!pc.resolved))addPatrolContact(s,l);
-  for(const u of values(s.units).filter(u=>friendly(u)&&live(u))){u.original_experience=u.experience;if(u.platoon!==plan.platoon&&!u.cover)u.cover=s.locations[u.location].covers.find(c=>c.type==='Foxholes')?.id??null;}
+  for(const u of values(s.units).filter(u=>friendly(u)&&live(u))){u.original_experience=u.experience;if(u.platoon!==plan.platoon&&!u.cover&&!Object.hasOwn(covers,u.id))u.cover=s.locations[u.location].covers.find(c=>c.type==='Foxholes')?.id??null;}
  }
  s.replay.push({op:patrol?'preparePatrol':'reattempt',choices:structuredClone(choices)});
  if(patrol)emit(s,'PATROL_PREPARED',`Patrol ${s.attempt_number} begins with platoon ${plan.platoon}.`,{attempt:s.attempt_number,platoon:plan.platoon,points_spent:s.attempt_points_spent});

@@ -5,6 +5,7 @@ import {submitCommand,orderReason} from '../src/sim/company/actions.js';
 import {refresh,incoming} from '../src/sim/company/battlefield.js';
 import {cards} from '../src/sim/company/core.js';
 import {fireMarkers,pdfPaths} from '../src/ui/fireMarkers.js';
+import {reconstitutionSelection,selectedOrder} from '../src/ui/orderPresentation.js';
 
 function reconstitutionFixture() {
  const s=createMission(companyAssault,'reconstitution');s.phase='GENERAL_INITIATIVE';s.impulse={id:'general-test',hq:'general',commands:6,spent:0};
@@ -29,6 +30,22 @@ it('restores the chosen squad and only consumes chosen teams, reproducibly',()=>
  expect(first.state.units.s11.steps).toHaveLength(3);expect(first.state.units.s13.steps).toHaveLength(3);
  expect(first.state.units.team4.steps).toHaveLength(1);expect(first.state.units.team1.removed).toBe('RECONSTITUTED');
  expect(first.events.find(e=>e.type==='FORMATION_RECONSTITUTED').text).toContain('Assault Team 3');
+ const view=getPlayerView(first.state),stale={selected:'team1',action:'RECONSTITUTE',target:'s11',contributors:['team2','team3']},before=structuredClone(stale);
+ // The command succeeds before the old renderer crashes: the consumed donor
+ // has no order, and the same stale presentation can be stored in a save.
+ expect(selectedOrder(view.units.find(u=>u.id==='team1').options,'RECONSTITUTE','s11').option).toBeUndefined();
+ const follow=reconstitutionSelection(view,stale);
+ expect(follow).toEqual({selected:'s11',action:'',target:'',contributors:[]});
+ expect(view.units.find(u=>u.id===follow.selected)).toMatchObject({steps:3,removed:null});
+ expect(reconstitutionSelection(view,JSON.parse(JSON.stringify(stale)))).toEqual(follow);
+ expect(stale).toEqual(before);
+});
+it('retains a pending/failed reconstitution selection and does not redirect unrelated orders',()=>{
+ const selection={selected:'donor',action:'RECONSTITUTE',target:'squad',contributors:['other']};
+ const pending={units:[{id:'donor',steps:1,removed:null},{id:'squad',steps:0,removed:'ELIMINATED'}]};
+ expect(reconstitutionSelection(pending,selection)).toBe(selection);
+ expect(reconstitutionSelection({units:[{id:'donor',steps:0,removed:'RECONSTITUTED'}]},selection)).toBe(selection);
+ const unrelated={...selection,action:'MOVE'};expect(reconstitutionSelection(pending,unrelated)).toBe(unrelated);
 });
 it('one cease-fire order reaches every friendly firing occupant and records reopening',()=>{
  const s=reconstitutionFixture();s.units.s11.steps=[{id:'restored',personnel:[]}];s.units.s11.removed=null;

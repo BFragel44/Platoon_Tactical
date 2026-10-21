@@ -1,5 +1,11 @@
 import {it,expect} from 'vitest';
 import {experienceAwards,freshExperienceAwards} from '../src/ui/experienceNotifications.js';
+it('suppresses terminal awards without removing them from the recorded award list',()=>{
+ const view={achievements:[{key:'clearance',points:1,text:'Card cleared',turn:10}]},awards=experienceAwards(view),before=structuredClone(view);
+ expect(freshExperienceAwards(awards,[],'ACTIVE')).toEqual(awards);
+ for(const status of ['SUCCESS','DEFEAT','PATROL_COMPLETE','ABORTED'])expect(freshExperienceAwards(awards,[],status)).toEqual([]);
+ expect(experienceAwards(view)).toEqual(awards);expect(view).toEqual(before);
+});
 it('shows recorded amounts and tasks with the correct company or patrol pool',()=>{
  const view={achievements:[{key:'primary',points:5,text:'primary objective secured',turn:10},{key:'route_2_1',points:1,text:'Patrol route point visited',platoon:2,turn:3}]};
  expect(experienceAwards(view)).toEqual([{id:'primary',points:5,task:'primary objective secured',recipient:'Company',pool:'Company',turn:10},{id:'route_2_1',points:1,task:'Patrol route point visited',recipient:'2 Platoon',pool:'2 Platoon',turn:3}]);

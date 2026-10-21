@@ -51,3 +51,10 @@ export function reconstitutionLoads(s,unit,donors){
  unit.original_experience=unit.experience;
  for(const step of unit.steps)step.experience=unit.experience;
 }
+
+// Breakdown mortar counters can survive, but cannot be recreated as extra weapons.
+export function preparationFormationAllowed(state,unit){
+ if(unit?.kind!=='MORTAR')return true;
+ const original=state.attempt_records?.[0]?.starting_state?.units;
+ return original?Object.hasOwn(original,unit.id):!/^mortar_\d+$/.test(unit.id);
+}

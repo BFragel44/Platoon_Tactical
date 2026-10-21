@@ -84,6 +84,7 @@ export function applyHit(s,u,letters) {
        recipient.initial_resources??={radios:[],assets:{},ammo:{}};
        recipient.initial_resources.radios=structuredClone(u.initial_resources?.radios??u.radios);
        recipient.initial_resources.assets=structuredClone(u.initial_resources?.assets??u.assets);
+       if(s.mission_rules?.resupplyOwnership&&u.initial_resources){u.initial_resources.radios=[];u.initial_resources.assets={};}
       }
       if(s.mission_rules?.ammo==='tracked'&&recipient.fire_team_vof==='A'&&recipient.ammo?.MG===undefined&&u.ammo?.MG!==undefined){recipient.ammo={MG:u.ammo.MG};u.ammo.MG=0;}
       if(corrected&&s.mission_rules?.ammo==='tracked'){

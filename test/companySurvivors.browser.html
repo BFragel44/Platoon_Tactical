@@ -1,0 +1,13 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Company survivors dropdown acceptance</title></head><body><script type="module">
+import '/src/style.css';import '/src/ui/company.css';import '/src/ui/workspace.css';
+import {openCompanyPreparation} from '/src/ui/campaignPreparation.js';
+import {newCompanyCampaign,beginCompanyPreparation,saveCompanyPreparation,readCompanyPreparation} from '/src/sim/company/campaignPreparation.js';
+import {createMission,abortMission} from '/src/sim/company/engine.js';import {trevieres} from '/src/scenarios/trevieres.js';
+if(location.hostname!=='127.0.0.1'||location.port!=='5186')throw Error('Isolated port 5186 required. No campaign storage is modified on the normal game origin.');
+const campaign=newCompanyCampaign(trevieres,'survivor-browser');
+const mission=abortMission(createMission(trevieres,'survivor-browser',{}, {mission_instance_id:'survivor-browser-run',roster:campaign.roster})).state;
+const detached=mission.units.s11.steps.splice(0,2);detached.forEach((step,i)=>mission.units['team'+i]={...structuredClone(mission.units.s11),id:'team'+i,kind:'LAT',named:false,cohesion:'F',steps:[step]});
+mission.status='SUCCESS';mission.achievements=[{points:8}];
+if(!readCompanyPreparation(localStorage))saveCompanyPreparation(localStorage,beginCompanyPreparation(campaign,mission));
+openCompanyPreparation({scenario:trevieres,mission,download:()=>{}});
+</script></body></html>
