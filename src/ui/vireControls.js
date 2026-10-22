@@ -76,6 +76,9 @@ export function bindVireControls(root,{submit,exportReplay,restore,exportSave,re
 
 
 // Presentation only: retain the operation adapter and its replay validation.
+export function showVehicleOrders(state,selectedVehicle){
+ return state.phase!=='COMBAT_EFFECTS'&&!!(selectedVehicle||state.phase==='AT_COMBAT'||state.pending_event?.code==='TANK_SUPPORT');
+}
 
 export function integrateVehicleControls(root,state,{selectedVehicle,onSelect,route=[],onRoute}){
 
@@ -83,7 +86,8 @@ export function integrateVehicleControls(root,state,{selectedVehicle,onSelect,ro
 
  const view=getVirePublicState(state),command=['CO_ACTIVATION','SUBORDINATE_ACTIVATION','CO_INITIATIVE','PLATOON_INITIATIVE','STAFF_INITIATIVE','GENERAL_INITIATIVE'].includes(state.phase),combat=state.phase==='AT_COMBAT';
 
- const orders=root.querySelector('.company-orders');orders.prepend(panel);orders.querySelector('#unit').closest('label').classList.add('infantry-selector');orders.classList.toggle('vehicle-selected',!!selectedVehicle||combat||state.pending_event?.code==='TANK_SUPPORT');if(selectedVehicle||combat||state.pending_event?.code==='TANK_SUPPORT')orders.classList.remove('no-selection');
+ const showOrders=showVehicleOrders(state,selectedVehicle);
+ const orders=root.querySelector('.company-orders');orders.prepend(panel);orders.querySelector('#unit').closest('label').classList.add('infantry-selector');orders.classList.toggle('vehicle-selected',showOrders);if(showOrders)orders.classList.remove('no-selection');
  for(const child of panel.children)if(child.tagName==='P'&&!['vire-feedback'].includes(child.id))child.hidden=true;
 
  const picker=panel.querySelector('#vire-firer');
@@ -180,7 +184,7 @@ export function integrateVehicleControls(root,state,{selectedVehicle,onSelect,ro
  root.querySelector('#vire-controls-open').hidden=true;
  for(const p of panel.querySelectorAll('p'))if(/Movement stage:|Disembark pending|Pre-action VOF/.test(p.textContent))p.hidden=!combat;
 
- panel.hidden=!selectedVehicle&&!combat&&state.pending_event?.code!=='TANK_SUPPORT';
+ panel.hidden=!showOrders;
 
  const archive=document.createElement('details');archive.innerHTML='<summary>Vehicle replay and recovery</summary>';
 

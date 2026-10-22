@@ -405,6 +405,8 @@ export function getVisibleEvents(s,faction='friendly',after=0) {
   });
 }
 export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
+  // Prepared vehicle fire keeps its source identity after last-ammo withdrawal.
+  const publicFireSource=id=>fireSource(s,id)??s.vire_runtime?.vehicles?.[id]??null;
   if(faction!=='friendly')throw new TypeError('Only the player perspective is available');
   const visibleHistory=getVisibleEvents(s);
   // Incoming fire already reported to the player remains known when its card empties.
@@ -416,7 +418,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     communication:issuerId==='general'?'General initiative':communication(s,s.units[issuerId],u),
     communication_reason:communicationReason(s,s.units[issuerId],u),
     attempted:[...new Set(u.used.filter(k=>k.startsWith(`${s.impulse?.id}:`)).map(k=>k.slice(s.impulse.id.length+1)))],
-    personnel:u.steps.flatMap(v=>v.personnel),incoming:incoming(s,u).map(f=>({origin:f.origin,value:f.value,source:visible(s,fireSource(s,f.source))?f.source:null})),
+    personnel:u.steps.flatMap(v=>v.personnel),incoming:incoming(s,u).map(f=>({origin:f.origin,value:f.value,source:publicFireSource(f.source)&&visible(s,publicFireSource(f.source))?f.source:null})),
     combat:(()=>{const c=combatModifier(s,u);return c?{ncm:c.ncm,total:c.total,parts:structuredClone(c.parts),modifiers:structuredClone(c.modifiers)}:null;})(),options:live(u)?commandOptions(s,u,issuerId):[]}));
   for(const u of units) {
     u.transport=friendlyTransport(s,u);
@@ -454,7 +456,7 @@ export function getPlayerView(s,faction='friendly',issuerId=s.impulse?.hq) {
     hq_events:structuredClone(s.hq_events??[]).map(({side,code,turn,lead,completed,choice,placements,waypoint,ignored})=>({side,code,turn,lead,completed,choice,placements,...(waypoint!==undefined?{waypoint,ignored}:{})})),mission_name:s.mission_name,objectives:s.objectives?Object.fromEntries(['primary','secondary','attack','ccp'].map(k=>[k,{location:s.objectives[k],...secureStatus(s,s.objectives[k])}])):null,achievements:structuredClone(s.achievements),achievement_tally:achievementTally(s),
     contacts:values(s.contacts).filter(c=>!c.returning||s.knowledge.suspected[c.location]).map(c=>({id:c.id,location:c.location,type:(c.counterattack||c.question_side)&&!c.revealed&&!c.resolved?'?':c.type,resolved:c.resolved,counterattack:!!c.counterattack})),
     enemies:knownEnemy,suspected:spottingLocations(s),historical_reports:Object.keys(s.knowledge.suspected),
-    fire:[...s.fire,...temporaryMortarFire(s)].filter(f=>friendly(fireSource(s,f.source))||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>({...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:visible(s,fireSource(s,f.source))?f.source:null,friendly:friendly(fireSource(s,f.source))})),
+    fire:[...s.fire,...temporaryMortarFire(s)].filter(f=>publicFireSource(f.source)&&friendly(publicFireSource(f.source))||occupants(s,f.target).some(friendly)||s.knowledge.spotted[f.source]).map(f=>{const source=publicFireSource(f.source);return {...f,direction:f.direction?{dr:f.direction.dr,dc:f.direction.dc}:null,source:source&&visible(s,source)?f.source:null,friendly:!!source&&friendly(source)};}),
     markers:s.markers.filter(m=>m.type==='ILLUMINATION'||occupants(s,m.location).some(u=>friendly(u)||s.knowledge.spotted[u.id])).map(m=>({type:m.type,location:m.location,value:m.value,critical:!!m.critical,...(m.source&&fireSource(s,m.source)&&visible(s,fireSource(s,m.source))?{source:m.source,origin:m.origin??fireSource(s,m.source).location}:{}),...(m.target&&s.units[m.target]&&visible(s,s.units[m.target])?{target:m.target}:{}),...(m.cover&&terrainProjection(s.locations[m.location]).covers?.some(c=>c.id===m.cover)?{cover:m.cover}:{}),...(m.weapon?{weapon:m.weapon}:{}),...(m.type==='ILLUMINATION'?{center:m.center,adjacent:m.adjacent,delivery:m.delivery}:{})})),phone_lines:publicPhoneLines(s,visibleHistory),runners:structuredClone(s.runners),
     support:knownSupport.map(f=>({location:f.location,status:f.status,value:f.value,...(f.agency?{agency:f.agency==='cannon'?'cannon':f.agency.includes('mortar')?'mortar':'artillery',ammo:f.ammo??'HE'}:{})})),support_inventory:structuredClone(s.support_inventory),
     support_callers:Object.fromEntries(Object.entries(s.support_agencies??{}).map(([id,a])=>[id,{name:a.name,draws:structuredClone(a.draws),ammo_draws:structuredClone(a.ammo_draws),networks:structuredClone(a.networks),registered:s.registered_targets?.[id]??null}])),

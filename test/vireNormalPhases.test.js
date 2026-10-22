@@ -11,6 +11,19 @@ function base(phase='RETREAT'){
  return initializeVireAdapter(s,[{id:'tankhq',name:'Tank Platoon HQ',command_role:'vehicle_platoon_hq',command_hq:'tankhq',profile:'M4_SHERMAN75',faction:'friendly',location:'r1c1',radios:['BN'],ammo:5,crew:[{id:'hc1',personnel:[]},{id:'hc2',personnel:[]}]},{id:'tank',command_hq:'tankhq',profile:'M4_SHERMAN75',faction:'friendly',location:'r1c2',radios:[],ammo:5,crew:[{id:'tc1',personnel:[]},{id:'tc2',personnel:[]}]}]);
 }
 const enable=s=>applyVireOperation(s,{id:'enable',type:'ENABLE_NORMAL_PHASES'});
+it('projects prepared fire after its tank spends the last ammunition and withdraws',()=>{
+ const s=base('COMBAT_EFFECTS');s.vire_runtime.basic_fire_enabled=true;
+ const tank=s.vire_runtime.vehicles.tank; tank.ammo=0;tank.status='RETREATED';
+ s.fire=[{source:'tank',origin:tank.location,target:'r2c2',value:-1}];
+ const before=structuredClone(s),view=getPlayerView(s);
+ expect(view.fire).toContainEqual(expect.objectContaining({source:'tank',friendly:true,value:-1}));
+ expect(s).toEqual(before);
+});
+it('keeps incoming fire anonymous when its source cannot be resolved',()=>{
+ const s=base('COMBAT_EFFECTS');s.units.co.location='r1c1';
+ s.fire=[{source:'missing-source',origin:'r2c1',target:'r1c1',value:0}];
+ expect(getPlayerView(s).fire).toContainEqual(expect.objectContaining({source:null,friendly:false}));
+});
 const replay=(initial,s)=>importVireAdapterReplay(JSON.parse(JSON.stringify(exportVireAdapterReplay(initial,s))));
 it('normal phase stepping enters the vehicle cursor and cannot skip unfinished end-of-phase VOF',()=>{
  const initial=base();let s=enable(initial);s=advancePhase(s).state;expect(s.phase).toBe('AT_COMBAT');expect(s.vire_runtime.coordinator).toBeTruthy();expect(advancePhase(s).accepted).toBe(false);

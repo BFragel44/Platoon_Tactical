@@ -11,6 +11,14 @@ export function casualtyEvacuationStatus(view,casualty){
  return 'Awaiting pickup';
 }
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function cardCasualtyList(view,location){
+ const friendly=(view.casualties??[]).filter(c=>c.location===location.id&&!c.evacuated);
+ const enemy=(view.enemy_casualties??[]).filter(c=>c.location===location.id&&!c.evacuated);
+ if(!friendly.length&&!enemy.length)return '';
+ const total=friendly.length+enemy.length;
+ const counts=[friendly.length?`${friendly.length} friendly`:null,enemy.length?`${enemy.length} enemy`:null].filter(Boolean).join(' · ');
+ return `<details class="card-casualties"><summary>✚ Casualties (${total}) · ${counts}</summary><div class="card-casualty-list">${friendly.map(c=>`<div class="casualty-marker"><b>✚ ${esc(c.label)}</b><small>${esc(casualtyEvacuationStatus(view,c))} · ${esc(equipmentAreaLabel(view,c))}</small></div>`).join('')}${enemyCasualtyMarkers(view,location)}</div></details>`;
+}
 export function enemyCasualtyStatus(casualty){
  if(casualty.evacuated)return 'Removed from battlefield';
  if(casualty.last_known)return 'Last observed here · current position unconfirmed';

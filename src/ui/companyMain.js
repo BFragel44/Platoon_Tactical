@@ -11,7 +11,7 @@ import {experienceAwards,freshExperienceAwards,createExperienceNotifications} fr
 import {cardDrawIdentity,createCardDrawNotifications,publicDrawGroups,recentDrawMarkup} from './cardDraws.js';
 import './cardDraws.css';
 import {mapBoundaryLayout} from './mapBoundaries.js';
-import {casualtyEvacuationStatus,enemyCasualtyMarkers,equipmentAreaLabel} from './casualtyPresentation.js';
+import {cardCasualtyList,equipmentAreaLabel,casualtyEvacuationStatus} from './casualtyPresentation.js';
 import {supportCallPreview,friendlyTargetLabel,supportWarning,battalionChoiceReason} from './supportPresentation.js';
 import {applicationMarkup,savedApplications,recoveryKey} from './applicationNavigation.js';
 import {capturePresentationDraft,restorePresentationDraft} from './presentationDraft.js';
@@ -365,8 +365,7 @@ ${aar?`<section class="mission-result" role="status"><h2>${mission.status==='PAT
       <div class="fire-markers">${fireMarkers(v,l).map(m=>`<details class="counter-marker"><summary title="${esc(m.label)}">${markerSummary(m)}${m.annotation?`<span class="marker-annotation">${esc(m.annotation)}</span>`:''}</summary><p>${esc(m.detail)}</p></details>`).join('')}</div>
       ${pdfDirections(v,l).map(d=>`<button type="button" class="pdf-badge ${d.side}" data-pdf-path="${esc(`${d.paths[0].origin}|${d.paths[0].target}|${d.paths[0].side}`)}" style="--x:${50+d.dc*45}%;--y:${50-d.dr*45}%;--angle:${d.angle}deg" title="${esc(d.label)}" aria-label="${esc(d.label)}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 22 13H15V22H9V13H2Z"/></svg>PDF</button>`).join('')}
       ${formationGrid(l,own,enemy,{selected,movingIds,infiltrating:action==='PLATOON_INFILTRATE',combat:combatMode?{current:combat,recipients:v.combat_resolutions}:null})}${vehicleCounters(mission,l.id)}
-      ${v.casualties.filter(c=>c.location===l.id&&!c.evacuated).map(c=>`<div class="casualty-marker"><b>✚ ${esc(c.label)}</b><small>${esc(casualtyEvacuationStatus(v,c))} · ${esc(c.cover?l.covers.find(x=>x.id===c.cover)?.type??'cover':'Out of cover')}</small></div>`).join('')}
-      ${enemyCasualtyMarkers(v,l)}
+      ${cardCasualtyList(v,l)}
       ${v.assets.filter(a=>a.location===l.id).map(a=>`<div class="equipment-marker"><b>▣ ${esc(deviceText(a.label))}</b><small>${a.carrier_name?'Carried by '+esc(a.carrier_name):'Dropped here · recoverable'} · ${esc(equipmentAreaLabel(v,a))}</small></div>`).join('')}
       ${v.historical_losses.filter(e=>e.location===l.id&&(showHistorical||e.actor===selected)).map(e=>`<div class="loss-silhouette"><span aria-hidden="true">♟</span><b>${esc(e.name)}</b><small>Turn ${e.turn} · Historical loss — no tactical effect</small></div>`).join('')}
       ${v.suspected.includes(l.id)?'<p class="suspected">Current unspotted position</p>':v.historical_reports.includes(l.id)&&!enemy.length?'<p class="historical">Historical firing report · not a current spotting target</p>':''}
@@ -418,9 +417,9 @@ ${aar?`<section class="mission-result" role="status"><h2>${mission.status==='PAT
   restorePresentationDraft(app,tacticalDraft,draftContext());
   app.insertAdjacentHTML('beforeend',`${reviews.length?`<details class="segment-history"><summary>Segment result history</summary>${reviews.map(r=>`<button data-review="${r.id}">${r.attemptLabel?esc(r.attemptLabel)+' · ':''}Turn ${r.turn} · ${esc(r.label)}</button>`).join('')}</details>`:''}${review?segmentResultMarkup(review,name):''}`);
   for(const [destination,selectors] of [
-    ['#panel-mission',['#casualty-evacuation','#turn-summary','#abort','[aria-label="Normandy mission status"]']],
+    ['#panel-roster',['#casualty-evacuation']],
     ['#panel-roster',['#named-personnel']],
-    ['#debug-content',['#order-eligibility','.map-reference','.fire-report','.history','.segment-history','.segment-review:not([aria-label="Battalion fire choice"]):not([aria-label="Higher headquarters resupply"]):not([aria-label="Normandy mission status"])','#diagnostic-details']]
+    ['#debug-content',['#turn-summary','#abort','[aria-label="Normandy mission status"]','#order-eligibility','.map-reference','.fire-report','.history','.segment-history','.segment-review:not([aria-label="Battalion fire choice"]):not([aria-label="Higher headquarters resupply"]):not([aria-label="Normandy mission status"])','#diagnostic-details']]
   ])for(const selector of selectors){const element=app.querySelector(selector);if(element)app.querySelector(destination).append(element);}
   if(feedbackKind!=='Last order')app.querySelector('#debug-content').append(app.querySelector('.order-feedback'));
   if(opt&&!opt.available){

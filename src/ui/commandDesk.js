@@ -17,17 +17,18 @@ export function preparationMapControls({objectives={},phase_lines={},patrol=null
 export function deskHeader(title,subtitle,steps=[],current='',interactive=false){
  return `<header class="desk-header"><div><p class="desk-kicker">Battalion command … Normandy</p><h2>${deskEscape(title)}</h2><p>${deskEscape(subtitle)}</p></div>${steps.length?`<ol class="desk-sequence" aria-label="Preparation sections">${steps.map((s,i)=>interactive?`<li><button type="button" data-desk-step="${i}" ${s===current?'aria-current="step"':''}>${deskEscape(s)}</button></li>`:`<li ${s===current?'aria-current="step"':''}>${deskEscape(s)}</li>`).join('')}</ol>`:''}</header>`;
 }
-export function deploymentMapMarkup({locations,objectives={},placements={},selected=null,selectedLabel='',allowed=[],phaseLines={},mlr=null}){
+export function deploymentMapMarkup({locations,objectives={},placements={},selected=null,selectedLabel='',allowed=[],phaseLines={},mlr=null,enemies=[]}){
  if(!locations.length)return '';
  const layout=mapBoundaryLayout({locations,phase_lines:phaseLines,patrol:mlr?.length?{}:null});
  const min=Math.min(...locations.map(l=>l.col)),max=Math.max(...locations.map(l=>l.col));
  return `<section class="desk-map" aria-label="Public deployment map"><h3>Deployment map</h3>${selectedLabel?`<p><b>Selected … ${deskEscape(selectedLabel)}</b></p>`:''}<p>Choose a formation, then a permitted card. Unknown terrain remains concealed.</p><div class="desk-map-grid" style="--map-columns:${max-min+1}">${locations.map(l=>{
   const name=l.staging?l.name:l.known===false?`${l.row}.${l.col}`:l.name;
   const goals=Object.entries(objectives).filter(([,o])=>(o?.location??o)===l.id).map(([key])=>({primary:'Primary',secondary:'Secondary',attack:'Attack',ccp:'CCP',cop:'Outpost',concentration:'Concentration'})[key]??key);
+  const visibleEnemies=enemies.filter(u=>u.location===l.id&&u.steps>0&&!u.removed);
   const occupants=Object.entries(placements).filter(([,id])=>id===l.id).map(([id])=>id);
   const mines=l.known!==false&&l.mines;
-  return `<button type="button" class="desk-map-card ${l.known===false?'unknown':''} ${placements[selected]===l.id?'selected':''} ${mines?'known-minefield':''}" data-deploy-card="${deskEscape(l.id)}" ${allowed.includes(l.id)?'':'disabled'} style="${layout.cardStyle(l)}" aria-label="Deploy selected formation to ${deskEscape(name)}${mines?' — confirmed minefield':''}"><b>${deskEscape(name)}</b>${goals.length?`<strong>${goals.map(deskEscape).join(' · ')}</strong>`:''}${mines?'<span class="desk-mine-warning">⚠ Confirmed mines</span>':l.known!==false&&l.mine_path_marked?'<small>Mine path marked</small>':''}${occupants.length?`<small>${occupants.length} formation${occupants.length===1?'':'s'}</small>`:''}</button>`;
- }).join('')}${layout.boundaries.map(line=>`<div class="desk-map-line" style="grid-column:1/-1;grid-row:${line.gridRow}"><span>${deskEscape(line.label.replace(/MLR .*/, 'MLR'))}</span></div>`).join('')}</div><p>Only public terrain and friendly deployment choices are shown.</p></section>`;
+  return `<button type="button" class="desk-map-card ${l.known===false?'unknown':''} ${placements[selected]===l.id?'selected':''} ${mines?'known-minefield':''}" data-deploy-card="${deskEscape(l.id)}" ${allowed.includes(l.id)?'':'disabled'} style="${layout.cardStyle(l)}" aria-label="Deploy selected formation to ${deskEscape(name)}${mines?' — confirmed minefield':''}"><b>${deskEscape(name)}</b>${goals.length?`<strong>${goals.map(deskEscape).join(' · ')}</strong>`:''}${mines?'<span class="desk-mine-warning">⚠ Confirmed mines</span>':l.known!==false&&l.mine_path_marked?'<small>Mine path marked</small>':''}${occupants.length?`<small>${occupants.length} friendly formation${occupants.length===1?'':'s'}</small>`:''}${visibleEnemies.map(u=>`<span class="desk-enemy-counter"><b>${deskEscape(u.name)}</b><small>${u.steps} step${u.steps===1?'':'s'}${u.pinned?' \u00b7 PINNED':''}</small></span>`).join('')}</button>`;
+ }).join('')}${layout.boundaries.map(line=>`<div class="desk-map-line" style="grid-column:1/-1;grid-row:${line.gridRow}"><span>${deskEscape(line.label.replace(/MLR .*/, 'MLR'))}</span></div>`).join('')}</div><p>Public terrain, currently spotted enemies and friendly deployment choices are shown.</p></section>`;
 }
 export function bindDeskKeyboard(panel,close,previous=document.activeElement){
  const keyboard=e=>{

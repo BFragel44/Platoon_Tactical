@@ -6,7 +6,7 @@ import {importVireAdapterReplay} from '../sim/company/vireIntegration.js';
 import {SAVE_KEY,readRecovery} from './localRecovery.js';
 import {campaignResumeReason} from './applicationNavigation.js';
 import {readCompanyPreparation,startFreshCompanyCampaign,saveCompanyPreparation,newCompanyCampaign,beginCompanyPreparation,prepareCompany,PREPARATION_KEY} from '../sim/company/campaignPreparation.js';
-import {SKILLS} from '../sim/company/skills.js';
+import {SKILLS,availableSkillTypes} from '../sim/company/skills.js';
 const skillHelp={GENERAL_INITIATIVE:'One free General Initiative command.',PARALYZED_ASSAULT:'Convert an eligible paralyzed step to an Assault Team.',PARALYZED_FIRE:'Convert an eligible paralyzed step to a Fire Team.',SPAWN_TEAM:'Create a team using an eligible skill order.',EXTRA_DRAW:'Add a draw to an eligible attempt.',AUTO_SPOT:'Automatically succeed at an eligible spotting attempt.',AUTO_COVER:'Automatically succeed at an eligible cover attempt.',AUTO_CONCENTRATE:'Automatically succeed at an eligible concentrated-fire attempt.',AUTO_INFILTRATE:'Automatically succeed at an eligible infiltration attempt.',AUTO_GRENADE:'Automatically succeed at an eligible grenade attempt, including a return attempt.'};
 const esc=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;');
 export function openCompanyPreparation({scenario,mission=null,start,resume,download,onClose=()=>{},resumeStart}){
@@ -27,6 +27,8 @@ export function openCompanyPreparation({scenario,mission=null,start,resume,downl
   const formations=Object.values(displayRoster?.formations??{}).filter(f=>!p||p.fieldable.includes(f.id));
   const receiving=formations.filter(f=>p?.phase==='SKILLS'?['HQ','STAFF'].includes(f.kind)&&f.step_ids.length:p?.phase==='REPLACEMENTS'?f.step_ids.length<f.capacity:!p?.attachments.includes(f.id)&&f.kind!=='FO');
   if(!receiving.some(f=>f.id===selectedFormation))selectedFormation=receiving[0]?.id??'';
+  const availableSkills=availableSkillTypes(p?.retained_skills??[],p?.skills??[]);
+  if(!availableSkills.includes(selectedSkill))selectedSkill=availableSkills[0]??'';
   const steps=Object.values(r?.roster.steps??{}).filter(t=>t.disposition==='ACTIVE'&&(!p||!p.attachment_steps.includes(t.id)));
   selectedSteps=selectedSteps.filter(id=>steps.some(t=>t.id===id));
   if(!p?.available.includes(selectedSurvivor))selectedSurvivor='';
@@ -44,7 +46,7 @@ export function openCompanyPreparation({scenario,mission=null,start,resume,downl
    actions+=`<label>${p.phase==='SKILLS'?'Skill holder':'Receiving formation'}<select id="formation" aria-label="${p.phase==='SKILLS'?'Skill holder':'Receiving formation'}">${receiving.map(f=>`<option value="${esc(f.id)}" ${f.id===selectedFormation?'selected':''}>${esc(f.name)} … ${f.step_ids.length}/${f.capacity}</option>`).join('')||'<option value="">No eligible formation</option>'}</select></label>`;
    if(p.phase==='RECONSTITUTE')actions+='<button id="transfer">Apply transfer</button><p id="transfer-preview" role="status"></p><hr><h4>Promotion</h4><p id="selected-step"></p><button id="promote">Promote selected step</button><p id="promotion-preview"></p>';
    if(p.phase==='REPLACEMENTS')actions+=`<p>Only eligible company vacancies may receive replacements. New steps cannot be promoted in this preparation.</p><button id="green">Allocate Green</button><button id="veteran">Allocate Veteran</button><p id="replacement-preview" role="status"></p>`;
-   if(p.phase==='SKILLS')actions+=`<label>Skill<select id="skill">${Object.entries(SKILLS).map(([id,s])=>`<option value="${id}" ${selectedSkill===id?'selected':''}>${esc(s.label)} … ${s.cost} XP</option>`).join('')}</select></label><p id="skill-effect"></p><button id="skill-buy">Assign skill</button><p id="skill-preview" role="status"></p>`;
+   if(p.phase==='SKILLS')actions+=`<label>Skill<select id="skill">${Object.entries(SKILLS).filter(([id])=>availableSkills.includes(id)).map(([id,s])=>`<option value="${id}" ${selectedSkill===id?'selected':''}>${esc(s.label)} … ${s.cost} XP</option>`).join('')}</select></label><p id="skill-effect"></p><button id="skill-buy">Assign skill</button><p id="skill-preview" role="status"></p>`;
    actions+=`<button id="next" class="primary">${p.phase==='SKILLS'?'Finish preparation':p.phase==='RECONSTITUTE'?'Continue to replacements':'Continue to skills'}</button>`;
   }
   dialog.innerHTML=deskHeader('Company personnel file',subtitle,['Reorganize & promote','Replacements','Skills','Ready'],stage,!!p&&r.stage!=='DEPLOYMENT')+`<p role="alert" class="desk-status">${esc(error)}</p><div class="desk-layout"><section class="desk-sheet"><h3>Company roster</h3><p>Select a formation to inspect its steps.</p><div class="desk-roster-scroll"><table><thead><tr><th>Formation</th><th>Strength</th><th>Experience</th></tr></thead><tbody>${roster}</tbody></table></div></section><section class="desk-sheet desk-actions">${actions}${p?`<details><summary>Preparation rules & support</summary><p>Green to Line costs 1 XP; Line to Veteran costs 3. One level per eligible step. Newly rebuilt HQs remain Green. Unspent experience expires when preparation is finished.</p><p>Supporting attachments replenish from their parent organizations. ${p.returned_passengers?.length??0} surviving passenger steps returned without using replacements.</p><p>Formation experience is finalized on completion; the roster shows the projected combined level.</p></details>`:''}</section></div><footer class="desk-footer"><button id="close">Return</button><details><summary>Records & recovery</summary><button id="export" ${!r?'disabled':''}>Export campaign record</button><button id="tactical-export" ${!saved.raw?'disabled':''}>Export campaign mission save</button>${r?.active_deployment?.start_checkpoint?'<button id="recover-start">Recover committed mission start</button><p>Restarts the committed deployment at its beginning. Export an unreadable tactical save first.</p>':''}${r?.stage==='PREPARED'?'<button id="new">Start another fresh campaign (keeps backup)</button>':''}</details></footer>`;
@@ -95,6 +97,7 @@ export function openCompanyPreparation({scenario,mission=null,start,resume,downl
     dialog.querySelector('#replacement-preview').textContent=messages.join(' ');
    }
    if(p?.phase==='SKILLS'){
+    if(!selectedSkill){dialog.querySelector('#skill-buy').disabled=true;dialog.querySelector('#skill-effect').textContent='All skill counters are assigned.';dialog.querySelector('#skill-preview').textContent='';return;}
     const preview=previewPreparationChoices(r,[{type:'SKILL',purchase:{type:selectedSkill,holder:selectedFormation}}]);
     dialog.querySelector('#skill-buy').disabled=!!preview.reason;dialog.querySelector('#skill-effect').textContent=skillHelp[selectedSkill];dialog.querySelector('#skill-preview').textContent=preview.reason??`${SKILLS[selectedSkill].cost} XP … ${preview.record.preparation.points} remain after assignment.`;
    }
